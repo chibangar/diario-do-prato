@@ -36,3 +36,9 @@ cd android && ./gradlew assembleDebug
 O workflow precisa destes secrets no repositório: `KEYSTORE_B64` (keystore em base64),
 `KEYSTORE_PASSWORD`, `KEY_ALIAS` e `KEY_PASSWORD`. Usa sempre a mesma chave, senão o
 Android recusa instalar a atualização por cima.
+
+## Fontes dos dados
+
+- Valores nutricionais: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P. - INSA. v 7.1 - 2026 (https://portfir.insa.min-saude.pt/), em `www/data/insa.js`.
+- Produtos de marca (pesquisa com internet): Open Food Facts (https://openfoodfacts.org), base de dados aberta sob a licença ODbL.
+- Reconhecimento de pratos: modelo Google AIY Vision Classifier Food V1 (Apache 2.0).

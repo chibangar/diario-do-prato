@@ -105,6 +105,13 @@ select, .field { border: 1px solid var(--line); background: var(--paper); border
 .search { display: flex; gap: 8px; }
 .search input { flex: 1; min-width: 0; }
 .create { border: 1.5px dashed var(--line); background: transparent; border-radius: 10px; padding: 10px; text-align: left; font-weight: 600; }
+.more { border: 1px solid var(--line); background: var(--soft); border-radius: 10px; padding: 10px; font-weight: 600; }
+.src { font-size: 11.5px; color: var(--muted); margin: 0; }
+.off { display: flex; flex-direction: column; gap: 8px; }
+.off-btn { border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--paper)); color: var(--ink); border-radius: 10px; padding: 10px 12px; text-align: left; font-weight: 600; }
+.off-btn small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.food.brand { border-style: dashed; border-color: var(--accent); }
+.food .br { font-size: 11px; color: var(--muted); font-family: var(--f-body); }
 
 .items { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .items-head { display: grid; grid-template-columns: 1fr 74px 74px 32px; gap: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding-bottom: 6px; }
@@ -392,6 +399,7 @@ details.settings summary { font-weight: 600; cursor: pointer; }
       <div id="cOut" aria-live="polite"></div>
     </div>
     <p class="note">Os registos ficam guardados só neste telemóvel. Desinstalar a app apaga-os.</p>
+    <p class="note">Valores nutricionais: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P. - INSA. v 7.1 - 2026 (portfir.insa.min-saude.pt). Produtos de marca: Open Food Facts (openfoodfacts.org), base de dados aberta (ODbL).</p>
   </details>
 
   <details class="settings" id="dishDetails">
@@ -464,6 +472,7 @@ details.settings summary { font-weight: 600; cursor: pointer; }
   </div>
 </div>
 
+<script src="data/insa.js"></script>
 <script>
 (() => {
 "use strict";
@@ -786,7 +795,15 @@ function toast(msg) {
 }
 
 const S = { meals: lsGet("ddp.meals", []), custom: lsGet("ddp.custom", []), dishes: lsGet("ddp.dishes", []), day: todayKey(), goal: lsGet("ddp.goal", 2000), draft: null };
-const allFoods = () => [...S.custom, ...BASE_FOODS];
+// Official Portuguese food composition table (INSA), loaded from data/insa.js. Foods already in the
+// curated list keep the curated entry (its portion and the photo recognition use those names).
+const INSA_FOODS = (() => {
+  const seen = new Set(BASE_FOODS.map((f) => norm(f.name)));
+  return (window.INSA_FOODS || []).filter((r) => !seen.has(norm(r[0])))
+    .map(([name, cat, g, kcal, p, c, f]) => ({ name, cat, g, kcal, p, c, f, src: "insa" }));
+})();
+const allFoods = () => [...S.custom, ...BASE_FOODS, ...INSA_FOODS];
+const INSA_SOURCE = "Fonte: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P. - INSA. v 7.1 - 2026.";
 
 function saveMeals() {
   if (lsSet("ddp.meals", S.meals)) return true;
@@ -999,25 +1016,94 @@ function newDraft(extra) {
 }
 
 function foodsForTab(d) {
-  if (d.q.trim()) { const q = norm(d.q.trim()); return allFoods().filter((f) => norm(f.name).includes(q)); }
+  if (d.q.trim()) {
+    const q = norm(d.q.trim()), words = q.split(/[\s,]+/).filter(Boolean);
+    const rank = (f) => { const n = norm(f.name); return (n === q ? 0 : n.startsWith(q) ? 1 : n.includes(q) ? 2 : 3) * 2 + (f.src === "insa" ? 1 : 0); };
+    return allFoods().filter((f) => { const n = norm(f.name); return words.every((w) => n.includes(w)); })
+      .map((f, i) => [f, rank(f), i]).sort((a, b) => a[1] - b[1] || a[2] - b[2]).map(([f]) => f);
+  }
   if (d.tab === "recentes") return recentFoods();
   return allFoods().filter((f) => f.cat === d.tab);
 }
 
+// ---------- brand products: Open Food Facts (online) ----------
+const OFF_API = "https://search.openfoodfacts.org/search";
+function offBlock(qq, off, added) {
+  if (!off) return `<button class="off-btn" id="dOff" type="button">Procurar «${esc(qq)}» nos produtos de marca<small>Iogurtes, bolachas, cereais, bebidas… dos supermercados portugueses. Precisa de internet.</small></button>`;
+  if (off.status === "loading") return `<div class="ai-box"><span class="ai-dot"></span><span>A procurar nos produtos de marca…</span></div>`;
+  if (off.status === "error") return `<button class="off-btn" id="dOff" type="button">Não consegui ligar à internet. Tentar outra vez<small>A pesquisa de produtos de marca precisa de internet.</small></button>`;
+  if (!off.items.length) return `<p class="note" style="margin:0">Nenhum produto de marca encontrado para «${esc(qq)}».</p>`;
+  return `<span class="picker-label">Produtos de marca</span><div class="grid">${off.items.map((p, i) => `<button class="food brand ${added.has(p.name) ? "added" : ""}" data-off="${i}"><b>${esc(p.name)}</b><span>${p.g} g · ${r0(p.kcal * p.g / 100)} kcal</span></button>`).join("")}</div>`;
+}
+async function httpJson(url) {
+  // in the app the request goes through Android (the search server does not allow browser requests)
+  const C = window.Capacitor;
+  if (C?.isNativePlatform?.() && typeof C.nativePromise === "function") {
+    try {
+      const r = await C.nativePromise("CapacitorHttp", "request", { url, method: "GET", headers: { Accept: "application/json", "User-Agent": "DiarioDoPrato-app/1.0" }, connectTimeout: 15000, readTimeout: 20000 });
+      if (r.status >= 200 && r.status < 300) return typeof r.data === "string" ? JSON.parse(r.data) : r.data;
+      throw new Error(String(r.status));
+    } catch (e) { if (!/not implemented|not available/i.test(String(e?.message || e))) throw e; }
+  }
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 20000);
+  try { const res = await fetch(url, { signal: ctl.signal }); if (!res.ok) throw new Error(String(res.status)); return await res.json(); }
+  finally { clearTimeout(t); }
+}
+function offProduct(h) {
+  const n = h.nutriments || {}, kcal = Number(n["energy-kcal_100g"] ?? (n["energy_100g"] ? n["energy_100g"] / 4.184 : NaN));
+  const name = String(h.product_name_pt || h.product_name || "").trim();
+  if (!name || !Number.isFinite(kcal)) return null;
+  const brand = String(h.brands || "").split(",")[0].trim();
+  const full = (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70);
+  const sq = Number(h.serving_quantity);
+  return { name: full, cat: "outros", g: sq > 0 && sq <= 1000 ? Math.round(sq) : 100, kcal: r0(kcal), p: r1(n.proteins_100g), c: r1(n.carbohydrates_100g), f: r1(n.fat_100g), src: "off", code: h.code || "" };
+}
+async function searchOFF(d, qq) {
+  d.off = { q: qq, status: "loading", items: [] }; renderPicker();
+  const params = new URLSearchParams({ q: `${qq} countries_tags:"en:portugal"`, page_size: "24", langs: "pt",
+    fields: "code,product_name,product_name_pt,brands,nutriments,serving_quantity" });
+  try {
+    const j = await httpJson(`${OFF_API}?${params}`);
+    const seen = new Set(), items = [];
+    for (const h of j.hits || []) { const p = offProduct(h); if (p && !seen.has(p.name)) { seen.add(p.name); items.push(p); } }
+    if (d.off?.q === qq) d.off = { q: qq, status: "done", items: items.slice(0, 16) };
+  } catch {
+    if (d.off?.q === qq) d.off = { q: qq, status: "error", items: [] };
+  }
+  if (S.draft === d && d.q.trim() === qq) renderPicker();
+}
 function renderPicker() {
   const d = S.draft, box = $("#dResults"); if (!d || !box) return;
   const rec = recentFoods();
   if ((d.tab === "recentes" && !rec.length) || (d.tab === "meus" && !S.dishes.length)) d.tab = "pratos";
   const tabs = [...(rec.length ? [["recentes", "Recentes", ""]] : []), ...(S.dishes.length ? [["meus", "Os meus pratos", ""]] : []), ...Object.keys(CATS).map((c) => [c, TAB_NAMES[c], CATS[c]])];
   const qq = d.q.trim(), nq = norm(qq);
-  const foods = d.tab === "meus" && !qq ? [] : foodsForTab(d), added = new Set(d.items.map((i) => i.name));
+  const allHits = d.tab === "meus" && !qq ? [] : foodsForTab(d), added = new Set(d.items.map((i) => i.name));
+  const limit = d.more ? 600 : 60, foods = allHits.slice(0, limit);
+  const off = d.off && d.off.q === qq ? d.off : null;
   const dishes = S.dishes.map((x, i) => ({ ...x, i })).filter((x) => qq ? norm(x.name).includes(nq) : d.tab === "meus");
   const tabsEl = box.querySelector(".tabs"), keepScroll = tabsEl ? tabsEl.scrollLeft : 0;
   box.innerHTML = `
     ${qq ? "" : `<div class="tabs" role="tablist">${tabs.map(([k, n, col]) => `<button class="tab" role="tab" data-tab="${esc(k)}" aria-selected="${k === d.tab}">${col ? `<i style="background:${col}"></i>` : ""}${esc(n)}</button>`).join("")}</div>`}
     <div class="grid">${dishes.map((x) => `<button class="food dish" data-dish="${x.i}"><b>${esc(x.name)}</b><span>${x.items.length} alimentos · ${r0(sum(x.items, "kcal"))} kcal</span></button>`).join("")}${foods.map((f) => `<button class="food ${added.has(f.name) ? "added" : ""}" data-food="${esc(f.name)}"><b>${esc(f.name)}</b><span>${f.g} g · ${r0(f.kcal * f.g / 100)} kcal</span></button>`).join("")}</div>
-    ${qq && !foods.length && !dishes.length ? `<p class="note" style="margin:0">Não encontrei «${esc(qq)}». Cria-o e escreve as calorias.</p>` : ""}
-    ${qq ? `<button class="create" id="dCreate">+ Criar «${esc(qq)}»</button>` : ""}`;
+    ${allHits.length > foods.length ? `<button class="more" id="dMore" type="button">Mostrar mais (${allHits.length - foods.length})</button>` : ""}
+    ${qq && !foods.length && !dishes.length ? `<p class="note" style="margin:0">Não encontrei «${esc(qq)}» na lista. Procura nos produtos de marca ou cria-o.</p>` : ""}
+    ${qq.length >= 3 ? `<div class="off">${offBlock(qq, off, added)}</div>` : ""}
+    ${qq ? `<button class="create" id="dCreate">+ Criar «${esc(qq)}»</button>` : ""}
+    <p class="src">${INSA_FOODS.length + BASE_FOODS.length} alimentos. ${INSA_SOURCE}${off?.items?.length ? " Produtos de marca: Open Food Facts (openfoodfacts.org)." : ""}</p>`;
+  const mb = box.querySelector("#dMore"); if (mb) mb.onclick = () => { d.more = true; renderPicker(); };
+  const ob = box.querySelector("#dOff"); if (ob) ob.onclick = () => searchOFF(d, qq);
+  box.querySelectorAll("[data-off]").forEach((b) => b.onclick = () => {
+    const p = off?.items?.[+b.dataset.off]; if (!p) return;
+    const idx = d.items.findIndex((i) => i.name === p.name);
+    if (idx >= 0) d.items.splice(idx, 1);
+    else {
+      d.items.push(fromFood(p));
+      // keep the product so it shows up in search and in «Recentes» next time
+      if (!S.custom.some((x) => x.name === p.name)) { S.custom.unshift({ ...p }); lsSet("ddp.custom", S.custom.slice(0, 200)); }
+    }
+    const y = window.scrollY; renderDraft(); window.scrollTo(0, y);
+  });
   box.querySelectorAll("[data-dish]").forEach((b) => b.onclick = () => {
     const x = S.dishes[+b.dataset.dish]; if (!x) return;
     d.items.push(...x.items.map((i) => ({ ...i })));
@@ -1025,7 +1111,7 @@ function renderPicker() {
     d.q = ""; renderDraft(); toast(`«${x.name}» adicionado`);
   });
   const t = box.querySelector(".tabs"); if (t) t.scrollLeft = keepScroll;
-  box.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => { d.tab = b.dataset.tab; renderPicker(); });
+  box.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => { d.tab = b.dataset.tab; d.more = false; renderPicker(); });
   box.querySelectorAll("[data-food]").forEach((b) => b.onclick = () => {
     const name = b.dataset.food, idx = d.items.findIndex((i) => i.name === name);
     if (idx >= 0) d.items.splice(idx, 1);
@@ -1078,7 +1164,7 @@ function renderDraft() {
   const q = (s) => el.querySelector(s);
   q("#dTitle").oninput = (e) => { d.title = e.target.value; };
   q("#dMeal").onchange = (e) => { d.meal = e.target.value; };
-  q("#dSearch").oninput = (e) => { d.q = e.target.value; renderPicker(); };
+  q("#dSearch").oninput = (e) => { d.q = e.target.value; d.more = false; renderPicker(); };
   renderPicker();
   q("#dKeep") && (q("#dKeep").onchange = (e) => { d.keep = e.target.checked; });
   q("#dCancel").onclick = () => { S.draft = null; renderDraft(); };
@@ -1396,7 +1482,7 @@ const TOUR = [
   { sel: "#manBtn", title: "Também dá sem foto", text: "«Sem foto» abre logo a lista de alimentos. Os passos seguintes são iguais, com ou sem fotografia." },
   { sel: "#dResults .tabs", demo: true, title: "Escolhe a categoria", text: "Os alimentos estão organizados por separadores: Pratos, Pão, Queijo e lácteos, Carne e fiambre, Arroz e massa, Fruta e outros. Desliza para o lado para veres todos. «Recentes» mostra o que comes mais vezes." },
   { sel: "#dResults .grid", demo: true, title: "Toca no que está no prato", text: "Toca num alimento para o pôr no prato: fica com o contorno verde. Toca outra vez para o tirar. Cada alimento entra com uma porção normal, que podes acertar a seguir." },
-  { sel: "#dSearch", demo: true, title: "Procura pelo nome", text: "Escreve parte do nome, por exemplo «bacal» ou «iogurte». Se o alimento não existir, toca em «+ Criar» e escreve tu as calorias. A app guarda-o para a próxima vez." },
+  { sel: "#dSearch", demo: true, title: "Procura pelo nome", text: "Escreve parte do nome, por exemplo «entrecosto» ou «arroz feijão». A lista tem mais de 1500 alimentos da tabela oficial portuguesa (INSA). Para produtos de supermercado, toca em «Procurar nos produtos de marca» (precisa de internet). Se mesmo assim não existir, toca em «+ Criar» e escreve as calorias." },
   { sel: "#draft .items", demo: true, title: "Acerta as quantidades", text: "Aqui ficam os alimentos do prato. Se mudares os gramas, as calorias atualizam-se sozinhas. Também podes escrever as calorias diretamente. O «×» tira o alimento." },
   { sel: "#dMeal", demo: true, title: "Que refeição é", text: "A app escolhe a refeição pela hora (pequeno-almoço, almoço, lanche, jantar ou snack), mas podes mudar. Por cima podes dar um nome à refeição, se quiseres." },
   { sel: "#draft .keep", demo: true, title: "Guarda os teus pratos", text: "Se comes isto muitas vezes, marca esta opção. O prato fica em «Os meus pratos» e da próxima vez adicionas tudo com um só toque." },
