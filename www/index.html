@@ -390,7 +390,8 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
 .sheet-actions .btn { flex: 1; padding: 14px 16px; font-size: 16px; }
 .sheet-actions .btn-accent { background: var(--ink); color: var(--card); }
 .ai-box { border-radius: 16px; }
-.ai-go { margin-top: 4px; align-self: flex-start; }
+.ai-go { margin-top: 4px; align-self: stretch; display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 2px; background: var(--card); border: 1px solid var(--accent); }
+.ai-go small { font-family: var(--f-body); font-size: 12.5px; font-weight: 400; color: var(--muted); }
 .key-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .key-row input { flex: 1 1 200px; min-width: 0; }
 </style>
@@ -1159,6 +1160,12 @@ function clipFoods(res) {
       : (c.max >= 0.35 && c.sum >= 0.45) || c.wins >= 2;
     if (ok) { out.push(c); kinds.set(k, have + 1); }
   }
+  // soup comes in a bowl, not next to meat or fish on a plate: swap it for the best rice, pasta or potato
+  if (out.some((c) => CLIP_KIND(c.food) === "prot") && out.some((c) => CLIP_KIND(c.food) === "sopa")) {
+    const i = out.findIndex((c) => CLIP_KIND(c.food) === "sopa");
+    const alt = cands.find((c) => CLIP_KIND(c.food) === "base" && !out.includes(c));
+    if (alt) out.splice(i, 1, alt); else out.splice(i, 1);
+  }
   return out.slice(0, 5);
 }
 async function recognize(d, canvas) {
@@ -1361,7 +1368,7 @@ function aiBanner(d) {
   if (ai.status === "dl") return `<div class="ai-box"><span class="ai-dot"></span><span>A descarregar o reconhecimento de alimentos: ${Math.round((ai.p || 0) * 100)}%. Só acontece uma vez.</span></div>`;
   if (ai.status === "cloud") return `<div class="ai-box ok-box"><b>Encontrei ${ai.names.length} ${ai.names.length === 1 ? "alimento" : "alimentos"}</b><span>${esc(ai.names.join(", "))}. Os gramas são uma estimativa da IA: confirma-os na lista.</span></div>`;
   const note = d.cloudNote ? `<span class="muted" style="font-size:13px">${esc(d.cloudNote)}</span>` : "";
-  const goAI = d.clipOk === false && d._canvas ? `<button class="btn btn-plain ai-go" data-clipdl type="button">Reconhecer cada alimento do prato<small style="display:block;font-weight:400;color:var(--muted)">Descarrega o modelo uma vez (${window.FoodClip?.MODEL_MB || 64} MB, melhor em Wi-Fi). Depois funciona sem internet.</small></button>` : "";
+  const goAI = d.clipOk === false && d._canvas ? `<button class="btn btn-plain ai-go" data-clipdl type="button">Reconhecer cada alimento do prato<small>Descarrega o modelo uma vez (${window.FoodClip?.MODEL_MB || 64} MB, melhor em Wi-Fi). Depois funciona sem internet.</small></button>` : "";
   if (ai.status === "error") return `<div class="ai-box muted-box">Não consegui analisar a foto neste telemóvel. Escolhe os alimentos na lista.</div>`;
   const alts = ai.alts?.length ? `<div class="ai-alts"><span>${ai.status === "found" ? "Não é isto? Talvez:" : "Talvez seja:"}</span>${ai.alts.map((n) => `<button class="chip-btn" data-alt="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : "";
   if (ai.status === "found" && ai.parts) return `<div class="ai-box ok-box">${note}<b>Encontrei ${ai.found.length} alimentos no prato</b><span>${esc(ai.found.map((f) => f.name).join(", "))}. Confirma se está certo, acerta os gramas e acrescenta o que faltar.</span>${alts}${goAI}</div>`;
