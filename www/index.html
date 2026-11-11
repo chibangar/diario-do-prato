@@ -39,12 +39,35 @@ button:disabled { opacity: .5; cursor: default; }
 .num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
 
-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+header { display: flex; flex-direction: column; gap: 14px; }
+.head-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.icon-btn { flex: none; width: 46px; height: 46px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--ink); display: grid; place-items: center; padding: 0; }
+.icon-btn svg { width: 22px; height: 22px; }
 .brand h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
 .brand p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 .daynav { display: flex; align-items: center; gap: 4px; }
 .daynav button { border: 1px solid var(--line); background: var(--card); border-radius: 999px; min-width: 40px; height: 40px; padding: 0 10px; font-size: 18px; }
-.daynav .lbl { font-weight: 600; min-width: 96px; text-align: center; font-size: 14px; }
+.daynav .lbl { font-weight: 600; min-width: 96px; text-align: center; font-size: 14px; border: 0; background: transparent; padding: 0 6px; }
+/* calendar */
+.cal-back { position: fixed; inset: 0; z-index: 950; background: rgba(8, 12, 10, .6); display: flex; align-items: flex-end; justify-content: center;
+  padding: 12px max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+@media (min-height: 700px) and (min-width: 600px) { .cal-back { align-items: center; } }
+.cal { width: 100%; max-width: 420px; background: var(--card); color: var(--ink); border-radius: 20px; padding: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 10px; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cal-head h2 { font-size: 19px; font-weight: 800; }
+.cal-head button { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; width: 40px; height: 40px; font-size: 18px; }
+.cal-wd, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+.cal-wd span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.cal-day { position: relative; aspect-ratio: 1; border: 0; border-radius: 12px; background: transparent; font-family: var(--f-num); font-size: 15px; font-weight: 500; display: grid; place-items: center; padding: 0; }
+.cal-day.has::after { content: ""; position: absolute; bottom: 5px; left: 50%; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--accent); }
+.cal-day.has.over::after { background: var(--hi); }
+.cal-day.today { box-shadow: inset 0 0 0 1.5px var(--accent); font-weight: 700; }
+.cal-day.sel { background: var(--ink); color: var(--paper); font-weight: 700; }
+.cal-day:disabled { opacity: .3; }
+.cal-legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); align-items: center; flex-wrap: wrap; }
+.cal-legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+.cal-foot { display: flex; gap: 8px; }
+.cal-foot .btn { flex: 1; }
 
 .capture { background: var(--ink); color: var(--paper); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 .capture h2 { font-size: 21px; font-weight: 700; }
@@ -167,6 +190,29 @@ details.settings summary { font-weight: 600; cursor: pointer; }
 .keep input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
 .dish-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
 .dish-row:first-child { border-top: 0; }
+/* calorie calculator */
+.calc { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
+.calc h3 { font-size: 16px; font-weight: 700; }
+.calc .note { margin: 0; }
+.seg { display: flex; gap: 6px; }
+.seg label { flex: 1; position: relative; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span { display: block; text-align: center; border: 1px solid var(--line); background: var(--paper); border-radius: 10px; padding: 10px; font-weight: 600; cursor: pointer; }
+.seg input:checked + span { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.seg input:focus-visible + span { outline: 3px solid var(--hi); outline-offset: 2px; }
+.calc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.calc label.f { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; min-width: 0; }
+.calc label.f input, .calc label.f select { width: 100%; min-width: 0; font-weight: 400; }
+.bmr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.bmr div { background: var(--soft); border-radius: 12px; padding: 10px 12px; font-size: 12.5px; color: var(--muted); }
+.bmr b { display: block; font-family: var(--f-num); font-size: 20px; color: var(--ink); font-weight: 600; }
+.goal-opts { display: flex; flex-direction: column; gap: 8px; }
+.goal-opt { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; text-align: left; border: 1px solid var(--line); background: var(--paper); border-radius: 12px; padding: 12px 14px; }
+.goal-opt b { font-size: 15px; }
+.goal-opt .kc { font-family: var(--f-num); font-size: 19px; font-weight: 600; grid-row: span 2; grid-column: 2; grid-row-start: 1; }
+.goal-opt small { color: var(--muted); font-size: 12.5px; }
+.goal-opt.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--paper)); }
+.goal-link { border: 0; background: transparent; color: var(--muted); padding: 0; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
 /* food recognition */
 .ai-box { display: flex; flex-direction: column; gap: 6px; border-radius: 12px; padding: 12px 14px; background: var(--soft); font-size: 14px; }
 .ai-box:has(.ai-dot) { flex-direction: row; align-items: center; gap: 10px; }
@@ -240,13 +286,18 @@ details.settings summary { font-weight: 600; cursor: pointer; }
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">
-      <h1>Diário do Prato</h1>
-      <p>Foto, escolhe os alimentos, está registado.</p>
+    <div class="head-top">
+      <div class="brand">
+        <h1>Diário do Prato</h1>
+        <p>Foto, escolhe os alimentos, está registado.</p>
+      </div>
+      <button class="icon-btn" id="calBtn" type="button" aria-label="Abrir calendário" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01"/></svg>
+      </button>
     </div>
     <nav class="daynav" aria-label="Escolher dia">
       <button id="prevDay" aria-label="Dia anterior">‹</button>
-      <span class="lbl" id="dayLbl">Hoje</span>
+      <button class="lbl" id="dayLbl" type="button" aria-label="Abrir calendário">Hoje</button>
       <button id="nextDay" aria-label="Dia seguinte">›</button>
     </nav>
   </header>
@@ -261,7 +312,7 @@ details.settings summary { font-weight: 600; cursor: pointer; }
   <section class="capture">
     <div>
       <h2>O que vais comer?</h2>
-      <p>Tira uma foto e a app reconhece o alimento (limão, banana, pizza…) e põe-no logo no prato. O que não reconhecer, escolhes na lista.</p>
+      <p>Tira uma foto e a app reconhece o alimento ou o prato (limão, francesinha, bacalhau à Brás, cozido…) e põe-no logo no prato. O que não reconhecer, escolhes na lista.</p>
     </div>
     <div class="cap-actions">
       <button class="btn btn-primary" id="camBtn">
@@ -282,7 +333,7 @@ details.settings summary { font-weight: 600; cursor: pointer; }
     <div class="rule-xl"></div>
     <div class="kcal-row"><span class="k">Calorias</span><span class="v" id="kcalTotal">0</span></div>
     <div class="meter" id="meter"><i style="width:0%"></i></div>
-    <div class="kcal-meta"><span id="kcalLeft"></span><span id="kcalGoal"></span></div>
+    <div class="kcal-meta"><span id="kcalLeft"></span><button class="goal-link" id="kcalGoal" type="button"></button></div>
     <div class="rule-md"></div>
     <div class="vd-head">% da meta</div>
     <div id="macros"></div>
@@ -313,8 +364,32 @@ details.settings summary { font-weight: 600; cursor: pointer; }
     <summary>Meta diária</summary>
     <div class="set-row">
       <label for="goalIn">Calorias por dia</label>
-      <input type="number" id="goalIn" class="field num" min="800" max="6000" step="50" value="2000">
+      <input type="number" id="goalIn" class="field num" min="800" max="6000" step="10" value="2000" inputmode="numeric">
       <button class="btn btn-plain" id="goalSave">Guardar meta</button>
+    </div>
+    <div class="calc" id="calc">
+      <h3>Calcular a minha meta</h3>
+      <p class="note">Preenche os teus dados. A app calcula o metabolismo basal (o que o corpo gasta em repouso), o gasto do dia com a tua atividade e quantas calorias deves comer para perder peso, manter ou ganhar massa.</p>
+      <div class="seg" role="radiogroup" aria-label="Sexo">
+        <label><input type="radio" name="cSex" value="m"><span>Homem</span></label>
+        <label><input type="radio" name="cSex" value="f"><span>Mulher</span></label>
+      </div>
+      <div class="calc-grid">
+        <label class="f">Idade<input type="number" id="cAge" class="field num" min="14" max="100" inputmode="numeric" placeholder="anos"></label>
+        <label class="f">Peso (kg)<input type="number" id="cWeight" class="field num" min="30" max="300" step="0.1" inputmode="decimal" placeholder="kg"></label>
+        <label class="f">Altura (cm)<input type="number" id="cHeight" class="field num" min="120" max="230" inputmode="numeric" placeholder="cm"></label>
+      </div>
+      <label class="f">Atividade física
+        <select id="cAct" class="field">
+          <option value="1.2">Sedentária: pouco ou nenhum exercício</option>
+          <option value="1.375">Ligeira: exercício 1 a 3 dias por semana</option>
+          <option value="1.55" selected>Moderada: exercício 3 a 5 dias por semana</option>
+          <option value="1.725">Intensa: exercício 6 a 7 dias por semana</option>
+          <option value="1.9">Muito intensa: treino 2 vezes por dia ou trabalho físico</option>
+        </select>
+      </label>
+      <button class="btn btn-accent" id="cCalc" type="button">Calcular</button>
+      <div id="cOut" aria-live="polite"></div>
     </div>
     <p class="note">Os registos ficam guardados só neste telemóvel. Desinstalar a app apaga-os.</p>
   </details>
@@ -352,6 +427,23 @@ details.settings summary { font-weight: 600; cursor: pointer; }
     <div class="w-actions">
       <button class="btn btn-primary" id="wTour">Ver como funciona</button>
       <button class="btn btn-ghost" id="wSkip">Agora não</button>
+    </div>
+  </div>
+</div>
+
+<div class="cal-back" id="calSheet" role="dialog" aria-modal="true" aria-labelledby="calTitle" hidden>
+  <div class="cal">
+    <div class="cal-head">
+      <button id="calPrev" type="button" aria-label="Mês anterior">‹</button>
+      <h2 id="calTitle">Mês</h2>
+      <button id="calNext" type="button" aria-label="Mês seguinte">›</button>
+    </div>
+    <div class="cal-wd" aria-hidden="true"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span></div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-legend"><span><i style="background:var(--accent)"></i>dentro da meta</span><span><i style="background:var(--hi)"></i>acima da meta</span></div>
+    <div class="cal-foot">
+      <button class="btn btn-plain" id="calToday" type="button">Ir para hoje</button>
+      <button class="btn btn-accent" id="calClose" type="button">Fechar</button>
     </div>
   </div>
 </div>
@@ -713,7 +805,8 @@ function recentFoods() {
 }
 
 // ---------- photos ----------
-async function imgFromSrc(src) { const img = new Image(); img.src = src; await img.decode(); return img; }
+// onload instead of img.decode(): decode() can stall in some WebViews
+function imgFromSrc(src) { return new Promise((ok, bad) => { const img = new Image(); img.onload = () => ok(img); img.onerror = bad; img.src = src; }); }
 function processImg(img) {
   const W = img.naturalWidth, H = img.naturalHeight;
   const s = Math.min(1, 900 / Math.max(W, H));
@@ -756,7 +849,54 @@ const AI_MAP = {
   "apple": "Maçã", "sandwich": "Sandes mista", "carrot": "Cenoura", "hot dog": "Cachorro-quente",
   "donut": "Donut", "cake": "Bolo (fatia)", "wine glass": "Vinho tinto", "bottle": "Água"
 };
+// Google AIY food classifier labels (dishes) -> food names in the database. Scores of labels that
+// point to the same food are added up, so "Pilaf" + "Fried rice" + "White rice" all count as rice.
+const DISH_MAP = {
+  "Francesinha": "Francesinha", "Francesinha poveira": "Francesinha", "Pastel de nata": "Pastel de nata",
+  "Bacalhau à Brás": "Bacalhau à Brás", "Bacalhau com natas": "Bacalhau com natas", "Bacalhau à Gomes de Sá": "Bacalhau à Gomes de Sá",
+  "Bacalhau": "Bacalhau cozido", "Bacalhau com todos": "Bacalhau cozido", "Bacalhau à Zé do Pipo": "Bacalhau com natas",
+  "Cozido à portuguesa": "Cozido à portuguesa", "Carne de porco à alentejana": "Carne de porco à alentejana",
+  "Feijoada": "Feijoada à transmontana", "Bolo do caco": "Bolo do caco", "Bolo de arroz": "Bolo de arroz",
+  "Portuguese seafood rice": "Arroz de marisco", "Paella": "Arroz de marisco", "Bife a cavalo": "Bitoque (bife, ovo, batata frita, arroz)",
+  "Carne de vinha d'alhos": "Carne de porco grelhada", "Tripe": "Tripas à moda do Porto", "Tripes à la mode de Caen": "Tripas à moda do Porto",
+  "Caldo gallego": "Caldo verde", "Caldo de pollo": "Canja de galinha",
+  "White rice": "Arroz branco cozido", "Pilaf": "Arroz branco cozido", "Fried rice": "Arroz branco cozido", "American fried rice": "Arroz branco cozido",
+  "Rice and gravy": "Arroz branco cozido", "Dirty rice": "Arroz branco cozido", "Coconut rice": "Arroz branco cozido",
+  "Spanish rice": "Arroz de tomate", "Charleston red rice": "Arroz de tomate", "Jollof rice": "Arroz de tomate",
+  "Red beans and rice": "Arroz de feijão", "Arroz con pollo": "Arroz de frango", "Duck rice": "Arroz de pato", "Rice pudding": "Arroz doce",
+  "Spaghetti": "Esparguete à bolonhesa", "Spaghetti aglio e olio": "Massa cozida", "Spaghetti alle vongole": "Massa cozida",
+  "Lasagne": "Lasanha à bolonhesa", "Macaroni and cheese": "Massa cozida", "Pasta salad": "Massa cozida", "Toasted ravioli": "Massa recheada (ravioli)",
+  "Chinese noodles": "Noodles cozidos", "Wonton noodles": "Noodles cozidos", "Shanghai fried noodles": "Noodles cozidos",
+  "Churrasco": "Frango assado / churrasco", "Roast beef": "Bife de vaca grelhado", "Carne asada": "Bife de vaca grelhado",
+  "Delmonico steak": "Bife de vaca grelhado", "Steak Diane": "Bife de vaca grelhado", "Swiss steak": "Bife de vaca grelhado",
+  "Salisbury steak": "Hambúrguer de vaca", "Hamburger": "Hambúrguer no pão com queijo", "Cheeseburger": "Hambúrguer no pão com queijo",
+  "Meatball": "Almôndegas", "Steamed meatball": "Almôndegas", "Fried chicken": "Panado de frango", "Crispy fried chicken": "Panado de frango",
+  "Chicken fingers": "Panado de frango", "Schnitzel": "Panado de frango", "Chicken nugget": "Nuggets de frango",
+  "Tandoori chicken": "Coxa de frango assada", "Roast chicken": "Frango assado / churrasco", "Chicken curry": "Caril de frango com arroz",
+  "Butter chicken": "Caril de frango com arroz", "Japanese curry": "Caril de frango com arroz", "Beef Stroganoff": "Strogonoff de frango com arroz",
+  "Chili con carne": "Chili com carne", "Sausage": "Salsicha", "Breakfast sausage": "Salsicha", "Chorizo": "Chouriço",
+  "Pork Bones": "Entrecosto", "Char siu": "Entrecosto", "Souvlaki": "Carne de porco grelhada", "Shashlik": "Carne de porco grelhada",
+  "Gyro": "Kebab (carne)", "Shawarma": "Kebab (carne)", "Liver and onions": "Fígado de vaca",
+  "Fried fish": "Filetes de pescada panados", "Octopus": "Polvo à lagareiro", "Squid": "Lulas grelhadas",
+  "Fried shrimp": "Camarão cozido", "Garlic butter shrimp": "Camarão cozido", "White boiled shrimp": "Camarão cozido",
+  "Steamed clams": "Marisco cozido", "Sushi": "Sushi (8 peças)", "Croquette": "Croquetes",
+  "Omelette": "Omelete (2 ovos)", "Deviled egg": "Ovo cozido", "Stir-fried tomato and scrambled eggs": "Ovos mexidos",
+  "Mashed potato": "Puré de batata", "Baked potato": "Batata assada", "Potato wedges": "Batata frita", "Home fries": "Batata frita",
+  "Cheese fries": "Batata frita", "French fries": "Batata frita", "Potato salad": "Batata cozida", "Salt potatoes": "Batata cozida",
+  "Garden salad": "Salada verde", "Greek salad": "Salada verde", "Caesar salad": "Salada César", "Caprese salad": "Mozzarella",
+  "Leek soup": "Sopa de legumes", "Pea soup": "Sopa de legumes", "Minestrone": "Sopa de legumes", "Cabbage soup": "Sopa de legumes",
+  "Ham and cheese sandwich": "Sandes mista", "Cheese sandwich": "Sandes mista", "Sandwich": "Sandes mista", "Club sandwich": "Sandes mista",
+  "Tuna fish sandwich": "Sandes de atum", "Steak sandwich": "Prego no pão", "Pork tenderloin sandwich": "Bifana",
+  "Cuban sandwich": "Tosta mista", "Melt sandwich": "Tosta mista", "Hot dog": "Cachorro-quente", "Wrap": "Wrap de frango", "Burrito": "Wrap de frango",
+  "Doughnut": "Donut", "Pancake": "Panquecas", "Cheesecake": "Bolo (fatia)", "Chocolate brownie": "Bolo (fatia)", "Pound cake": "Bolo (fatia)",
+  "Flan": "Pudim flan", "Chocolate pudding": "Mousse de chocolate", "Apple pie": "Tarte de maçã", "Cupcake": "Queque",
+  "Rye bread": "Pão de centeio", "Cornbread": "Broa de milho", "Hummus": "Húmus",
+  "Boston baked beans": "Feijão cozido", "Pork and beans": "Feijão cozido", "Cowboy beans": "Feijão cozido"
+};
+const dishFood = (label) => DISH_MAP[label] || (/pizza/i.test(label) ? "Pizza" : null);
 const AI_WEAK = new Set(["cup", "coffee mug", "bottle", "wine glass", "soup bowl", "water bottle", "pop bottle", "trifle", "chocolate sauce", "eggnog"]);
+// ImageNet labels that the classifier often gives to any cooked plate: they only count when it is quite sure.
+const AI_SOFT = new Set(["ice cream", "ice lolly", "meat loaf", "potpie", "burrito", "carbonara", "hot pot", "consomme", "guacamole", "French loaf", "pretzel", "bagel", "cheeseburger", "hotdog", "banana", "orange", "corn", "ear", "espresso", "pizza", "donut", "cake", "sandwich", "hot dog"]);
 const COUNTABLE = new Set(["Banana", "Maçã", "Laranja", "Limão", "Pera", "Kiwi", "Donut", "Cachorro-quente", "Sandes mista", "Pêssego", "Tangerina", "Romã", "Bagel", "Pretzel", "Cenoura"]);
 function warmAI() { try { window.FoodAI?.warm(); } catch { /* not loaded yet */ } }
 async function recognize(d, canvas) {
@@ -767,8 +907,11 @@ async function recognize(d, canvas) {
   let res;
   try { res = await window.FoodAI.analyze(canvas); } catch { return done({ status: "error" }); }
   const score = new Map(), count = new Map(), strong = new Set();
+  // a plate the food classifier sees as a dish makes the general classifier's guesses less trustworthy
+  const plate = (res.dishes || []).reduce((a, x) => a + x.score, 0) >= 0.3;
   const add = (label, s, isObject) => {
     const name = AI_MAP[label]; if (!name || !byName(name)) return;
+    if (plate && AI_SOFT.has(label)) s = s >= 0.9 ? s : s * 0.6;
     score.set(name, Math.max(score.get(name) || 0, s));
     if (!AI_WEAK.has(label)) strong.add(name);
     if (isObject && s >= 0.35) count.set(name, (count.get(name) || 0) + 1);
@@ -787,13 +930,23 @@ async function recognize(d, canvas) {
     add(o.label, o.score, true);
   });
   res.classes.forEach((c) => add(c.label, c.score, false));
+  // dishes from the food classifier: related labels add up
+  const dishScore = new Map();
+  (res.dishes || []).forEach((x) => { const n = dishFood(x.label); if (n && byName(n)) dishScore.set(n, (dishScore.get(n) || 0) + x.score); });
+  dishScore.forEach((s, n) => { score.set(n, Math.max(score.get(n) || 0, Math.min(s, 0.99))); strong.add(n); });
   const ranked = [...score.entries()].sort((a, b) => b[1] - a[1]);
-  // the best match needs 35 %; any extra food on the same photo needs 55 %
+  // the best match needs 35 %; any extra food on the same photo needs 60 % (75 % next to a whole dish)
   const found = [];
   for (const [n, s] of ranked) {
-    if (found.length < 4 && strong.has(n) && s >= (found.length ? 0.55 : 0.35)) found.push({ name: n, score: s, n: count.get(n) || 1 });
+    if (found.length >= 4 || !strong.has(n)) continue;
+    // on a cooked plate, a food the dish classifier does not back up needs 55 %
+    const need = !found.length ? (plate && !dishScore.has(n) ? 0.55 : 0.35) : byName(found[0].name)?.cat === "pratos" ? 0.75 : 0.6;
+    if (s >= need) found.push({ name: n, score: s, n: count.get(n) || 1 });
   }
-  const alts = ranked.filter(([n, s]) => s >= 0.08 && !found.some((f) => f.name === n)).slice(0, 4).map(([n]) => n);
+  // suggestions: dishes from 6 %, other foods from 12 %, cups and bottles only when quite sure
+  const rest = ranked.filter(([n]) => !found.some((f) => f.name === n));
+  const alts = [...rest.filter(([n, s]) => dishScore.has(n) && s >= 0.06),
+    ...rest.filter(([n, s]) => !dishScore.has(n) && s >= (strong.has(n) && !plate ? 0.2 : 0.3))].slice(0, 5).map(([n]) => n);
   if (S.draft !== d) return;
   for (const f of found) {
     if (d.items.some((i) => i.name === f.name)) continue;
@@ -1015,6 +1168,7 @@ function render() {
   $("#meter i").style.width = Math.min(100, pct * 100) + "%";
   $("#kcalLeft").textContent = kcal <= goal ? `Faltam ${r0(goal - kcal).toLocaleString("pt-PT")} kcal` : `${r0(kcal - goal).toLocaleString("pt-PT")} kcal acima da meta`;
   $("#kcalGoal").textContent = `Meta ${goal.toLocaleString("pt-PT")} kcal`;
+  if (!CAL.el.hidden) renderCal();
   const targets = { p: goal * 0.2 / 4, c: goal * 0.5 / 4, f: goal * 0.3 / 9 };
   $("#macros").innerHTML = [["p", "Proteína", "var(--prot)"], ["c", "Hidratos", "var(--carb)"], ["f", "Gordura", "var(--fat)"]].map(([k, n, col]) => {
     const g = sum(items, k);
@@ -1084,11 +1238,99 @@ function renderWeek() {
 }
 
 $("#prevDay").onclick = () => { S.day = shiftKey(S.day, -1); render(); };
+// ---------- calendar ----------
+const MONTHS_FULL = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const CAL = { el: $("#calSheet"), y: 0, m: 0, opener: null };
+function renderCal() {
+  const t = todayKey(), first = new Date(CAL.y, CAL.m, 1), days = new Date(CAL.y, CAL.m + 1, 0).getDate();
+  $("#calTitle").textContent = `${MONTHS_FULL[CAL.m][0].toUpperCase() + MONTHS_FULL[CAL.m].slice(1)} ${CAL.y}`;
+  const now = new Date();
+  $("#calNext").disabled = CAL.y > now.getFullYear() || (CAL.y === now.getFullYear() && CAL.m >= now.getMonth());
+  const kcalByDay = new Map();
+  for (const m of S.meals) kcalByDay.set(m.day, (kcalByDay.get(m.day) || 0) + sum(m.items || [], "kcal"));
+  const lead = (first.getDay() + 6) % 7; // weeks start on Monday
+  let html = "<span></span>".repeat(lead);
+  for (let d = 1; d <= days; d++) {
+    const k = keyOf(new Date(CAL.y, CAL.m, d)), kc = kcalByDay.get(k);
+    const cls = ["cal-day", k === t ? "today" : "", k === S.day ? "sel" : "", kc !== undefined ? "has" : "", kc > S.goal ? "over" : ""].join(" ");
+    const lbl = `${d} de ${MONTHS_FULL[CAL.m]}${kc !== undefined ? `, ${r0(kc)} kcal` : ""}`;
+    html += `<button type="button" class="${cls}" data-day="${k}" aria-label="${lbl}" ${k > t ? "disabled" : ""} ${k === S.day ? 'aria-current="date"' : ""}>${d}</button>`;
+  }
+  $("#calGrid").innerHTML = html;
+}
+function openCal() {
+  const d = dateOf(S.day); CAL.y = d.getFullYear(); CAL.m = d.getMonth(); CAL.opener = document.activeElement;
+  renderCal(); CAL.el.hidden = false;
+  ($("#calGrid .sel") || $("#calClose")).focus();
+}
+function closeCal() { CAL.el.hidden = true; CAL.opener?.focus?.(); }
+function shiftMonth(n) { const d = new Date(CAL.y, CAL.m + n, 1); CAL.y = d.getFullYear(); CAL.m = d.getMonth(); renderCal(); }
+$("#calBtn").onclick = openCal;
+$("#dayLbl").onclick = openCal;
+$("#calPrev").onclick = () => shiftMonth(-1);
+$("#calNext").onclick = () => shiftMonth(1);
+$("#calClose").onclick = closeCal;
+$("#calToday").onclick = () => { S.day = todayKey(); render(); closeCal(); };
+$("#calGrid").onclick = (e) => {
+  const b = e.target.closest("[data-day]"); if (!b || b.disabled) return;
+  S.day = b.dataset.day; render(); closeCal();
+  if (S.day !== todayKey()) toast(`A ver ${dayLabel(S.day)}`);
+};
+CAL.el.addEventListener("click", (e) => { if (e.target === CAL.el) closeCal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !CAL.el.hidden) closeCal(); });
+// ---------- calorie calculator (Mifflin-St Jeor) ----------
+const P = lsGet("ddp.profile", {});
+function fillProfile() {
+  if (P.sex) document.querySelector(`input[name="cSex"][value="${P.sex}"]`).checked = true;
+  if (P.age) $("#cAge").value = P.age;
+  if (P.weight) $("#cWeight").value = P.weight;
+  if (P.height) $("#cHeight").value = P.height;
+  if (P.act) $("#cAct").value = String(P.act);
+}
+function calcGoals(p) {
+  const bmr = 10 * p.weight + 6.25 * p.height - 5 * p.age + (p.sex === "m" ? 5 : -161);
+  const tdee = bmr * p.act, r10 = (n) => Math.round(n / 10) * 10;
+  const floor = p.sex === "m" ? 1500 : 1200;
+  return { bmr: r10(bmr), tdee: r10(tdee), lose: r10(Math.max(tdee - 500, bmr, floor)), keep: r10(tdee), gain: r10(tdee + 300) };
+}
+function renderCalc() {
+  const out = $("#cOut");
+  if (!P.sex || !P.age || !P.weight || !P.height || !P.act) { out.innerHTML = ""; return; }
+  const g = calcGoals(P), fmt = (n) => n.toLocaleString("pt-PT");
+  const opt = (k, title, sub) => `<button type="button" class="goal-opt ${S.goal === g[k] ? "on" : ""}" data-goal="${g[k]}" data-kind="${k}"><b>${title}${S.goal === g[k] ? " · a tua meta" : ""}</b><span class="kc">${fmt(g[k])} kcal</span><small>${sub}</small></button>`;
+  out.innerHTML = `<div class="bmr"><div>Metabolismo basal<b>${fmt(g.bmr)} kcal</b></div><div>Gasto diário com atividade<b>${fmt(g.tdee)} kcal</b></div></div>
+    <div class="goal-opts">
+      ${opt("lose", "Perder peso", "Cerca de menos 0,5 kg por semana")}
+      ${opt("keep", "Manter o peso", "Comes o mesmo que gastas")}
+      ${opt("gain", "Ganhar massa", "Com treino de força, cerca de mais 0,25 kg por semana")}
+    </div>
+    <p class="note" style="margin:8px 0 0">Toca numa opção para a usar como meta. São estimativas: se tens algum problema de saúde, fala com um nutricionista.</p>`;
+}
+$("#cCalc").onclick = () => {
+  const sex = document.querySelector('input[name="cSex"]:checked')?.value;
+  const age = num($("#cAge").value), weight = num($("#cWeight").value), height = num($("#cHeight").value), act = Number($("#cAct").value);
+  if (!sex) return toast("Escolhe Homem ou Mulher.");
+  if (age < 14 || age > 100) return toast("Escreve a idade (14 a 100 anos).");
+  if (weight < 30 || weight > 300) return toast("Escreve o peso em kg (30 a 300).");
+  if (height < 120 || height > 230) return toast("Escreve a altura em cm (120 a 230).");
+  Object.assign(P, { sex, age: r0(age), weight: r1(weight), height: r0(height), act });
+  lsSet("ddp.profile", P); renderCalc();
+};
+$("#cOut").onclick = (e) => {
+  const b = e.target.closest("[data-goal]"); if (!b) return;
+  S.goal = Number(b.dataset.goal); lsSet("ddp.goal", S.goal); render(); renderCalc();
+  toast(`Meta guardada: ${S.goal.toLocaleString("pt-PT")} kcal por dia`);
+};
+$("#kcalGoal").onclick = () => {
+  const det = $("#goalDetails"); det.open = true;
+  det.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+fillProfile(); renderCalc();
 $("#nextDay").onclick = () => { if (S.day < todayKey()) { S.day = shiftKey(S.day, 1); render(); } };
 $("#goalSave").onclick = () => {
   const g = r0($("#goalIn").value);
   if (g < 800 || g > 6000) { toast("Escolhe uma meta entre 800 e 6000 kcal."); return; }
-  S.goal = g; lsSet("ddp.goal", g); render(); toast("Meta guardada");
+  S.goal = g; lsSet("ddp.goal", g); render(); renderCalc(); toast("Meta guardada");
 };
 // ---------- welcome screen ----------
 // A Portuguese voice reads the welcome message (www/welcome.mp3) as soon as the screen opens.
@@ -1149,7 +1391,7 @@ function closeDemo() {
 }
 const TOUR = [
   { title: "Vamos lá", text: "Em cerca de um minuto ficas a saber usar tudo. Toca em «Seguinte» para avançar. Podes sair quando quiseres e rever o tutorial em «Ajuda», no fundo da app." },
-  { sel: "#camBtn", title: "Tira uma foto", text: "Toca em «Tirar foto» e fotografa o prato. A app reconhece sozinha alimentos como fruta, legumes, pizza ou hambúrguer e põe-nos logo no prato, com a percentagem de certeza. Da primeira vez, o Android pede autorização para usar a câmara: escolhe «Permitir»." },
+  { sel: "#camBtn", title: "Tira uma foto", text: "Toca em «Tirar foto» e fotografa o prato. A app reconhece sozinha fruta, legumes e centenas de pratos, como francesinha, cozido, bacalhau à Brás ou esparguete, e põe-nos logo no prato, com a percentagem de certeza. Da primeira vez, o Android pede autorização para usar a câmara: escolhe «Permitir»." },
   { sel: "#galBtn", title: "Ou usa uma foto que já tens", text: "«Da galeria» deixa-te escolher uma fotografia que já tiraste antes." },
   { sel: "#manBtn", title: "Também dá sem foto", text: "«Sem foto» abre logo a lista de alimentos. Os passos seguintes são iguais, com ou sem fotografia." },
   { sel: "#dResults .tabs", demo: true, title: "Escolhe a categoria", text: "Os alimentos estão organizados por separadores: Pratos, Pão, Queijo e lácteos, Carne e fiambre, Arroz e massa, Fruta e outros. Desliza para o lado para veres todos. «Recentes» mostra o que comes mais vezes." },
@@ -1161,9 +1403,9 @@ const TOUR = [
   { sel: "#dSave", demo: true, title: "Guarda a refeição", text: "Quando estiver tudo certo, toca em «Guardar refeição». «Cancelar» deita fora sem guardar. Esta sandes é só um exemplo e não vai ser guardada." },
   { sel: ".label", title: "O teu dia", text: "Aqui vês as calorias do dia e quanto falta para a tua meta. A barra fica amarela se passares a meta. Por baixo tens a proteína, os hidratos e a gordura, com a percentagem da meta de cada um." },
   { sel: "#meals", title: "As tuas refeições", text: "Cada refeição guardada aparece aqui com a foto e os alimentos. «Repetir» volta a registar a mesma refeição. Para apagar, toca em «Apagar» e depois em «Confirmar»." },
-  { sel: ".daynav", title: "Outros dias", text: "Usa as setas para ver os dias anteriores. Se te esqueceste de registar uma refeição, vai a esse dia e regista-a normalmente." },
+  { sel: "header", title: "Escolher o dia", text: "Toca no calendário, no canto de cima à direita, ou no nome do dia para abrir o mês e escolher qualquer dia. As setas avançam ou recuam um dia. Os dias com registos têm um ponto verde, ou amarelo se passaste a meta." },
   { sel: ".week", title: "Últimos 7 dias", text: "O gráfico mostra as calorias de cada dia. A linha tracejada é a tua meta e as barras amarelas são os dias acima dela. Toca num dia para o abrir." },
-  { sel: "#goalDetails", title: "A tua meta", text: "Em «Meta diária» escolhes as calorias por dia, entre 800 e 6000. As metas de proteína, hidratos e gordura ajustam-se sozinhas." },
+  { sel: "#goalDetails", title: "A tua meta", text: "Em «Meta diária» escreves as calorias por dia ou tocas em «Calcular a minha meta»: com o sexo, a idade, o peso, a altura e a atividade, a app calcula o metabolismo basal e quanto comer para perder peso, manter ou ganhar massa." },
   { sel: "#updDetails", title: "Atualizações", text: "Quando houver uma versão nova, aparece uma barra verde no topo da app. Toca em «Descarregar», abre o ficheiro e instala. Os teus registos mantêm-se." },
   { title: "Os teus dados", text: "Tudo fica guardado só neste telemóvel e a app funciona sem internet. Atenção: se desinstalares a app, os registos são apagados. Está pronto, bom apetite!" }
 ];
@@ -1341,12 +1583,13 @@ if (!lsGet("ddp.seenWelcomeVoice", false)) showWelcome();
 })();
 </script>
 <script type="module">
-// On-device food recognition: MediaPipe image classifier (ImageNet) + object detector (COCO), bundled in the app.
+// On-device food recognition, bundled in the app: MediaPipe image classifier (ImageNet), object detector (COCO)
+// and the Google AIY food classifier (about 2000 dishes from many cuisines).
 import { FilesetResolver, ImageClassifier, ObjectDetector } from "./vendor/mediapipe/vision_bundle.mjs";
 let loading = null;
 async function load() {
   const fileset = await FilesetResolver.forVisionTasks(new URL("./vendor/mediapipe/wasm", location.href).href);
-  const [classifier, detector] = await Promise.all([
+  const [classifier, detector, food] = await Promise.all([
     ImageClassifier.createFromOptions(fileset, {
       baseOptions: { modelAssetPath: new URL("./models/efficientnet_lite0.tflite", location.href).href, delegate: "CPU" },
       maxResults: 10, scoreThreshold: 0.03
@@ -1354,17 +1597,24 @@ async function load() {
     ObjectDetector.createFromOptions(fileset, {
       baseOptions: { modelAssetPath: new URL("./models/efficientdet_lite0.tflite", location.href).href, delegate: "CPU" },
       maxResults: 15, scoreThreshold: 0.25
+    }),
+    ImageClassifier.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: new URL("./models/aiy_food_v1.tflite", location.href).href, delegate: "CPU" },
+      maxResults: 10, scoreThreshold: 0.03
     })
   ]);
-  return { classifier, detector };
+  const names = await fetch(new URL("./models/aiy_food_v1_labels.json", location.href).href).then((r) => r.json());
+  return { classifier, detector, food, names };
 }
 window.FoodAI = {
   warm() { if (!loading) loading = load().catch((e) => { loading = null; throw e; }); return loading; },
   async analyze(source) {
-    const { classifier, detector } = await this.warm();
+    const { classifier, detector, food, names } = await this.warm();
     const c = classifier.classify(source);
     const d = detector.detect(source);
+    const f = food.classify(source);
     return {
+      dishes: (f.classifications[0]?.categories || []).filter((x) => x.index > 0).map((x) => ({ label: names[x.index] || "", score: x.score })),
       classes: (c.classifications[0]?.categories || []).map((x) => ({ label: x.categoryName, score: x.score })),
       objects: (d.detections || []).map((x) => ({ label: x.categories[0]?.categoryName, score: x.categories[0]?.score || 0 }))
     };
