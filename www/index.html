@@ -483,6 +483,14 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
     <p class="note">Valores nutricionais: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P. - INSA. v 7.1 - 2026 (portfir.insa.min-saude.pt). Produtos de marca: Open Food Facts (openfoodfacts.org), base de dados aberta (ODbL).</p>
   </details>
 
+  <details class="settings" id="recDetails">
+    <summary>Reconhecimento dos alimentos</summary>
+    <p class="note" style="margin:10px 0 0">Para a app ver cada alimento de um prato misturado (arroz, feijão, grelos, entrecosto, batatas, salada…), descarrega uma vez o modelo de reconhecimento. Funciona no telemóvel, sem internet e sem contas.</p>
+    <div class="set-row"><span class="note" id="recState" style="flex:1 1 180px">A verificar…</span><button class="btn btn-accent" id="recDl" type="button">Descarregar</button></div>
+    <div class="upd-progress" id="recProg" hidden style="background:var(--soft)"><i style="background:var(--accent)"></i></div>
+    <p class="note">Modelo: OpenAI CLIP ViT-B/32 (licença MIT), cerca de 64 MB, guardado na app.</p>
+  </details>
+
   <details class="settings" id="dishDetails">
     <summary>Os meus pratos</summary>
     <div id="dishList" style="margin-top:10px"></div>
@@ -613,6 +621,8 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
 </div>
 
 <script src="data/insa.js"></script>
+<script src="data/clip-labels.js"></script>
+<script type="module" src="foodclip.mjs"></script>
 <script>
 (() => {
 "use strict";
@@ -980,6 +990,7 @@ async function onPhotoSrc(src) {
   const { canvas, ...rest } = photo;
   const keepMeal = S.draft && !S.draft.preview && !S.draft.demo ? S.draft.meal : null;
   newDraft({ ...rest, ...(keepMeal ? { meal: keepMeal } : {}), ai: { status: "running", cloud: !!aiKey() } });
+  S.draft._canvas = canvas;
   recognizeAny(S.draft, canvas);
 }
 
@@ -1089,6 +1100,67 @@ const AI_WEAK = new Set(["cup", "coffee mug", "bottle", "wine glass", "soup bowl
 const AI_SOFT = new Set(["ice cream", "ice lolly", "meat loaf", "potpie", "burrito", "carbonara", "hot pot", "consomme", "guacamole", "French loaf", "pretzel", "bagel", "cheeseburger", "hotdog", "banana", "orange", "corn", "ear", "espresso", "pizza", "donut", "cake", "sandwich", "hot dog"]);
 const COUNTABLE = new Set(["Banana", "Maçã", "Laranja", "Limão", "Pera", "Kiwi", "Donut", "Cachorro-quente", "Sandes mista", "Pêssego", "Tangerina", "Romã", "Bagel", "Pretzel", "Cenoura"]);
 function warmAI() { try { window.FoodAI?.warm(); } catch { /* not loaded yet */ } }
+// download the food-by-food model, then look at the same photo again
+async function downloadClip(d) {
+  if (!window.FoodClip) { toast("Ainda a carregar. Tenta outra vez daqui a pouco."); return; }
+  const show = (p) => { if (S.draft === d) { d.ai = { status: "dl", p }; renderDraft(); } renderRec(p); };
+  try {
+    show(0);
+    let last = 0;
+    await window.FoodClip.download((p) => { if (p - last >= 0.02 || p === 1) { last = p; show(p); } });
+    renderRec();
+    toast("Pronto. A app passa a ver cada alimento do prato.");
+    if (S.draft === d && d._canvas) {
+      // start again from the photo alone
+      d.items = d.items.filter((i) => !i.auto);
+      d.title = ""; d.ai = { status: "running", deep: true }; renderDraft();
+      recognize(d, d._canvas);
+    }
+  } catch {
+    renderRec();
+    if (S.draft === d) { d.ai = { status: "none", alts: [] }; d.cloudNote = "Não consegui descarregar (sem internet?). Tenta outra vez mais tarde."; renderDraft(); }
+    else toast("Não consegui descarregar. Verifica a internet.");
+  }
+}
+// any food in the app (curated list, INSA table, the user's own)
+const findFood = (n) => byName(n) || allFoods().find((f) => f.name === n);
+// CLIP gives each part of the photo a probability per description; descriptions of the same food add up.
+// A food counts when it wins a part of the plate (or is very likely somewhere) and adds up over the parts.
+// Per kind (starch, protein, vegetables…) only the most likely food stays, unless another one clearly wins parts of its own.
+const CLIP_KIND = (f) => /^(Sopa|Caldo|Canja)/.test(f.name) ? "sopa" : ["arroz e massa", "batata", "pão e cereais", "leguminosas", "pratos"].includes(f.cat) ? "base"
+  : ["carne e charcutaria", "peixe"].includes(f.cat) ? "prot" : f.cat || "outros";
+function clipFoods(res) {
+  const L = res.labels, per = new Map();
+  res.regions.forEach((p, ri) => {
+    const byFood = new Map();
+    for (let i = 0; i < p.length; i++) { const n = L[i]?.[1] ?? null; byFood.set(n, (byFood.get(n) || 0) + p[i]); }
+    let top = null, topV = 0; byFood.forEach((v, n) => { if (v > topV) { topV = v; top = n; } });
+    byFood.forEach((v, n) => {
+      if (!n) return;
+      const o = per.get(n) || { sum: 0, max: 0, wins: 0 };
+      o.sum += v; o.max = Math.max(o.max, v); if (n === top && v >= 0.2) o.wins++;
+      per.set(n, o);
+    });
+  });
+  const cands = [...per].map(([name, o]) => ({ name, ...o, food: findFood(name) }))
+    // vegetables on the side (greens, salad) often cover only a corner of the plate: they need less
+    .filter((c) => c.food && (c.food.cat === "legumes e salada" && !/^Sopa/.test(c.name) ? c.wins >= 1 && c.max >= 0.2 && c.sum >= 0.3
+      : ((c.wins >= 1 && c.max >= 0.3) || c.max >= 0.4) && c.sum >= 0.35)).sort((a, b) => b.sum - a.sum);
+  if (!cands.length) return [];
+  // a whole dish (francesinha, cozido, bacalhau à Brás…) already includes its sides
+  const whole = (f) => f.cat === "pratos" && !/^(Arroz|Sopa|Caldo|Canja)/.test(f.name);
+  const first = cands[0], kinds = new Map([[CLIP_KIND(first.food), 1]]), out = [first];
+  for (const c of cands.slice(1)) {
+    const k = CLIP_KIND(c.food), have = kinds.get(k) || 0;
+    const ok = whole(first.food) ? c.max >= 0.6 && c.wins >= 1
+      : ["doces", "bebidas", "laticínios"].includes(c.food.cat) && c.max < 0.45 ? false
+      : have ? (c.wins >= 2 && c.max >= 0.45) || c.max >= 0.7
+      : c.food.cat === "legumes e salada" ? true
+      : (c.max >= 0.35 && c.sum >= 0.45) || c.wins >= 2;
+    if (ok) { out.push(c); kinds.set(k, have + 1); }
+  }
+  return out.slice(0, 5);
+}
 async function recognize(d, canvas) {
   const done = (ai) => { if (S.draft !== d) return; d.ai = ai; renderDraft(); };
   // the module may still be loading on first use
@@ -1096,6 +1168,15 @@ async function recognize(d, canvas) {
   if (!window.FoodAI) return done({ status: "error" });
   let res;
   try { res = await window.FoodAI.analyze(canvas); } catch { return done({ status: "error" }); }
+  // the food-by-food model, when it has been downloaded
+  let clip = null;
+  try {
+    if (window.FoodClip && await window.FoodClip.ready()) {
+      if (S.draft === d) { d.ai = { status: "running", deep: true }; renderDraft(); }
+      clip = await window.FoodClip.analyze(canvas);
+    }
+  } catch { clip = null; }
+  if (S.draft === d) d.clipOk = !!clip;
   const score = new Map(), count = new Map(), strong = new Set();
   // a plate the food classifier sees as a dish makes the general classifier's guesses less trustworthy
   const plate = (res.dishes || []).reduce((a, x) => a + x.score, 0) >= 0.3;
@@ -1146,10 +1227,21 @@ async function recognize(d, canvas) {
     // "Arroz de feijão" already includes the rice
     if (found.some((f) => f.name === "Arroz de feijão")) for (let i = found.length - 1; i >= 0; i--) if (found[i].name === "Arroz branco cozido") found.splice(i, 1);
   }
+  // with the food-by-food model: its list wins, unless the whole photo is clearly one known dish (francesinha, cozido…)
+  if (clip) {
+    const whole = found.length && !found[0].part && findFood(found[0].name)?.cat === "pratos" && found[0].score >= 0.75;
+    const cf = whole ? [] : clipFoods(clip);
+    if (cf.length) {
+      const counts = new Map(found.map((f) => [f.name, f.n]));
+      found.length = 0;
+      for (const c of cf) found.push({ name: c.name, score: Math.min(c.max, 0.99), n: counts.get(c.name) || count.get(c.name) || 1, part: cf.length > 1 });
+      if (found.some((f) => f.name === "Arroz de feijão")) for (let i = found.length - 1; i >= 0; i--) if (found[i].name === "Arroz branco cozido") found.splice(i, 1);
+    }
+  }
   if (found.some((f) => f.part)) {
     // starch first, then meat or fish, then the rest: "Arroz branco com carne de porco grelhada, legumes salteados e chouriço"
     const ORDER = ["arroz e massa", "batata", "pratos", "carne e charcutaria", "peixe", "ovos", "leguminosas", "legumes e salada"];
-    const rank = (f) => { const i = ORDER.indexOf(byName(f.name)?.cat); return i < 0 ? 99 : i; };
+    const rank = (f) => { const i = ORDER.indexOf(findFood(f.name)?.cat); return i < 0 ? 99 : i; };
     found.sort((x, y) => rank(x) - rank(y));
     if (!d.title.trim()) {
       const nm = found.map((f, i) => { const n = f.name.replace(/ cozid[oa]$/i, ""); return i ? n.toLowerCase() : n; });
@@ -1159,8 +1251,9 @@ async function recognize(d, canvas) {
   if (S.draft !== d) return;
   for (const f of found) {
     if (d.items.some((i) => i.name === f.name)) continue;
-    const food = byName(f.name), qty = COUNTABLE.has(f.name) ? Math.min(f.n, 6) : 1;
-    d.items.push(fromFood(food, food.g * qty));
+    const food = findFood(f.name); if (!food) continue;
+    const qty = COUNTABLE.has(f.name) ? Math.min(f.n, 6) : 1;
+    d.items.push({ ...fromFood(food, food.g * qty), auto: true });
   }
   if (found.length && !d.title.trim()) d.title = found.map((f) => (f.n > 1 && COUNTABLE.has(f.name) ? `${f.n}× ` : "") + f.name).join(", ");
   done({ status: found.length ? "found" : "none", found, alts: alts.filter((n) => !found.some((f) => f.name === n)), parts: found.some((f) => f.part) });
@@ -1264,14 +1357,15 @@ function healthScore(items) {
 }
 function aiBanner(d) {
   const ai = d.ai; if (!ai) return "";
-  if (ai.status === "running") return `<div class="ai-box"><span class="ai-dot"></span><span>${ai.cloud ? "A IA está a ver cada alimento do prato…" : "A reconhecer o alimento na foto…"}</span></div>`;
+  if (ai.status === "running") return `<div class="ai-box"><span class="ai-dot"></span><span>${ai.deep ? "A ver cada alimento do prato… (pode demorar uns segundos)" : "A reconhecer o alimento na foto…"}</span></div>`;
+  if (ai.status === "dl") return `<div class="ai-box"><span class="ai-dot"></span><span>A descarregar o reconhecimento de alimentos: ${Math.round((ai.p || 0) * 100)}%. Só acontece uma vez.</span></div>`;
   if (ai.status === "cloud") return `<div class="ai-box ok-box"><b>Encontrei ${ai.names.length} ${ai.names.length === 1 ? "alimento" : "alimentos"}</b><span>${esc(ai.names.join(", "))}. Os gramas são uma estimativa da IA: confirma-os na lista.</span></div>`;
   const note = d.cloudNote ? `<span class="muted" style="font-size:13px">${esc(d.cloudNote)}</span>` : "";
-  const goAI = "";
+  const goAI = d.clipOk === false && d._canvas ? `<button class="btn btn-plain ai-go" data-clipdl type="button">Reconhecer cada alimento do prato<small style="display:block;font-weight:400;color:var(--muted)">Descarrega o modelo uma vez (${window.FoodClip?.MODEL_MB || 64} MB, melhor em Wi-Fi). Depois funciona sem internet.</small></button>` : "";
   if (ai.status === "error") return `<div class="ai-box muted-box">Não consegui analisar a foto neste telemóvel. Escolhe os alimentos na lista.</div>`;
   const alts = ai.alts?.length ? `<div class="ai-alts"><span>${ai.status === "found" ? "Não é isto? Talvez:" : "Talvez seja:"}</span>${ai.alts.map((n) => `<button class="chip-btn" data-alt="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : "";
-  if (ai.status === "found" && ai.parts) return `<div class="ai-box ok-box">${note}<b>Encontrei ${ai.found.length} alimentos no prato</b><span>${esc(ai.found.map((f) => f.name).join(", "))}. Confirma se está certo, acerta os gramas e acrescenta o que faltar (por exemplo o feijão ou o molho).</span>${alts}</div>`;
-  if (ai.status === "found") return `<div class="ai-box ok-box">${note}<b>Reconhecido: ${ai.found.map((f) => esc((f.n > 1 && COUNTABLE.has(f.name) ? f.n + "× " : "") + f.name) + ` <small>${Math.round(f.score * 100)}%</small>`).join(", ")}</b><span>Já está no prato. Confirma a quantidade em baixo.</span>${alts}</div>`;
+  if (ai.status === "found" && ai.parts) return `<div class="ai-box ok-box">${note}<b>Encontrei ${ai.found.length} alimentos no prato</b><span>${esc(ai.found.map((f) => f.name).join(", "))}. Confirma se está certo, acerta os gramas e acrescenta o que faltar.</span>${alts}${goAI}</div>`;
+  if (ai.status === "found") return `<div class="ai-box ok-box">${note}<b>Reconhecido: ${ai.found.map((f) => esc((f.n > 1 && COUNTABLE.has(f.name) ? f.n + "× " : "") + f.name) + ` <small>${Math.round(f.score * 100)}%</small>`).join(", ")}</b><span>Já está no prato. Confirma a quantidade em baixo.</span>${alts}${goAI}</div>`;
   return `<div class="ai-box muted-box">${note}<span>Não reconheci nenhum alimento com certeza. Escolhe na lista em baixo.</span>${alts}${goAI}</div>`;
 }
 async function onFile(file) {
@@ -1468,6 +1562,7 @@ function renderDraft() {
   el.querySelectorAll("[data-meal]").forEach((b) => b.onclick = () => { d.meal = b.dataset.meal; el.querySelectorAll("[data-meal]").forEach((x) => x.setAttribute("aria-checked", x === b)); });
   const segOn = q("[data-meal][aria-checked=\"true\"]"); if (segOn) q("#dMeal").scrollLeft = Math.max(0, segOn.offsetLeft - 24);
   q("#dClose").onclick = () => { S.draft = null; renderDraft(); };
+  q("[data-clipdl]") && (q("[data-clipdl]").onclick = () => downloadClip(d));
   q("#dCam") && (q("#dCam").onclick = () => { warmAI(); takePhoto("CAMERA"); });
   q("#dGal") && (q("#dGal").onclick = () => { warmAI(); takePhoto("PHOTOS"); });
   
@@ -1743,6 +1838,17 @@ $("#kcalGoal").onclick = () => {
   det.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 fillProfile(); renderCalc();
+async function renderRec(p) {
+  const st = $("#recState"), btn = $("#recDl"), bar = $("#recProg");
+  if (typeof p === "number" && p < 1) { st.textContent = `A descarregar: ${Math.round(p * 100)}%`; btn.hidden = true; bar.hidden = false; bar.querySelector("i").style.width = p * 100 + "%"; return; }
+  bar.hidden = true;
+  for (let i = 0; i < 40 && !window.FoodClip; i++) await new Promise((r) => setTimeout(r, 100));
+  const ok = window.FoodClip ? await window.FoodClip.ready() : false;
+  st.textContent = ok ? "Ativo: a app vê cada alimento do prato." : "Ainda não descarregado.";
+  btn.hidden = ok;
+}
+$("#recDl").onclick = () => downloadClip(null);
+renderRec();
 // ---------- first-run profile (required) ----------
 const GOAL_NAMES = { lose: "perder peso", keep: "manter o peso", gain: "ganhar massa" };
 const profileDone = () => !!(P.sex && P.age && P.weight && P.height && P.act && P.objective);
@@ -1861,6 +1967,7 @@ const TOUR = [
   { sel: "header", title: "Escolher o dia", text: "Toca no calendário, no canto de cima à direita, ou no nome do dia para abrir o mês e escolher qualquer dia. As setas avançam ou recuam um dia. Os dias com registos têm um ponto verde, ou amarelo se passaste a meta." },
   { sel: ".week", title: "Últimos 7 dias", text: "O gráfico mostra as calorias de cada dia. A linha tracejada é a tua meta e as barras amarelas são os dias acima dela. Toca num dia para o abrir." },
   { sel: "#goalDetails", title: "A tua meta", text: "A tua meta foi calculada com os dados que preencheste no início (sexo, idade, peso, altura, atividade e objetivo). Em «Meta diária» podes mudar esses dados, por exemplo quando o teu peso mudar, ou escrever tu as calorias." },
+  { sel: "#recDetails", title: "Reconhecer cada alimento", text: "Para a app ver cada alimento de um prato misturado (arroz, feijão, grelos, entrecosto…), toca aqui em «Descarregar» uma vez (cerca de 64 MB, de preferência em Wi-Fi). Depois funciona sem internet." },
   { sel: "#updDetails", title: "Atualizações", text: "Quando houver uma versão nova, aparece uma barra verde no topo da app. Toca em «Descarregar», abre o ficheiro e instala. Os teus registos mantêm-se." },
   { title: "Os teus dados", text: "Tudo fica guardado só neste telemóvel e a app funciona sem internet. Atenção: se desinstalares a app, os registos são apagados. Está pronto, bom apetite!" }
 ];

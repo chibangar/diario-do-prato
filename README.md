@@ -42,3 +42,4 @@ Android recusa instalar a atualização por cima.
 - Valores nutricionais: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P. - INSA. v 7.1 - 2026 (https://portfir.insa.min-saude.pt/), em `www/data/insa.js`.
 - Produtos de marca (pesquisa com internet): Open Food Facts (https://openfoodfacts.org), base de dados aberta sob a licença ODbL.
 - Reconhecimento de pratos: modelo Google AIY Vision Classifier Food V1 (Apache 2.0).
+- Reconhecimento de cada alimento do prato: OpenAI CLIP ViT-B/32 (licença MIT), descarregado uma vez de huggingface.co/Xenova/clip-vit-base-patch32; corre com ONNX Runtime Web (licença MIT) em `www/vendor/ort`.
