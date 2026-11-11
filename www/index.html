@@ -182,6 +182,7 @@ details.settings summary { font-weight: 600; cursor: pointer; }
 .w-voice.playing .w-bars i:nth-child(2) { animation-delay: .15s; }
 .w-voice.playing .w-bars i:nth-child(3) { animation-delay: .3s; }
 .w-voice.playing .w-bars i:nth-child(4) { animation-delay: .45s; }
+.w-text p.w-hint { font-size: 14px; color: #1B1600; background: #F2B705; border-radius: 10px; padding: 8px 12px; }
 @keyframes wbar { 0%, 100% { height: 5px; } 50% { height: 18px; } }
 @media (prefers-reduced-motion: reduce) { .w-voice.playing .w-bars i { animation: none; height: 12px; } }
 .w-text p { margin: 0; font-size: 18px; line-height: 1.5; color: #F5F7F2; }
@@ -332,6 +333,7 @@ details.settings summary { font-weight: 600; cursor: pointer; }
           <svg viewBox="0 0 108 108" aria-hidden="true"><circle cx="54" cy="54" r="54" fill="#17201A"/><circle cx="54" cy="54" r="22" fill="#F2B705"/><circle cx="54" cy="54" r="15" fill="#F5F7F2"/><path fill="#2E6A45" d="M47,60c0,-8 6,-13 14,-13c0,8 -6,13 -14,13z"/></svg>
           <button class="w-voice" id="wVoice" type="button"><span class="w-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="wVoiceLbl">Ouvir mensagem</span></button>
         </div>
+        <p class="w-hint" id="wHint" hidden>O volume de multimédia está no zero. Sobe o volume com o botão lateral do telemóvel e toca em «Ouvir de novo».</p>
         <p>«Bem-vindo ao Diário do Prato! É muito simples: tiras uma fotografia ao teu prato e tocas nos alimentos que lá estão. A app faz as contas por ti. Vou mostrar-te como funciona, passo a passo.»</p>
       </div>
     </div>
@@ -982,19 +984,45 @@ $("#goalSave").onclick = () => {
 };
 // ---------- welcome screen ----------
 // A Portuguese voice reads the welcome message (www/welcome.mp3) as soon as the screen opens.
-const W = { el: $("#welcome"), audio: $("#wAudio") };
-const voiceBtn = $("#wVoice"), voiceLbl = $("#wVoiceLbl");
-function voiceState() {
-  const playing = !W.audio.paused && !W.audio.ended;
+// On Android the voice plays through the native player (WelcomeVoice plugin); in a browser, through <audio>.
+const W = { el: $("#welcome"), audio: $("#wAudio"), playing: false, played: false, nativeOn: false };
+const voiceBtn = $("#wVoice"), voiceLbl = $("#wVoiceLbl"), voiceHint = $("#wHint");
+const nativeVoice = (m, o = {}) => {
+  const C = window.Capacitor;
+  if (!C?.isNativePlatform?.() || typeof C.nativePromise !== "function") return null;
+  return C.nativePromise("WelcomeVoice", m, o);
+};
+function setVoice(playing) {
+  W.playing = playing; if (playing) W.played = true;
   voiceBtn.classList.toggle("playing", playing);
-  voiceLbl.textContent = playing ? "A falar… toca para parar" : (W.audio.currentTime > 0.5 ? "Ouvir de novo" : "Ouvir mensagem");
+  voiceLbl.textContent = playing ? "A falar… toca para parar" : (W.played ? "Ouvir de novo" : "Ouvir mensagem");
 }
-["play", "playing", "pause", "ended"].forEach((ev) => W.audio.addEventListener(ev, voiceState));
-W.audio.addEventListener("error", () => { voiceBtn.hidden = true; });
-function playVoice() { W.audio.currentTime = 0; return W.audio.play().catch(() => voiceState()); }
-voiceBtn.onclick = () => { if (!W.audio.paused) { W.audio.pause(); } else playVoice(); };
+W.audio.addEventListener("ended", () => setVoice(false));
+W.audio.addEventListener("pause", () => { if (!W.nativeOn) setVoice(false); });
+async function checkVolume() {
+  const v = nativeVoice("volume"); if (!v) return;
+  try { const { level } = await v; voiceHint.hidden = level > 0.05; } catch { /* ignore */ }
+}
+async function playVoice() {
+  stopVoice();
+  const t = W.token = (W.token || 0) + 1;
+  const p = nativeVoice("play");
+  if (p) {
+    W.nativeOn = true; setVoice(true); checkVolume();
+    try { await p; if (t === W.token) { W.nativeOn = false; setVoice(false); } return; }
+    catch { if (t !== W.token) return; W.nativeOn = false; /* fall back to the WebView player */ }
+  }
+  try { W.audio.currentTime = 0; await W.audio.play(); setVoice(true); }
+  catch { setVoice(false); }
+}
+function stopVoice() {
+  if (W.nativeOn) { W.nativeOn = false; nativeVoice("stop")?.catch(() => {}); }
+  if (!W.audio.paused) W.audio.pause();
+  setVoice(false);
+}
+voiceBtn.onclick = () => { if (W.playing) stopVoice(); else playVoice(); };
 function showWelcome() { W.el.hidden = false; document.body.style.overflow = "hidden"; $("#wTour").focus(); playVoice(); }
-function hideWelcome() { W.audio.pause(); W.el.hidden = true; document.body.style.overflow = ""; lsSet("ddp.seenWelcomeVoice", true); }
+function hideWelcome() { stopVoice(); W.el.hidden = true; document.body.style.overflow = ""; lsSet("ddp.seenWelcomeVoice", true); }
 $("#wTour").onclick = () => { hideWelcome(); startTour(); };
 $("#wSkip").onclick = () => { hideWelcome(); toast("O tutorial está sempre em Ajuda, no fundo da app."); };
 $("#helpWelcome").onclick = () => showWelcome();

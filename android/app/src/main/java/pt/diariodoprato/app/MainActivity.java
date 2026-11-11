@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AppUpdaterPlugin.class);
+        registerPlugin(WelcomeVoicePlugin.class);
         super.onCreate(savedInstanceState);
         // let the welcome voice start as soon as the app opens
         if (getBridge() != null && getBridge().getWebView() != null) {
