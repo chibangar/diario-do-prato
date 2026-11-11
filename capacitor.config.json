@@ -1,0 +1,6 @@
+{
+  "appId": "pt.diariodoprato.app",
+  "appName": "Diário do Prato",
+  "webDir": "www",
+  "android": { "backgroundColor": "#F5F7F2" }
+}

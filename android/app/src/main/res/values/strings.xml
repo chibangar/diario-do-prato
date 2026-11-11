@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Diário do Prato</string>
+    <string name="title_activity_main">Diário do Prato</string>
+    <string name="package_name">pt.diariodoprato.app</string>
+    <string name="custom_url_scheme">pt.diariodoprato.app</string>
+</resources>

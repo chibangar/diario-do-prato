@@ -1,0 +1,82 @@
+name: Compilar e publicar APK
+
+# Every push to main that changes the app builds a signed APK and publishes it
+# as a GitHub Release. The app checks the latest release on launch.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "www/**"
+      - "android/**"
+      - "package.json"
+      - "package-lock.json"
+      - "capacitor.config.json"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Número da versão
+        id: ver
+        run: |
+          CODE=$(( ${{ github.run_number }} + 1 ))
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "name=1.0.$CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Marcar a versão na app
+        run: sed -i "s/__APP_BUILD__/${{ steps.ver.outputs.code }}/" www/index.html
+
+      - name: Copiar a app para o projeto Android
+        run: npx cap sync android
+
+      - name: Preparar a chave de assinatura
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+
+      - name: Compilar APK
+        working-directory: android
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon \
+            -PappVersionCode=${{ steps.ver.outputs.code }} \
+            -PappVersionName=${{ steps.ver.outputs.name }}
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/DiarioDoPrato-${{ steps.ver.outputs.name }}.apk"
+
+      - name: Publicar release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ steps.ver.outputs.name }}" \
+            "$RUNNER_TEMP/DiarioDoPrato-${{ steps.ver.outputs.name }}.apk" \
+            --title "Diário do Prato ${{ steps.ver.outputs.name }}" \
+            --notes "$(git log -1 --pretty=%B)"
