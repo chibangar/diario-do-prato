@@ -167,6 +167,16 @@ details.settings summary { font-weight: 600; cursor: pointer; }
 .keep input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
 .dish-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
 .dish-row:first-child { border-top: 0; }
+/* food recognition */
+.ai-box { display: flex; flex-direction: column; gap: 6px; border-radius: 12px; padding: 12px 14px; background: var(--soft); font-size: 14px; }
+.ai-box:has(.ai-dot) { flex-direction: row; align-items: center; gap: 10px; }
+.ai-box.ok-box { background: color-mix(in srgb, var(--accent) 16%, var(--card)); border: 1px solid var(--accent); }
+.ai-box b { font-size: 16px; }
+.ai-box small { font-weight: 500; color: var(--muted); font-family: var(--f-num); }
+.ai-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--hi); flex: none; animation: aipulse .8s ease-in-out infinite alternate; }
+@keyframes aipulse { to { opacity: .25; transform: scale(.7); } }
+.ai-alts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px; color: var(--muted); font-size: 13px; }
+.chip-btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 5px 11px; font-size: 13px; font-weight: 600; }
 /* welcome */
 .welcome { position: fixed; inset: 0; z-index: 900; background: #111613; color: #F5F7F2; overflow-y: auto;
   padding: max(24px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); }
@@ -251,7 +261,7 @@ details.settings summary { font-weight: 600; cursor: pointer; }
   <section class="capture">
     <div>
       <h2>O que vais comer?</h2>
-      <p>Tira uma foto ao prato e toca nos alimentos que lá estão: pão branco ou integral, queijo, fiambre, arroz, massa…</p>
+      <p>Tira uma foto e a app reconhece o alimento (limão, banana, pizza…) e põe-no logo no prato. O que não reconhecer, escolhes na lista.</p>
     </div>
     <div class="cap-actions">
       <button class="btn btn-primary" id="camBtn">
@@ -452,6 +462,14 @@ const BASE_FOODS = [
   ["Cerveja", "bebidas", 330, 43, 0.5, 3.6, 0],
   ["Vinho tinto", "bebidas", 150, 85, 0.1, 2.6, 0],
   ["Pizza", "pratos", 300, 266, 11, 33, 10],
+  // reconhecíveis pela câmara
+  ["Limão", "fruta", 60, 29, 1.1, 9.3, 0.3],
+  ["Romã", "fruta", 150, 83, 1.7, 19, 1.2],
+  ["Anona", "fruta", 150, 94, 2.1, 24, 0.3],
+  ["Alcachofra cozida", "legumes e salada", 120, 53, 2.9, 12, 0.3],
+  ["Pretzel", "pão e cereais", 50, 380, 9, 80, 3],
+  ["Bagel", "pão e cereais", 90, 250, 10, 49, 1.5],
+  ["Marisco cozido", "peixe", 150, 90, 19, 1, 1],
   // pratos portugueses e refeições feitas
   ["Bacalhau à Brás", "pratos", 300, 160, 9, 9, 10],
   ["Bacalhau com natas", "pratos", 300, 170, 9, 9, 11],
@@ -703,11 +721,95 @@ function processImg(img) {
   c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
   const t = document.createElement("canvas"); t.width = t.height = 200; const side = Math.min(W, H);
   t.getContext("2d").drawImage(img, (W - side) / 2, (H - side) / 2, side, side, 0, 0, 200, 200);
-  return { preview: c.toDataURL("image/jpeg", 0.8), thumb: t.toDataURL("image/jpeg", 0.7) };
+  return { preview: c.toDataURL("image/jpeg", 0.8), thumb: t.toDataURL("image/jpeg", 0.7), canvas: c };
 }
 async function onPhotoSrc(src) {
-  try { const img = await imgFromSrc(src); newDraft(processImg(img)); }
-  catch { toast("Não consegui abrir esta imagem. Tenta outra."); }
+  let photo;
+  try { photo = processImg(await imgFromSrc(src)); }
+  catch { toast("Não consegui abrir esta imagem. Tenta outra."); return; }
+  const { canvas, ...rest } = photo;
+  newDraft({ ...rest, ai: { status: "running" } });
+  recognize(S.draft, canvas);
+}
+
+// ---------- food recognition (on-device, MediaPipe) ----------
+// English model labels -> food names in the database. Labels marked weak only become suggestions.
+const AI_MAP = {
+  // image classifier (ImageNet)
+  "lemon": "Limão", "orange": "Laranja", "banana": "Banana", "Granny Smith": "Maçã", "strawberry": "Morangos",
+  "pineapple": "Ananás", "fig": "Figos", "pomegranate": "Romã", "custard apple": "Anona", "broccoli": "Brócolos cozidos",
+  "cauliflower": "Couve-flor cozida", "zucchini": "Curgete", "cucumber": "Pepino", "bell pepper": "Pimento",
+  "mushroom": "Cogumelos salteados", "agaric": "Cogumelos salteados", "bolete": "Cogumelos salteados",
+  "head cabbage": "Couve cozida", "artichoke": "Alcachofra cozida", "corn": "Milho doce", "ear": "Milho doce",
+  "acorn squash": "Abóbora", "butternut squash": "Abóbora", "spaghetti squash": "Abóbora",
+  "mashed potato": "Puré de batata", "French loaf": "Pão branco (carcaça)", "bagel": "Bagel", "pretzel": "Pretzel",
+  "cheeseburger": "Hambúrguer no pão com queijo", "hotdog": "Cachorro-quente", "pizza": "Pizza",
+  "carbonara": "Esparguete à carbonara", "burrito": "Wrap de frango", "guacamole": "Abacate",
+  "ice cream": "Gelado", "ice lolly": "Gelado", "trifle": "Bolo (fatia)", "chocolate sauce": "Creme de chocolate para barrar",
+  "meat loaf": "Almôndegas", "potpie": "Empadão de carne", "consomme": "Canja de galinha", "hot pot": "Cozido à portuguesa",
+  "soup bowl": "Sopa de legumes", "red wine": "Vinho tinto", "wine bottle": "Vinho tinto", "espresso": "Café expresso",
+  "beer glass": "Cerveja", "beer bottle": "Cerveja", "pop bottle": "Refrigerante", "water bottle": "Água",
+  "coho": "Salmão grelhado", "American lobster": "Marisco cozido", "spiny lobster": "Marisco cozido",
+  "crayfish": "Marisco cozido", "Dungeness crab": "Marisco cozido", "rock crab": "Marisco cozido", "king crab": "Marisco cozido",
+  "eggnog": "Leite com chocolate", "cup": "Café expresso", "coffee mug": "Galão",
+  // object detector (COCO)
+  "apple": "Maçã", "sandwich": "Sandes mista", "carrot": "Cenoura", "hot dog": "Cachorro-quente",
+  "donut": "Donut", "cake": "Bolo (fatia)", "wine glass": "Vinho tinto", "bottle": "Água"
+};
+const AI_WEAK = new Set(["cup", "coffee mug", "bottle", "wine glass", "soup bowl", "water bottle", "pop bottle", "trifle", "chocolate sauce", "eggnog"]);
+const COUNTABLE = new Set(["Banana", "Maçã", "Laranja", "Limão", "Pera", "Kiwi", "Donut", "Cachorro-quente", "Sandes mista", "Pêssego", "Tangerina", "Romã", "Bagel", "Pretzel", "Cenoura"]);
+function warmAI() { try { window.FoodAI?.warm(); } catch { /* not loaded yet */ } }
+async function recognize(d, canvas) {
+  const done = (ai) => { if (S.draft !== d) return; d.ai = ai; renderDraft(); };
+  // the module may still be loading on first use
+  for (let i = 0; i < 50 && !window.FoodAI; i++) await wait(100);
+  if (!window.FoodAI) return done({ status: "error" });
+  let res;
+  try { res = await window.FoodAI.analyze(canvas); } catch { return done({ status: "error" }); }
+  const score = new Map(), count = new Map(), strong = new Set();
+  const add = (label, s, isObject) => {
+    const name = AI_MAP[label]; if (!name || !byName(name)) return;
+    score.set(name, Math.max(score.get(name) || 0, s));
+    if (!AI_WEAK.has(label)) strong.add(name);
+    if (isObject && s >= 0.35) count.set(name, (count.get(name) || 0) + 1);
+  };
+  // The detector only knows "orange" and "apple" as round fruit; when the classifier is sure it is
+  // another round fruit (a lemon, a pomegranate…), those detections are counted as that fruit instead.
+  const ROUND = new Set(["Limão", "Laranja", "Tangerina", "Maçã", "Romã", "Pêssego", "Anona", "Figos"]);
+  const top = res.classes.map((c) => ({ name: AI_MAP[c.label], s: c.score, label: c.label }))
+    .find((c) => c.name && byName(c.name) && !AI_WEAK.has(c.label));
+  res.objects.forEach((o) => {
+    const name = AI_MAP[o.label];
+    if (top && top.s >= 0.4 && (o.label === "orange" || o.label === "apple") && ROUND.has(top.name) && name !== top.name) {
+      if (o.score >= 0.35) count.set(top.name, (count.get(top.name) || 0) + 1);
+      return;
+    }
+    add(o.label, o.score, true);
+  });
+  res.classes.forEach((c) => add(c.label, c.score, false));
+  const ranked = [...score.entries()].sort((a, b) => b[1] - a[1]);
+  // the best match needs 35 %; any extra food on the same photo needs 55 %
+  const found = [];
+  for (const [n, s] of ranked) {
+    if (found.length < 4 && strong.has(n) && s >= (found.length ? 0.55 : 0.35)) found.push({ name: n, score: s, n: count.get(n) || 1 });
+  }
+  const alts = ranked.filter(([n, s]) => s >= 0.08 && !found.some((f) => f.name === n)).slice(0, 4).map(([n]) => n);
+  if (S.draft !== d) return;
+  for (const f of found) {
+    if (d.items.some((i) => i.name === f.name)) continue;
+    const food = byName(f.name), qty = COUNTABLE.has(f.name) ? Math.min(f.n, 6) : 1;
+    d.items.push(fromFood(food, food.g * qty));
+  }
+  if (found.length && !d.title.trim()) d.title = found.map((f) => (f.n > 1 && COUNTABLE.has(f.name) ? `${f.n}× ` : "") + f.name).join(", ");
+  done({ status: found.length ? "found" : "none", found, alts });
+}
+function aiBanner(d) {
+  const ai = d.ai; if (!ai) return "";
+  if (ai.status === "running") return `<div class="ai-box"><span class="ai-dot"></span><span>A reconhecer o alimento na foto…</span></div>`;
+  if (ai.status === "error") return `<div class="ai-box muted-box">Não consegui analisar a foto neste telemóvel. Escolhe os alimentos na lista.</div>`;
+  const alts = ai.alts?.length ? `<div class="ai-alts"><span>${ai.status === "found" ? "Não é isto? Talvez:" : "Talvez seja:"}</span>${ai.alts.map((n) => `<button class="chip-btn" data-alt="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : "";
+  if (ai.status === "found") return `<div class="ai-box ok-box"><b>Reconhecido: ${ai.found.map((f) => esc((f.n > 1 && COUNTABLE.has(f.name) ? f.n + "× " : "") + f.name) + ` <small>${Math.round(f.score * 100)}%</small>`).join(", ")}</b><span>Já está no prato. Confirma a quantidade em baixo.</span>${alts}</div>`;
+  return `<div class="ai-box muted-box"><span>Não reconheci nenhum alimento com certeza. Escolhe na lista em baixo.</span>${alts}</div>`;
 }
 async function onFile(file) {
   if (!file) return;
@@ -729,8 +831,8 @@ async function takePhoto(source) {
   }
   (source === "CAMERA" ? $("#camIn") : $("#galIn")).click();
 }
-$("#camBtn").onclick = () => takePhoto("CAMERA");
-$("#galBtn").onclick = () => takePhoto("PHOTOS");
+$("#camBtn").onclick = () => { warmAI(); takePhoto("CAMERA"); };
+$("#galBtn").onclick = () => { warmAI(); takePhoto("PHOTOS"); };
 $("#manBtn").onclick = () => newDraft({});
 $("#camIn").onchange = (e) => { onFile(e.target.files[0]); e.target.value = ""; };
 $("#galIn").onchange = (e) => { onFile(e.target.files[0]); e.target.value = ""; };
@@ -793,6 +895,7 @@ function renderDraft() {
   el.innerHTML = `
     ${d.preview ? `<div class="draft-photo"><img src="${d.preview}" alt="Foto da refeição"></div>` : ""}
     <div class="draft-body">
+      ${aiBanner(d)}
       <input class="title-in" id="dTitle" placeholder="Nome da refeição (ex.: Sandes mista)" value="${esc(d.title)}" aria-label="Nome da refeição">
       <select id="dMeal" aria-label="Tipo de refeição">${MEALS.map((m) => `<option ${m === d.meal ? "selected" : ""}>${m}</option>`).join("")}</select>
 
@@ -827,6 +930,11 @@ function renderDraft() {
   q("#dKeep") && (q("#dKeep").onchange = (e) => { d.keep = e.target.checked; });
   q("#dCancel").onclick = () => { S.draft = null; renderDraft(); };
   q("#dSave").onclick = saveDraft;
+  el.querySelectorAll("[data-alt]").forEach((b) => b.onclick = () => {
+    const name = b.dataset.alt, idx = d.items.findIndex((i) => i.name === name);
+    if (idx >= 0) d.items.splice(idx, 1); else { const f = byName(name); if (f) d.items.push(fromFood(f)); }
+    renderDraft();
+  });
   el.querySelectorAll(".item input").forEach((inp) => {
     inp.onchange = (e) => {
       const it = d.items[+e.target.closest(".item").dataset.i], k = e.target.dataset.k;
@@ -1041,7 +1149,7 @@ function closeDemo() {
 }
 const TOUR = [
   { title: "Vamos lá", text: "Em cerca de um minuto ficas a saber usar tudo. Toca em «Seguinte» para avançar. Podes sair quando quiseres e rever o tutorial em «Ajuda», no fundo da app." },
-  { sel: "#camBtn", title: "Tira uma foto", text: "Toca em «Tirar foto» para abrir a câmara e fotografar o prato. Da primeira vez, o Android pede autorização para usar a câmara: escolhe «Permitir»." },
+  { sel: "#camBtn", title: "Tira uma foto", text: "Toca em «Tirar foto» e fotografa o prato. A app reconhece sozinha alimentos como fruta, legumes, pizza ou hambúrguer e põe-nos logo no prato, com a percentagem de certeza. Da primeira vez, o Android pede autorização para usar a câmara: escolhe «Permitir»." },
   { sel: "#galBtn", title: "Ou usa uma foto que já tens", text: "«Da galeria» deixa-te escolher uma fotografia que já tiraste antes." },
   { sel: "#manBtn", title: "Também dá sem foto", text: "«Sem foto» abre logo a lista de alimentos. Os passos seguintes são iguais, com ou sem fotografia." },
   { sel: "#dResults .tabs", demo: true, title: "Escolhe a categoria", text: "Os alimentos estão organizados por separadores: Pratos, Pão, Queijo e lácteos, Carne e fiambre, Arroz e massa, Fruta e outros. Desliza para o lado para veres todos. «Recentes» mostra o que comes mais vezes." },
@@ -1231,6 +1339,37 @@ render();
 checkUpdate(false);
 if (!lsGet("ddp.seenWelcomeVoice", false)) showWelcome();
 })();
+</script>
+<script type="module">
+// On-device food recognition: MediaPipe image classifier (ImageNet) + object detector (COCO), bundled in the app.
+import { FilesetResolver, ImageClassifier, ObjectDetector } from "./vendor/mediapipe/vision_bundle.mjs";
+let loading = null;
+async function load() {
+  const fileset = await FilesetResolver.forVisionTasks(new URL("./vendor/mediapipe/wasm", location.href).href);
+  const [classifier, detector] = await Promise.all([
+    ImageClassifier.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: new URL("./models/efficientnet_lite0.tflite", location.href).href, delegate: "CPU" },
+      maxResults: 10, scoreThreshold: 0.03
+    }),
+    ObjectDetector.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: new URL("./models/efficientdet_lite0.tflite", location.href).href, delegate: "CPU" },
+      maxResults: 15, scoreThreshold: 0.25
+    })
+  ]);
+  return { classifier, detector };
+}
+window.FoodAI = {
+  warm() { if (!loading) loading = load().catch((e) => { loading = null; throw e; }); return loading; },
+  async analyze(source) {
+    const { classifier, detector } = await this.warm();
+    const c = classifier.classify(source);
+    const d = detector.detect(source);
+    return {
+      classes: (c.classifications[0]?.categories || []).map((x) => ({ label: x.categoryName, score: x.score })),
+      objects: (d.detections || []).map((x) => ({ label: x.categories[0]?.categoryName, score: x.categories[0]?.score || 0 }))
+    };
+  }
+};
 </script>
 </body>
 </html>
