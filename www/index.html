@@ -3,24 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="light">
 <title>Diário do Prato</title>
 <style>
 /* Layout: one mobile column; a nutrition-facts label anchors the day, meals stack below like a diary. */
 :root {
-  --paper: #F5F7F2; --card: #FFFFFF; --ink: #17201A; --muted: #5B675F; --line: #D9DFD6;
-  --accent: #2E6A45; --accent-ink: #FFFFFF; --hi: #F2B705; --prot: #B9533A; --carb: #C8930F;
-  --fat: #27798A; --danger: #B42318; --soft: #E8EEE6;
+  --paper: #F3F4F1; --card: #FFFFFF; --ink: #121614; --muted: #6A716C; --line: #E4E7E2;
+  --accent: #2E6A45; --accent-ink: #FFFFFF; --hi: #F2B705; --prot: #E0705A; --carb: #E9A93A;
+  --fat: #4A90C8; --danger: #B42318; --soft: #EEF0EC; --shadow: 0 1px 2px rgba(16, 22, 18, .05), 0 8px 28px rgba(16, 22, 18, .07);
   --f-display: "Roboto Condensed", "Segoe UI", Roboto, system-ui, sans-serif;
   --f-body: Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
   --f-num: "Roboto Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #111613; --card: #19201B; --ink: #E7EDE6; --muted: #98A59C; --line: #2B352E;
-    --accent: #72C291; --accent-ink: #0E1A12; --hi: #F5C842; --prot: #E3836B; --carb: #E6B94A;
-    --fat: #62B6C6; --danger: #F07A6E; --soft: #222B25;
-  }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html { background: var(--paper); }
@@ -301,6 +294,105 @@ details.settings summary { font-weight: 600; cursor: pointer; }
   .item, .items-head { grid-template-columns: 1fr 64px 66px 28px; gap: 6px; }
   .kcal-row .v { font-size: 36px; }
 }
+
+/* ===== v2 look: white cards, calorie ring, meals by type, scan button at the bottom ===== */
+body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
+.wrap { gap: 16px; }
+.head-top { align-items: center; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand .logo { width: 38px; height: 38px; flex: none; }
+.brand h1 { font-size: 24px; }
+.brand p { display: none; }
+.icon-btn { border: 0; background: var(--card); box-shadow: var(--shadow); border-radius: 50%; }
+.daynav { justify-content: center; background: var(--card); border-radius: 999px; padding: 4px; box-shadow: var(--shadow); align-self: center; }
+.daynav button { border: 0; background: transparent; }
+.daynav .lbl { min-width: 140px; font-size: 15px; }
+.card { background: var(--card); border-radius: 24px; padding: 18px; box-shadow: var(--shadow); }
+.summary { display: grid; grid-template-columns: 148px 1fr; gap: 18px; align-items: center; }
+.sum-head { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.sum-head h2 { font-size: 21px; font-weight: 800; }
+.sum-head small { color: var(--muted); font-size: 12.5px; }
+.ring { position: relative; width: 148px; height: 148px; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.ring-c b { font-family: var(--f-num); font-size: 31px; line-height: 1.05; font-weight: 600; }
+.ring-c span { font-size: 12.5px; color: var(--muted); }
+.ring-c.over b { color: var(--danger); }
+.mbars { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.mbar .top { display: flex; justify-content: space-between; gap: 6px; font-size: 14.5px; font-weight: 600; }
+.mbar .top span { font-family: var(--f-num); font-size: 12.5px; color: var(--muted); font-weight: 500; white-space: nowrap; }
+.mbar .bar { height: 7px; margin-top: 6px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+.mbar .bar i { display: block; height: 100%; border-radius: 999px; }
+.sum-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
+.sum-foot b { color: var(--ink); font-family: var(--f-num); }
+@media (max-width: 370px) { .summary { grid-template-columns: 1fr; justify-items: center; } .mbars { width: 100%; } }
+.sec-head h2 { font-size: 19px; font-weight: 800; }
+.meals { gap: 12px; }
+.mgroup { background: var(--card); border-radius: 20px; padding: 12px 14px; box-shadow: var(--shadow); }
+.mg-head { display: flex; align-items: center; gap: 12px; }
+.mg-ic { width: 42px; height: 42px; border-radius: 50%; background: var(--soft); display: grid; place-items: center; font-size: 20px; flex: none; }
+.mg-head .t { flex: 1; min-width: 0; }
+.mg-head .t b { display: block; font-size: 15.5px; }
+.mg-head .t small { color: var(--muted); font-family: var(--f-num); font-size: 12.5px; }
+.add-btn { width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--ink); color: var(--card); font-size: 24px; line-height: 1; display: grid; place-items: center; padding: 0 0 2px; flex: none; }
+.entry { display: grid; grid-template-columns: 46px 1fr auto; gap: 10px; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.entry.no-thumb { grid-template-columns: 1fr auto; }
+.entry img { width: 46px; height: 46px; border-radius: 12px; object-fit: cover; display: block; }
+.entry .mid { min-width: 0; }
+.entry h3 { font-size: 14.5px; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
+.entry p { margin: 2px 0 0; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.entry .right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.entry .kc { font-family: var(--f-num); font-weight: 600; font-size: 15px; white-space: nowrap; }
+.entry .acts { display: flex; gap: 2px; }
+.entry .del { padding: 4px 6px; font-size: 12px; }
+.week, details.settings { border: 0; box-shadow: var(--shadow); border-radius: 20px; }
+/* bottom dock */
+.dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 700; display: flex; justify-content: center; align-items: flex-end; gap: 34px;
+  padding: 8px 16px max(10px, env(safe-area-inset-bottom, 0px)); background: color-mix(in srgb, var(--card) 94%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line); }
+.dock .side { display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; color: var(--ink); font-size: 12px; font-weight: 600; min-width: 70px; padding: 4px 0; }
+.dock .side svg { width: 24px; height: 24px; }
+.scan { width: 68px; height: 68px; border-radius: 50%; border: 0; background: var(--ink); color: var(--card); display: grid; place-items: center; margin-top: -34px; box-shadow: 0 10px 26px rgba(0, 0, 0, .28); padding: 0; }
+.scan svg { width: 30px; height: 30px; }
+.toast { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
+/* add / photo result screen */
+.draft { position: fixed; inset: 0; z-index: 800; background: var(--paper); overflow-y: auto; overscroll-behavior: contain; border: 0; border-radius: 0; display: flex; flex-direction: column; }
+.sheet-bar { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; text-align: center;
+  padding: max(10px, env(safe-area-inset-top, 0px)) 12px 10px; background: color-mix(in srgb, var(--paper) 90%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.sheet-bar b { font-size: 16px; }
+.round-btn { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--card); box-shadow: var(--shadow); font-size: 22px; line-height: 1; display: grid; place-items: center; padding: 0; color: var(--ink); }
+.draft-photo { max-width: 560px; width: 100%; align-self: center; }
+.draft-photo img { display: block; width: 100%; max-height: 340px; object-fit: cover; }
+.draft-body { background: var(--card); border-radius: 26px 26px 0 0; position: relative; padding: 20px 16px 24px; max-width: 560px; width: 100%; align-self: center; flex: 1; gap: 16px; box-shadow: 0 -6px 24px rgba(16, 22, 18, .06); }
+.draft-photo + .draft-body { margin-top: -24px; }
+.sheet-snap { display: flex; gap: 8px; padding: 4px 16px 16px; max-width: 560px; width: 100%; align-self: center; }
+.sheet-snap .btn { flex: 1; background: var(--card); box-shadow: var(--shadow); }
+.title-in { font-size: 22px; border-bottom-color: transparent; }
+.title-in:focus { border-bottom-color: var(--accent); }
+.seg-meal { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; margin: -4px -16px 0; padding: 0 16px; }
+.seg-meal::-webkit-scrollbar { display: none; }
+.seg-meal button { flex: none; border: 0; background: transparent; color: var(--muted); padding: 8px 13px; border-radius: 999px; font-weight: 600; font-size: 14px; }
+.seg-meal button[aria-checked="true"] { background: var(--ink); color: var(--card); }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tile { border: 1px solid var(--line); border-radius: 18px; padding: 12px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tile .ic { width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: var(--card); display: grid; place-items: center; font-size: 18px; flex: none; }
+.tile small { display: block; color: var(--muted); font-size: 12.5px; }
+.tile b { font-family: var(--f-num); font-size: 19px; font-weight: 600; }
+.health { display: flex; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: 18px; padding: 12px 14px; }
+.health .ic { width: 40px; height: 40px; border-radius: 50%; background: var(--soft); display: grid; place-items: center; font-size: 18px; flex: none; }
+.health .h { flex: 1; min-width: 0; }
+.health .h-top { display: flex; justify-content: space-between; font-size: 14.5px; font-weight: 600; }
+.health .h-top span { font-family: var(--f-num); }
+.health .h-bar { height: 7px; border-radius: 999px; background: var(--soft); margin-top: 7px; overflow: hidden; }
+.health .h-bar i { display: block; height: 100%; border-radius: 999px; background: #3FAE5A; }
+.health small { color: var(--muted); font-size: 11.5px; }
+.list-title { font-size: 16px; font-weight: 800; margin: 0; }
+.sheet-actions { position: sticky; bottom: 0; z-index: 3; display: flex; gap: 8px; padding: 12px 16px max(12px, env(safe-area-inset-bottom, 0px)); background: var(--card); border-top: 1px solid var(--line); max-width: 560px; width: 100%; align-self: center; }
+.sheet-actions .btn { flex: 1; padding: 14px 16px; font-size: 16px; }
+.sheet-actions .btn-accent { background: var(--ink); color: var(--card); }
+.ai-box { border-radius: 16px; }
+.ai-go { margin-top: 4px; align-self: flex-start; }
+.key-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.key-row input { flex: 1 1 200px; min-width: 0; }
 </style>
 </head>
 <body>
@@ -308,6 +400,7 @@ details.settings summary { font-weight: 600; cursor: pointer; }
   <header>
     <div class="head-top">
       <div class="brand">
+        <svg class="logo" viewBox="0 0 108 108" aria-hidden="true"><circle cx="54" cy="54" r="54" fill="#121614"/><circle cx="54" cy="54" r="26" fill="#F2B705"/><circle cx="54" cy="54" r="18" fill="#FFFFFF"/><path fill="#2E6A45" d="M46,62c0,-10 7,-16 17,-16c0,10 -7,16 -17,16z"/></svg>
         <h1>Diário do Prato</h1>
         <p>Foto, escolhe os alimentos, está registado.</p>
       </div>
@@ -329,36 +422,11 @@ details.settings summary { font-weight: 600; cursor: pointer; }
     <a class="upd-alt" id="updateLink" href="#" hidden>Descarregar pelo navegador</a>
   </section>
 
-  <section class="capture">
-    <div>
-      <h2>O que vais comer?</h2>
-      <p>Tira uma foto e a app reconhece o alimento ou o prato (limão, francesinha, bacalhau à Brás, cozido…) e põe-no logo no prato. O que não reconhecer, escolhes na lista.</p>
-    </div>
-    <div class="cap-actions">
-      <button class="btn btn-primary" id="camBtn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
-        Tirar foto
-      </button>
-      <button class="btn btn-ghost" id="galBtn">Da galeria</button>
-      <button class="btn btn-ghost" id="manBtn">Sem foto</button>
-    </div>
-    <input type="file" id="camIn" class="visually-hidden" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
-    <input type="file" id="galIn" class="visually-hidden" accept="image/*" tabindex="-1" aria-hidden="true">
-  </section>
-
-  <section class="draft" id="draft" hidden></section>
-
-  <section class="label" aria-labelledby="labelTitle">
-    <div class="label-head"><h2 id="labelTitle">Hoje</h2><span id="labelDate"></span></div>
-    <div class="rule-xl"></div>
-    <div class="kcal-row"><span class="k">Calorias</span><span class="v" id="kcalTotal">0</span></div>
-    <div class="meter" id="meter"><i style="width:0%"></i></div>
-    <div class="kcal-meta"><span id="kcalLeft"></span><button class="goal-link" id="kcalGoal" type="button"></button></div>
-    <div class="rule-md"></div>
-    <div class="vd-head">% da meta</div>
-    <div id="macros"></div>
-    <div class="rule-sm"></div>
-    <div class="label-foot">Valores aproximados por porção. Metas: 20% proteína, 50% hidratos, 30% gordura.</div>
+  <section class="card summary" id="summary" aria-labelledby="labelTitle">
+    <div class="sum-head"><h2 id="labelTitle">Calorias</h2><small id="labelDate"></small></div>
+    <div class="ring" id="ring"></div>
+    <div class="mbars" id="macros"></div>
+    <div class="sum-foot"><span>Meta <button class="goal-link" id="kcalGoal" type="button"></button></span><span>Comido <b id="kcalTotal">0</b></span><span id="kcalLeft"></span></div>
   </section>
 
   <section>
@@ -415,6 +483,17 @@ details.settings summary { font-weight: 600; cursor: pointer; }
     <p class="note">Valores nutricionais: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P. - INSA. v 7.1 - 2026 (portfir.insa.min-saude.pt). Produtos de marca: Open Food Facts (openfoodfacts.org), base de dados aberta (ODbL).</p>
   </details>
 
+  <details class="settings" id="aiDetails">
+    <summary>Reconhecimento com IA</summary>
+    <p class="note" style="margin:10px 0 0">Para a app encontrar cada alimento de um prato misturado (por exemplo arroz, feijão, grelos e entrecosto) e estimar os gramas, liga a IA Gemini da Google. É gratuita: cria uma chave em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> com a tua conta Google, copia-a e cola-a aqui.</p>
+    <div class="key-row">
+      <input type="password" id="aiKey" class="field" placeholder="Cola aqui a chave (começa por AIza…)" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Chave da IA Gemini">
+      <button class="btn btn-accent" id="aiSave" type="button">Guardar</button>
+    </div>
+    <p class="note" id="aiState"></p>
+    <p class="note">A chave fica só neste telemóvel. As fotos são enviadas à Google para análise e, na versão gratuita, a Google pode usá-las para melhorar os seus serviços. Sem chave ou sem internet, a app usa o reconhecimento do telemóvel.</p>
+  </details>
+
   <details class="settings" id="dishDetails">
     <summary>Os meus pratos</summary>
     <div id="dishList" style="margin-top:10px"></div>
@@ -429,6 +508,24 @@ details.settings summary { font-weight: 600; cursor: pointer; }
     <p class="note" id="updNote">A app procura versões novas sempre que é aberta com internet.</p>
   </details>
 </div>
+
+<section class="draft" id="draft" hidden></section>
+
+<nav class="dock" aria-label="Adicionar comida">
+  <button class="side" id="galBtn" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8.5 8.5"/></svg>
+    Galeria
+  </button>
+  <button class="scan" id="camBtn" type="button" aria-label="Tirar foto à comida">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.2"/></svg>
+  </button>
+  <button class="side" id="manBtn" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+    Pesquisar
+  </button>
+  <input type="file" id="camIn" class="visually-hidden" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+  <input type="file" id="galIn" class="visually-hidden" accept="image/*" tabindex="-1" aria-hidden="true">
+</nav>
 
 <div class="setup" id="setup" role="dialog" aria-modal="true" aria-labelledby="setupTitle" hidden>
   <div class="setup-inner">
@@ -892,8 +989,9 @@ async function onPhotoSrc(src) {
   try { photo = processImg(await imgFromSrc(src)); }
   catch { toast("Não consegui abrir esta imagem. Tenta outra."); return; }
   const { canvas, ...rest } = photo;
-  newDraft({ ...rest, ai: { status: "running" } });
-  recognize(S.draft, canvas);
+  const keepMeal = S.draft && !S.draft.preview && !S.draft.demo ? S.draft.meal : null;
+  newDraft({ ...rest, ...(keepMeal ? { meal: keepMeal } : {}), ai: { status: "running", cloud: !!aiKey() } });
+  recognizeAny(S.draft, canvas);
 }
 
 // ---------- food recognition (on-device, MediaPipe) ----------
@@ -1027,13 +1125,113 @@ async function recognize(d, canvas) {
   if (found.length && !d.title.trim()) d.title = found.map((f) => (f.n > 1 && COUNTABLE.has(f.name) ? `${f.n}× ` : "") + f.name).join(", ");
   done({ status: found.length ? "found" : "none", found, alts });
 }
+// ---------- online AI (Google Gemini, the user's own free key) ----------
+const aiKey = () => String(lsGet("ddp.aiKey", "") || "").trim();
+const AI_PROMPT = "És um nutricionista português. Olha para a fotografia e identifica CADA alimento que está no prato em separado " +
+  "(por exemplo: arroz branco, feijão, grelos, entrecosto, chouriço, batata frita, salada). Para cada um, estima o peso em gramas tal como está no prato " +
+  "e os valores nutricionais por 100 g (kcal, proteína, hidratos de carbono e gordura) desse alimento cozinhado como aparece. " +
+  "Usa nomes curtos em português de Portugal, com a forma de preparação quando se vê (ex.: «Entrecosto grelhado», «Arroz de feijão»). " +
+  "Se for um alimento embalado ou uma bebida, identifica-o na mesma. Dá também um nome curto ao prato e uma pontuação de saúde de 1 a 10. " +
+  "Se não houver comida na foto, devolve a lista vazia.";
+const AI_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    dish: { type: "STRING" },
+    healthScore: { type: "INTEGER" },
+    items: { type: "ARRAY", items: { type: "OBJECT", properties: {
+      name: { type: "STRING" }, grams: { type: "NUMBER" }, kcal100: { type: "NUMBER" },
+      protein100: { type: "NUMBER" }, carbs100: { type: "NUMBER" }, fat100: { type: "NUMBER" }
+    }, required: ["name", "grams", "kcal100", "protein100", "carbs100", "fat100"] } }
+  },
+  required: ["dish", "items", "healthScore"]
+};
+async function cloudRecognize(canvas, key) {
+  const data = canvas.toDataURL("image/jpeg", 0.82).split(",")[1];
+  const body = JSON.stringify({
+    contents: [{ parts: [{ inline_data: { mime_type: "image/jpeg", data } }, { text: AI_PROMPT }] }],
+    generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: AI_SCHEMA }
+  });
+  for (const model of ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"]) {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 45000);
+    let res;
+    try {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body, signal: ctl.signal });
+    } finally { clearTimeout(t); }
+    if (res.status === 404) continue;
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(j.error?.message || String(res.status)), { status: res.status });
+    const txt = (j.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
+    return JSON.parse(txt);
+  }
+  throw Object.assign(new Error("Modelo indisponível"), { status: 404 });
+}
+const CAT_GUESS = [
+  [/arroz|massa|esparguete|noodle|cuscuz|quinoa|lasanha/, "arroz e massa"], [/batata|pure/, "batata"],
+  [/feijao|grao|lentilha|ervilha|fava/, "leguminosas"],
+  [/frango|porco|vaca|entrecosto|bife|carne|chouri|fiambre|presunto|salsicha|bacon|peru|costeleta|febra|alheira|hamburguer|lombo|picanha|vitela|borrego|cabrito|morcela|farinheira/, "carne e charcutaria"],
+  [/peixe|bacalhau|salmao|atum|sardinha|pescada|polvo|lula|camar|marisco|dourada|robalo|carapau|choco|amêijoa|ameijoa|mexilh/, "peixe"],
+  [/ovo|omelete/, "ovos"], [/queijo|iogurte|leite|natas|requeijao/, "laticínios"],
+  [/pao|tosta|broa|croissant|cereais|aveia|bolacha de agua/, "pão e cereais"],
+  [/alface|salada|tomate|grelos|couve|brocolo|espinafre|cenoura|legume|pepino|cebola|pimento|curgete|abobora|cogumelo|nabica|agriao|feijao-verde/, "legumes e salada"],
+  [/maca|banana|laranja|limao|pera|fruta|morango|uva|kiwi|ananas|melao|melancia|manga|tangerina|pessego/, "fruta"],
+  [/bolo|doce|chocolate|gelado|pudim|pastel de nata|bolacha|acucar|mousse/, "doces"],
+  [/agua|sumo|cafe|cerveja|vinho|refrigerante|cha\b|galao|meia de leite/, "bebidas"],
+  [/azeite|oleo|molho|maionese|ketchup|manteiga/, "gorduras e molhos"]
+];
+function aiItem(x) {
+  const name = String(x.name || "").trim().replace(/^./, (c) => c.toUpperCase()).slice(0, 60);
+  const g = Math.max(1, Math.min(2000, Math.round(Number(x.grams) || 0)));
+  const db = allFoods().find((f) => norm(f.name) === norm(name));
+  if (db) return fromFood(db, g);
+  const k = g / 100, nn = norm(name), cat = (CAT_GUESS.find(([re]) => re.test(nn)) || [0, "outros"])[1];
+  return { name, detail: "", cat, g, kcal: r0(num(x.kcal100) * k), p: r1(num(x.protein100) * k), c: r1(num(x.carbs100) * k), f: r1(num(x.fat100) * k), custom: true };
+}
+async function recognizeAny(d, canvas) {
+  const key = aiKey();
+  if (key) {
+    try {
+      const r = await cloudRecognize(canvas, key);
+      if (S.draft !== d) return;
+      const items = (Array.isArray(r?.items) ? r.items : []).filter((x) => x?.name && Number(x.grams) > 0).slice(0, 12).map(aiItem);
+      if (items.length) {
+        for (const it of items) if (!d.items.some((i) => i.name === it.name)) d.items.push(it);
+        if (!d.title.trim()) d.title = String(r.dish || "").trim().slice(0, 80) || items.slice(0, 3).map((i) => i.name).join(", ");
+        const sc = Math.round(Number(r.healthScore));
+        d.ai = { status: "cloud", names: items.map((i) => i.name), score: sc >= 1 && sc <= 10 ? sc : null };
+        renderDraft(); return;
+      }
+      d.cloudNote = "A IA não encontrou comida nesta foto.";
+    } catch (e) {
+      if (S.draft !== d) return;
+      d.cloudNote = e.status === 400 || e.status === 401 || e.status === 403 ? "A chave da IA não foi aceite (vê «Reconhecimento com IA», em baixo na app). Usei o reconhecimento do telemóvel."
+        : e.status === 429 ? "Chegaste ao limite gratuito da IA por agora. Usei o reconhecimento do telemóvel."
+        : "Não consegui falar com a IA (sem internet?). Usei o reconhecimento do telemóvel.";
+    }
+    d.ai = { status: "running" }; renderDraft();
+  }
+  return recognize(d, canvas);
+}
+function healthScore(items) {
+  const kcal = sum(items, "kcal"); if (!kcal) return null;
+  const g = sum(items, "g"), p = sum(items, "p"), f = sum(items, "f");
+  let sc = 5 + 3 * Math.min(1, (p * 4 / kcal) / 0.3) - 2.5 * Math.min(1, Math.max(0, (f * 9 / kcal - 0.35) / 0.25));
+  const dens = g ? kcal / g * 100 : 200;
+  sc += dens < 120 ? 1.5 : dens > 280 ? -1.5 : 0;
+  if (items.some((i) => i.cat === "legumes e salada" || i.cat === "fruta")) sc += 1;
+  if (items.some((i) => i.cat === "doces")) sc -= 1.5;
+  return Math.max(1, Math.min(10, Math.round(sc)));
+}
 function aiBanner(d) {
   const ai = d.ai; if (!ai) return "";
-  if (ai.status === "running") return `<div class="ai-box"><span class="ai-dot"></span><span>A reconhecer o alimento na foto…</span></div>`;
+  if (ai.status === "running") return `<div class="ai-box"><span class="ai-dot"></span><span>${ai.cloud ? "A IA está a ver cada alimento do prato…" : "A reconhecer o alimento na foto…"}</span></div>`;
+  if (ai.status === "cloud") return `<div class="ai-box ok-box"><b>Encontrei ${ai.names.length} ${ai.names.length === 1 ? "alimento" : "alimentos"}</b><span>${esc(ai.names.join(", "))}. Os gramas são uma estimativa da IA: confirma-os na lista.</span></div>`;
+  const note = d.cloudNote ? `<span class="muted" style="font-size:13px">${esc(d.cloudNote)}</span>` : "";
+  const goAI = !aiKey() && ai.status !== "found" ? `<button class="btn btn-plain ai-go" data-goai type="button">Reconhecer pratos misturados com IA</button>` : "";
   if (ai.status === "error") return `<div class="ai-box muted-box">Não consegui analisar a foto neste telemóvel. Escolhe os alimentos na lista.</div>`;
   const alts = ai.alts?.length ? `<div class="ai-alts"><span>${ai.status === "found" ? "Não é isto? Talvez:" : "Talvez seja:"}</span>${ai.alts.map((n) => `<button class="chip-btn" data-alt="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : "";
-  if (ai.status === "found") return `<div class="ai-box ok-box"><b>Reconhecido: ${ai.found.map((f) => esc((f.n > 1 && COUNTABLE.has(f.name) ? f.n + "× " : "") + f.name) + ` <small>${Math.round(f.score * 100)}%</small>`).join(", ")}</b><span>Já está no prato. Confirma a quantidade em baixo.</span>${alts}</div>`;
-  return `<div class="ai-box muted-box"><span>Não reconheci nenhum alimento com certeza. Escolhe na lista em baixo.</span>${alts}</div>`;
+  if (ai.status === "found") return `<div class="ai-box ok-box">${note}<b>Reconhecido: ${ai.found.map((f) => esc((f.n > 1 && COUNTABLE.has(f.name) ? f.n + "× " : "") + f.name) + ` <small>${Math.round(f.score * 100)}%</small>`).join(", ")}</b><span>Já está no prato. Confirma a quantidade em baixo.</span>${alts}</div>`;
+  return `<div class="ai-box muted-box">${note}<span>Não reconheci nenhum alimento com certeza. Escolhe na lista em baixo.</span>${alts}${goAI}</div>`;
 }
 async function onFile(file) {
   if (!file) return;
@@ -1066,7 +1264,7 @@ function newDraft(extra) {
   const rec = recentFoods();
   S.draft = { items: [], title: "", meal: guessMeal(), tab: rec.length ? "recentes" : "pratos", q: "", keep: false, ...extra };
   renderDraft();
-  if (!extra.noScroll) requestAnimationFrame(() => $("#draft").scrollIntoView({ behavior: "smooth", block: "start" }));
+  $("#draft").scrollTop = 0;
 }
 
 function foodsForTab(d) {
@@ -1156,7 +1354,7 @@ function renderPicker() {
       // keep the product so it shows up in search and in «Recentes» next time
       if (!S.custom.some((x) => x.name === p.name)) { S.custom.unshift({ ...p }); lsSet("ddp.custom", S.custom.slice(0, 200)); }
     }
-    const y = window.scrollY; renderDraft(); window.scrollTo(0, y);
+    const y = $("#draft").scrollTop; renderDraft(); $("#draft").scrollTop = y;
   });
   box.querySelectorAll("[data-dish]").forEach((b) => b.onclick = () => {
     const x = S.dishes[+b.dataset.dish]; if (!x) return;
@@ -1170,7 +1368,7 @@ function renderPicker() {
     const name = b.dataset.food, idx = d.items.findIndex((i) => i.name === name);
     if (idx >= 0) d.items.splice(idx, 1);
     else { const f = allFoods().find((x) => x.name === name); if (f) d.items.push(fromFood(f)); }
-    const y = window.scrollY; renderDraft(); window.scrollTo(0, y);
+    const y = $("#draft").scrollTop; renderDraft(); $("#draft").scrollTop = y;
   });
   const c = box.querySelector("#dCreate");
   if (c) c.onclick = () => {
@@ -1185,21 +1383,25 @@ function renderDraft() {
   if (!d) { el.hidden = true; el.innerHTML = ""; return; }
   el.hidden = false;
   const tot = sum(d.items, "kcal");
+  const score = d.ai?.status === "cloud" && d.ai.score ? d.ai.score : healthScore(d.items);
+  const tile = (ic, label, val) => `<div class="tile"><span class="ic" aria-hidden="true">${ic}</span><div><small>${label}</small><b>${val}</b></div></div>`;
   el.innerHTML = `
-    ${d.preview ? `<div class="draft-photo"><img src="${d.preview}" alt="Foto da refeição"></div>` : ""}
+    <div class="sheet-bar"><button class="round-btn" id="dClose" type="button" aria-label="Fechar sem guardar">×</button><b>${d.preview ? "Comida na foto" : "Adicionar comida"}</b><span></span></div>
+    ${d.preview ? `<div class="draft-photo"><img src="${d.preview}" alt="Foto da refeição"></div>` :
+      `<div class="sheet-snap"><button class="btn" id="dCam" type="button">📷 Tirar foto</button><button class="btn" id="dGal" type="button">🖼️ Da galeria</button></div>`}
     <div class="draft-body">
       ${aiBanner(d)}
       <input class="title-in" id="dTitle" placeholder="Nome da refeição (ex.: Sandes mista)" value="${esc(d.title)}" aria-label="Nome da refeição">
-      <select id="dMeal" aria-label="Tipo de refeição">${MEALS.map((m) => `<option ${m === d.meal ? "selected" : ""}>${m}</option>`).join("")}</select>
-
-      <div class="picker">
-        <span class="picker-label">Toca no que está no prato</span>
-        <div class="search"><input class="field" id="dSearch" type="search" placeholder="Procurar alimento…" value="${esc(d.q)}" aria-label="Procurar alimento"></div>
-        <div id="dResults" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div class="seg-meal" id="dMeal" role="radiogroup" aria-label="Tipo de refeição">${MEALS.map((m) => `<button type="button" role="radio" aria-checked="${m === d.meal}" data-meal="${m}">${m}</button>`).join("")}</div>
+      <div class="tiles">
+        ${tile("🔥", "Calorias", `${r0(tot)}`)}${tile("🌾", "Hidratos", `${r0(sum(d.items, "c"))} g`)}
+        ${tile("🍗", "Proteína", `${r0(sum(d.items, "p"))} g`)}${tile("🥑", "Gordura", `${r0(sum(d.items, "f"))} g`)}
       </div>
+      ${score ? `<div class="health"><span class="ic" aria-hidden="true">💚</span><div class="h"><div class="h-top"><span style="font-family:var(--f-body)">Pontuação de saúde</span><span>${score}/10</span></div><div class="h-bar"><i style="width:${score * 10}%"></i></div><small>${d.ai?.status === "cloud" && d.ai.score ? "Avaliação da IA" : "Estimativa pela proteína, gordura e legumes do prato"}</small></div></div>` : ""}
 
       ${d.items.length ? `<div>
-        <div class="items-head"><span>No prato</span><span>Peso</span><span>Energia</span><span></span></div>
+        <h3 class="list-title" style="margin-bottom:8px">Alimentos no prato</h3>
+        <div class="items-head"><span>Alimento</span><span>Peso</span><span>Energia</span><span></span></div>
         <div class="items">${d.items.map((it, i) => `
           <div class="item" data-i="${i}">
             <div class="nm"><input value="${esc(it.name)}" data-k="name" aria-label="Nome do alimento">
@@ -1208,16 +1410,29 @@ function renderDraft() {
             <div class="unit"><input type="number" inputmode="numeric" min="0" value="${r0(it.kcal)}" data-k="kcal" aria-label="Calorias de ${esc(it.name)}"><span>kcal</span></div>
             <button class="x" data-rm="${i}" aria-label="Remover ${esc(it.name)}">×</button>
           </div>`).join("")}</div></div>` : ""}
-      <div class="draft-total"><span>Total</span><span class="num">${r0(tot)} kcal</span></div>
-      ${d.items.length > 1 ? `<label class="keep"><input type="checkbox" id="dKeep" ${d.keep ? "checked" : ""}> Guardar também em «Os meus pratos» para repetir com um toque</label>` : ""}
-      <div class="draft-actions">
-        <button class="btn btn-plain" id="dCancel">Cancelar</button>
-        <button class="btn btn-accent" id="dSave" ${d.items.length ? "" : "disabled"}>Guardar refeição</button>
+
+      <div class="picker">
+        <h3 class="list-title">${d.items.length ? "Acrescentar alimentos" : "Toca no que vais comer"}</h3>
+        <div class="search"><input class="field" id="dSearch" type="search" placeholder="Procurar alimento…" value="${esc(d.q)}" aria-label="Procurar alimento"></div>
+        <div id="dResults" style="display:flex;flex-direction:column;gap:10px"></div>
       </div>
+      ${d.items.length > 1 ? `<label class="keep"><input type="checkbox" id="dKeep" ${d.keep ? "checked" : ""}> Guardar também em «Os meus pratos» para repetir com um toque</label>` : ""}
+    </div>
+    <div class="sheet-actions draft-actions">
+      <button class="btn btn-plain" id="dCancel">Cancelar</button>
+      <button class="btn btn-accent" id="dSave" ${d.items.length ? "" : "disabled"}>Guardar · ${r0(tot)} kcal</button>
     </div>`;
   const q = (s) => el.querySelector(s);
   q("#dTitle").oninput = (e) => { d.title = e.target.value; };
-  q("#dMeal").onchange = (e) => { d.meal = e.target.value; };
+  el.querySelectorAll("[data-meal]").forEach((b) => b.onclick = () => { d.meal = b.dataset.meal; el.querySelectorAll("[data-meal]").forEach((x) => x.setAttribute("aria-checked", x === b)); });
+  const segOn = q("[data-meal][aria-checked=\"true\"]"); if (segOn) q("#dMeal").scrollLeft = Math.max(0, segOn.offsetLeft - 24);
+  q("#dClose").onclick = () => { S.draft = null; renderDraft(); };
+  q("#dCam") && (q("#dCam").onclick = () => { warmAI(); takePhoto("CAMERA"); });
+  q("#dGal") && (q("#dGal").onclick = () => { warmAI(); takePhoto("PHOTOS"); });
+  el.querySelectorAll("[data-goai]").forEach((b) => b.onclick = () => {
+    S.draft = null; renderDraft();
+    const det = $("#aiDetails"); det.open = true; det.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   q("#dSearch").oninput = (e) => { d.q = e.target.value; d.more = false; renderPicker(); };
   renderPicker();
   q("#dKeep") && (q("#dKeep").onchange = (e) => { d.keep = e.target.checked; });
@@ -1265,7 +1480,7 @@ function saveDraft() {
   S.meals = [meal, ...S.meals];
   if (!saveMeals()) { S.meals = S.meals.filter((m) => m !== meal); toast("Memória cheia: apaga refeições antigas."); return; }
   S.draft = null; renderDraft(); render(); toast("Refeição guardada");
-  requestAnimationFrame(() => document.querySelector(".label").scrollIntoView({ behavior: "smooth", block: "start" }));
+  requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
 }
 
 // ---------- day view ----------
@@ -1296,29 +1511,44 @@ function render() {
   $("#dayLbl").textContent = dayLabel(S.day);
   $("#nextDay").disabled = S.day >= t;
   const d = dateOf(S.day);
-  $("#labelTitle").textContent = dayLabel(S.day);
-  $("#labelDate").textContent = `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  $("#labelDate").textContent = `${dayLabel(S.day)} · ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 
   const meals = S.meals.filter((m) => m.day === S.day).sort((a, b) => a.ts - b.ts);
   const items = meals.flatMap((m) => m.items || []);
   const kcal = sum(items, "kcal"), goal = S.goal;
-  $("#kcalTotal").textContent = r0(kcal).toLocaleString("pt-PT");
-  const pct = goal ? kcal / goal : 0;
-  $("#meter").classList.toggle("over", pct > 1);
-  $("#meter i").style.width = Math.min(100, pct * 100) + "%";
-  $("#kcalLeft").textContent = kcal <= goal ? `Faltam ${r0(goal - kcal).toLocaleString("pt-PT")} kcal` : `${r0(kcal - goal).toLocaleString("pt-PT")} kcal acima da meta`;
-  $("#kcalGoal").textContent = `Meta ${goal.toLocaleString("pt-PT")} kcal`;
+  $("#kcalTotal").textContent = `${r0(kcal)} kcal`;
+  $("#kcalLeft").textContent = kcal <= goal ? `Faltam ${r0(goal - kcal)} kcal` : `${r0(kcal - goal)} kcal acima`;
+  $("#kcalGoal").textContent = `${goal} kcal`;
   if (!CAL.el.hidden) renderCal();
-  const targets = { p: goal * 0.2 / 4, c: goal * 0.5 / 4, f: goal * 0.3 / 9 };
-  $("#macros").innerHTML = [["p", "Proteína", "var(--prot)"], ["c", "Hidratos", "var(--carb)"], ["f", "Gordura", "var(--fat)"]].map(([k, n, col]) => {
-    const g = sum(items, k);
-    return `<div class="macro"><span class="mn"><i style="background:${col}"></i>${n}</span><span class="g">${r0(g)} g <span class="muted">/ ${r0(targets[k])} g</span></span><span class="pct">${r0(g / targets[k] * 100)}%</span></div>`;
+  // macro split by objective: losing weight keeps protein higher
+  const split = { lose: [0.3, 0.4, 0.3], gain: [0.25, 0.5, 0.25] }[P.objective] || [0.2, 0.5, 0.3];
+  const targets = { p: goal * split[0] / 4, c: goal * split[1] / 4, f: goal * split[2] / 9 };
+  const M = [["c", "Hidratos", "var(--carb)", 4], ["p", "Proteína", "var(--prot)", 4], ["f", "Gordura", "var(--fat)", 9]];
+  $("#macros").innerHTML = M.map(([k, n, col]) => {
+    const g = sum(items, k), pc = Math.min(100, g / targets[k] * 100);
+    return `<div class="mbar"><div class="top">${n}<span>${r0(g)} / ${r0(targets[k])} g</span></div><div class="bar"><i style="width:${pc}%;background:${col}"></i></div></div>`;
   }).join("");
+  // ring: each macro's calories as a coloured arc, out of the daily goal
+  const R = 62, Cc = 2 * Math.PI * R;
+  let start = 0;
+  const arcs = M.map(([k, , col, kc]) => {
+    const share = goal ? Math.min(sum(items, k) * kc / goal, Math.max(0, 1 - start)) : 0;
+    const a = `<circle cx="74" cy="74" r="${R}" fill="none" stroke="${col}" stroke-width="13" stroke-linecap="butt" stroke-dasharray="${share * Cc} ${Cc}" stroke-dashoffset="${-start * Cc}"></circle>`;
+    start += share; return share > 0 ? a : "";
+  }).join("");
+  const left = goal - kcal;
+  $("#ring").innerHTML = `<svg viewBox="0 0 148 148" aria-hidden="true"><circle cx="74" cy="74" r="${R}" fill="none" stroke="var(--soft)" stroke-width="13"></circle>${arcs}</svg>
+    <div class="ring-c ${left < 0 ? "over" : ""}"><b>${r0(Math.abs(left))}</b><span>${left < 0 ? "kcal a mais" : "kcal restantes"}</span></div>`;
 
   $("#mealCount").textContent = meals.length ? `${meals.length} ${meals.length === 1 ? "refeição" : "refeições"}` : "";
   const list = $("#meals");
-  list.innerHTML = meals.length ? meals.map(mealCard).join("") :
-    `<div class="empty"><p>${S.day === t ? "Ainda não registaste nada hoje." : "Nada registado neste dia."} Tira uma foto e escolhe os alimentos. Cada refeição fica assim:</p>${mealCard(EXAMPLE)}</div>`;
+  const ICONS = { "Pequeno-almoço": "☕", "Almoço": "🍽️", "Lanche": "🥪", "Jantar": "🍲", "Snack": "🍎" };
+  list.innerHTML = MEALS.map((name) => {
+    const ms = meals.filter((m) => m.meal === name), kc = sum(ms.flatMap((m) => m.items || []), "kcal");
+    return `<div class="mgroup"><div class="mg-head"><span class="mg-ic" aria-hidden="true">${ICONS[name] || "🍴"}</span><div class="t"><b>${name}</b><small>${r0(kc)} kcal</small></div>
+      <button class="add-btn" type="button" data-add="${name}" aria-label="Adicionar ao ${name}">+</button></div>${ms.map(mealCard).join("")}</div>`;
+  }).join("");
+  list.querySelectorAll("[data-add]").forEach((b) => b.onclick = () => newDraft({ meal: b.dataset.add }));
   list.querySelectorAll("[data-del]").forEach((b) => {
     b.onclick = () => {
       if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = "Confirmar"; setTimeout(() => { b.classList.remove("armed"); b.textContent = "Apagar"; }, 3000); return; }
@@ -1337,6 +1567,15 @@ function render() {
 }
 
 function mealCard(m) {
+  const items = m.items || [], kcal = sum(items, "kcal");
+  const when = new Date(m.ts).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+  return `<article class="entry ${m.thumb ? "" : "no-thumb"}">
+    ${m.thumb ? `<img src="${esc(m.thumb)}" alt="">` : ""}
+    <div class="mid"><h3>${esc(m.title)}</h3><p>${when} · ${esc(items.map((it) => `${it.name} ${r0(it.g)} g`).join(", "))}</p></div>
+    <div class="right"><span class="kc">${r0(kcal)} kcal</span><span class="acts"><button class="del" data-again="${esc(m.id)}">Repetir</button><button class="del" data-del="${esc(m.id)}">Apagar</button></span></div>
+  </article>`;
+}
+function mealCardOld(m) {
   const items = m.items || [], kcal = sum(items, "kcal");
   const when = m.example ? "" : new Date(m.ts).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
   const thumb = m.thumb ? `<img src="${esc(m.thumb)}" alt="">` : (m.example ? `<div class="ph" aria-hidden="true"></div>` : "");
@@ -1466,6 +1705,19 @@ $("#kcalGoal").onclick = () => {
   det.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 fillProfile(); renderCalc();
+function renderAIState() {
+  const k = aiKey();
+  $("#aiState").textContent = k ? `IA ligada (chave …${k.slice(-4)}). As fotos passam a ser analisadas alimento a alimento.` : "IA desligada: a app usa só o reconhecimento do telemóvel.";
+  $("#aiKey").value = "";
+  $("#aiKey").placeholder = k ? "Para mudar, cola outra chave" : "Cola aqui a chave (começa por AIza…)";
+}
+$("#aiSave").onclick = () => {
+  const v = $("#aiKey").value.trim();
+  if (!v) { lsSet("ddp.aiKey", ""); renderAIState(); toast("IA desligada"); return; }
+  if (!/^[A-Za-z0-9_\-]{30,60}$/.test(v)) { toast("Esta chave não parece certa. Copia-a outra vez do site."); return; }
+  lsSet("ddp.aiKey", v); renderAIState(); toast("IA ligada. Tira uma foto a um prato para experimentar.");
+};
+renderAIState();
 // ---------- first-run profile (required) ----------
 const GOAL_NAMES = { lose: "perder peso", keep: "manter o peso", gain: "ganhar massa" };
 const profileDone = () => !!(P.sex && P.age && P.weight && P.height && P.act && P.objective);
@@ -1569,21 +1821,22 @@ function closeDemo() {
 }
 const TOUR = [
   { title: "Vamos lá", text: "Em cerca de um minuto ficas a saber usar tudo. Toca em «Seguinte» para avançar. Podes sair quando quiseres e rever o tutorial em «Ajuda», no fundo da app." },
-  { sel: "#camBtn", title: "Tira uma foto", text: "Toca em «Tirar foto» e fotografa o prato. A app reconhece sozinha fruta, legumes e centenas de pratos, como francesinha, cozido, bacalhau à Brás ou esparguete, e põe-nos logo no prato, com a percentagem de certeza. Da primeira vez, o Android pede autorização para usar a câmara: escolhe «Permitir»." },
-  { sel: "#galBtn", title: "Ou usa uma foto que já tens", text: "«Da galeria» deixa-te escolher uma fotografia que já tiraste antes." },
-  { sel: "#manBtn", title: "Também dá sem foto", text: "«Sem foto» abre logo a lista de alimentos. Os passos seguintes são iguais, com ou sem fotografia." },
+  { sel: "#camBtn", title: "Tira uma foto", text: "O botão redondo em baixo abre a câmara. Fotografa o prato e a app reconhece os alimentos e põe-nos na lista, com as calorias, os hidratos, a proteína e a gordura. Da primeira vez, o Android pede autorização para usar a câmara: escolhe «Permitir»." },
+  { sel: "#galBtn", title: "Ou usa uma foto que já tens", text: "«Galeria» deixa-te escolher uma fotografia que já tiraste antes." },
+  { sel: "#manBtn", title: "Também dá sem foto", text: "«Pesquisar» abre a lista de alimentos para escolheres à mão. Também podes tocar no «+» de cada refeição." },
   { sel: "#dResults .tabs", demo: true, title: "Escolhe a categoria", text: "Os alimentos estão organizados por separadores: Pratos, Pão, Queijo e lácteos, Carne e fiambre, Arroz e massa, Fruta e outros. Desliza para o lado para veres todos. «Recentes» mostra o que comes mais vezes." },
   { sel: "#dResults .grid", demo: true, title: "Toca no que está no prato", text: "Toca num alimento para o pôr no prato: fica com o contorno verde. Toca outra vez para o tirar. Cada alimento entra com uma porção normal, que podes acertar a seguir." },
   { sel: "#dSearch", demo: true, title: "Procura pelo nome", text: "Escreve parte do nome, por exemplo «entrecosto» ou «arroz feijão». A lista tem mais de 1500 alimentos da tabela oficial portuguesa (INSA). Para produtos de supermercado, toca em «Procurar nos produtos de marca» (precisa de internet). Se mesmo assim não existir, toca em «+ Criar» e escreve as calorias." },
   { sel: "#draft .items", demo: true, title: "Acerta as quantidades", text: "Aqui ficam os alimentos do prato. Se mudares os gramas, as calorias atualizam-se sozinhas. Também podes escrever as calorias diretamente. O «×» tira o alimento." },
-  { sel: "#dMeal", demo: true, title: "Que refeição é", text: "A app escolhe a refeição pela hora (pequeno-almoço, almoço, lanche, jantar ou snack), mas podes mudar. Por cima podes dar um nome à refeição, se quiseres." },
+  { sel: "#dMeal", demo: true, title: "Que refeição é", text: "A app escolhe a refeição pela hora (pequeno-almoço, almoço, lanche, jantar ou snack), mas podes tocar noutra. Por baixo vês as calorias, os hidratos, a proteína, a gordura e a pontuação de saúde do prato." },
   { sel: "#draft .keep", demo: true, title: "Guarda os teus pratos", text: "Se comes isto muitas vezes, marca esta opção. O prato fica em «Os meus pratos» e da próxima vez adicionas tudo com um só toque." },
-  { sel: "#dSave", demo: true, title: "Guarda a refeição", text: "Quando estiver tudo certo, toca em «Guardar refeição». «Cancelar» deita fora sem guardar. Esta sandes é só um exemplo e não vai ser guardada." },
-  { sel: ".label", title: "O teu dia", text: "Aqui vês as calorias do dia e quanto falta para a tua meta. A barra fica amarela se passares a meta. Por baixo tens a proteína, os hidratos e a gordura, com a percentagem da meta de cada um." },
-  { sel: "#meals", title: "As tuas refeições", text: "Cada refeição guardada aparece aqui com a foto e os alimentos. «Repetir» volta a registar a mesma refeição. Para apagar, toca em «Apagar» e depois em «Confirmar»." },
+  { sel: "#dSave", demo: true, title: "Guarda a refeição", text: "Quando estiver tudo certo, toca em «Guardar». «Cancelar» ou o «×» em cima deitam fora sem guardar. Esta sandes é só um exemplo e não vai ser guardada." },
+  { sel: "#summary", title: "O teu dia", text: "O anel mostra quantas calorias ainda podes comer hoje. As cores são os hidratos, a proteína e a gordura que já comeste, e as barras ao lado mostram quanto falta de cada um para a tua meta." },
+  { sel: "#meals", title: "As tuas refeições", text: "O dia está dividido em pequeno-almoço, almoço, lanche, jantar e snack. O «+» adiciona comida a essa refeição. «Repetir» volta a registar a mesma coisa. Para apagar, toca em «Apagar» e depois em «Confirmar»." },
   { sel: "header", title: "Escolher o dia", text: "Toca no calendário, no canto de cima à direita, ou no nome do dia para abrir o mês e escolher qualquer dia. As setas avançam ou recuam um dia. Os dias com registos têm um ponto verde, ou amarelo se passaste a meta." },
   { sel: ".week", title: "Últimos 7 dias", text: "O gráfico mostra as calorias de cada dia. A linha tracejada é a tua meta e as barras amarelas são os dias acima dela. Toca num dia para o abrir." },
   { sel: "#goalDetails", title: "A tua meta", text: "A tua meta foi calculada com os dados que preencheste no início (sexo, idade, peso, altura, atividade e objetivo). Em «Meta diária» podes mudar esses dados, por exemplo quando o teu peso mudar, ou escrever tu as calorias." },
+  { sel: "#aiDetails", title: "Reconhecimento com IA", text: "Para a app separar cada alimento de um prato misturado (arroz, feijão, grelos, entrecosto…), liga aqui a IA Gemini com uma chave gratuita da Google. Sem chave, a app usa o reconhecimento do telemóvel, que conhece pratos inteiros e fruta." },
   { sel: "#updDetails", title: "Atualizações", text: "Quando houver uma versão nova, aparece uma barra verde no topo da app. Toca em «Descarregar», abre o ficheiro e instala. Os teus registos mantêm-se." },
   { title: "Os teus dados", text: "Tudo fica guardado só neste telemóvel e a app funciona sem internet. Atenção: se desinstalares a app, os registos são apagados. Está pronto, bom apetite!" }
 ];
@@ -1614,7 +1867,8 @@ function showStep() {
     const r = target.getBoundingClientRect(), free = window.innerHeight - $("#tourCard").offsetHeight - 40;
     // place the target in the space above the card (a taller target is pinned to the top)
     const want = r.height > free ? 16 : Math.max(16, (free - r.height) / 2);
-    window.scrollBy({ top: r.top - want, behavior: "instant" });
+    const sheet = target.closest("#draft");
+    (sheet || window).scrollBy({ top: r.top - want, behavior: "instant" });
   }
   placeStep();
   setTimeout(placeStep, 60);
@@ -1643,6 +1897,7 @@ $("#tourBack").onclick = () => { if (T.i > 0) { T.i--; showStep(); } };
 $("#tourSkip").onclick = () => endTour(false);
 window.addEventListener("resize", () => T.on && placeStep());
 window.addEventListener("scroll", () => T.on && placeStep(), { passive: true });
+$("#draft").addEventListener("scroll", () => T.on && placeStep(), { passive: true });
 document.addEventListener("keydown", (e) => {
   if (!T.on) return;
   if (e.key === "Escape") endTour(false);
