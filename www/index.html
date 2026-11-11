@@ -1084,34 +1084,53 @@ document.addEventListener("keydown", (e) => {
 const APP_BUILD = parseInt("__APP_BUILD__", 10) || 1;
 const RELEASES_API = "https://api.github.com/repos/chibangar/diario-do-prato/releases/latest";
 $("#versionLbl").textContent = `Versão 1.0.${APP_BUILD}`;
-let lastCheck = 0;
+let lastCheck = 0, checking = false;
+// Android usually resumes the app instead of restarting it, so check on every return (at most once a minute).
+async function getLatestRelease() {
+  const native = window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.CapacitorHttp;
+  if (native) {
+    try {
+      const r = await native.get({ url: RELEASES_API, headers: { Accept: "application/vnd.github+json", "User-Agent": "DiarioDoPrato-app" } });
+      if (r.status >= 200 && r.status < 300) return typeof r.data === "string" ? JSON.parse(r.data) : r.data;
+    } catch { /* fall back to fetch */ }
+  }
+  const res = await fetch(RELEASES_API, { headers: { Accept: "application/vnd.github+json" }, cache: "no-store" });
+  if (!res.ok) throw new Error(String(res.status));
+  return res.json();
+}
 async function checkUpdate(manual) {
-  if (!manual && Date.now() - lastCheck < 6 * 3600e3) return;
-  lastCheck = Date.now();
-  const note = $("#updNote");
+  if (checking || (!manual && Date.now() - lastCheck < 60e3)) return;
+  checking = true; lastCheck = Date.now();
+  const note = $("#updNote"), hhmm = new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
   if (manual) note.textContent = "A procurar…";
   try {
-    const res = await fetch(RELEASES_API, { headers: { Accept: "application/vnd.github+json" }, cache: "no-store" });
-    if (!res.ok) throw new Error(String(res.status));
-    const rel = await res.json();
+    const rel = await getLatestRelease();
     const build = parseInt(String(rel.tag_name || "").match(/(\d+)$/)?.[1] || "0", 10);
     const apk = (rel.assets || []).find((a) => /\.apk$/i.test(a.name));
     if (build > APP_BUILD && apk) {
       $("#updateText").textContent = `Há uma versão nova (1.0.${build}). Descarrega e abre o ficheiro para atualizar: os teus registos mantêm-se.`;
       $("#updateLink").href = apk.browser_download_url;
       $("#updateBar").hidden = false;
-      note.textContent = `Versão nova disponível: 1.0.${build}.`;
+      note.textContent = `Verificado às ${hhmm}: há uma versão nova, a 1.0.${build}. Usa a barra verde no topo.`;
+      if (manual) window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       $("#updateBar").hidden = true;
-      if (manual) note.textContent = "Já tens a versão mais recente.";
+      note.textContent = `Verificado às ${hhmm}: já tens a versão mais recente.`;
     }
   } catch {
-    if (manual) note.textContent = "Não consegui verificar. Confirma que tens internet.";
-  }
+    note.textContent = `Verificado às ${hhmm}: não consegui ligar ao GitHub. Confirma que tens internet e toca em «Procurar atualização».`;
+  } finally { checking = false; }
 }
 $("#updCheck").onclick = () => checkUpdate(true);
+// open the APK download in the phone's browser
+$("#updateLink").addEventListener("click", (e) => {
+  const url = $("#updateLink").href; if (!/^https:\/\//.test(url)) return;
+  e.preventDefault(); window.location.href = url;
+});
 
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); checkUpdate(false); } });
+window.addEventListener("online", () => checkUpdate(false));
+window.Capacitor?.Plugins?.App?.addListener?.("resume", () => checkUpdate(false));
 
 render();
 checkUpdate(false);
