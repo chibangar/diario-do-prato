@@ -167,6 +167,43 @@ details.settings summary { font-weight: 600; cursor: pointer; }
 .keep input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
 .dish-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
 .dish-row:first-child { border-top: 0; }
+/* welcome */
+.welcome { position: fixed; inset: 0; z-index: 900; background: #111613; color: #F5F7F2; overflow-y: auto;
+  padding: max(24px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); }
+.w-inner { max-width: 440px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; gap: 16px; justify-content: center; }
+.w-media { position: relative; border-radius: 22px; overflow: hidden; background: #0C110E; aspect-ratio: 9 / 14; max-height: 56vh; width: 100%; }
+.w-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.w-play { position: absolute; inset: 0; margin: auto; width: 76px; height: 76px; border-radius: 50%; border: 0; background: var(--hi); color: #1B1600; font-size: 28px; padding-left: 6px; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+.w-sound { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-size: 13px; font-weight: 600; color: #FFFFFF; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.w-text { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; padding: 24px; background: linear-gradient(180deg, #24402F 0%, #0C110E 100%); }
+.w-text svg { width: 64px; height: 64px; margin-bottom: auto; }
+.w-text p { margin: 0; font-size: 18px; line-height: 1.5; color: #F5F7F2; }
+.w-text small { color: #F2B705; font-weight: 600; letter-spacing: .04em; }
+.welcome h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.welcome .w-sub { margin: 0; opacity: .8; font-size: 15px; }
+.w-actions { display: flex; flex-direction: column; gap: 8px; }
+.w-actions .btn { width: 100%; font-size: 16px; padding: 14px; }
+/* tutorial */
+.tour { position: fixed; inset: 0; z-index: 1000; }
+.tour-block { position: absolute; inset: 0; }
+.tour-hole { position: fixed; border-radius: 14px; box-shadow: 0 0 0 9999px rgba(8, 12, 10, .68); outline: 3px solid var(--hi); outline-offset: 2px; pointer-events: none; }
+.tour-hole.none { left: 50% !important; top: 40% !important; width: 0 !important; height: 0 !important; outline: 0; }
+.tour-card { position: fixed; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); max-width: 520px; margin: 0 auto; background: var(--card); color: var(--ink); border-radius: 16px; padding: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 8px; }
+.tour-card.bottom { bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
+.tour-card.top { top: max(12px, env(safe-area-inset-top, 0px)); }
+.tour-card.center { top: 50%; transform: translateY(-50%); }
+.tour-step { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+.tour-dots { display: flex; gap: 3px; }
+.tour-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.tour-dots i.on { background: var(--accent); }
+.tour-card h3 { font-size: 19px; font-weight: 800; }
+.tour-card p { margin: 0; font-size: 15px; line-height: 1.5; }
+.tour-nav { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.tour-nav .sp { flex: 1; }
+.tour-nav button { border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 600; }
+.tour-nav .ghost { background: transparent; color: var(--muted); padding-left: 0; }
+.tour-nav .back { background: var(--soft); color: var(--ink); }
+.help-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .update { background: var(--accent); color: var(--accent-ink); border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .update p { margin: 0; flex: 1 1 180px; font-size: 14px; }
 .update a { background: var(--accent-ink); color: var(--accent); text-decoration: none; font-weight: 700; border-radius: 10px; padding: 9px 14px; }
@@ -238,7 +275,16 @@ details.settings summary { font-weight: 600; cursor: pointer; }
     <div id="week"></div>
   </section>
 
-  <details class="settings">
+  <details class="settings" id="helpDetails">
+    <summary>Ajuda</summary>
+    <p class="note" style="margin:10px 0 0">Revê a mensagem de boas-vindas ou o tutorial que explica a app passo a passo.</p>
+    <div class="help-actions">
+      <button class="btn btn-accent" id="helpTour">Ver tutorial</button>
+      <button class="btn btn-plain" id="helpWelcome">Ver boas-vindas</button>
+    </div>
+  </details>
+
+  <details class="settings" id="goalDetails">
     <summary>Meta diária</summary>
     <div class="set-row">
       <label for="goalIn">Calorias por dia</label>
@@ -248,12 +294,12 @@ details.settings summary { font-weight: 600; cursor: pointer; }
     <p class="note">Os registos ficam guardados só neste telemóvel. Desinstalar a app apaga-os.</p>
   </details>
 
-  <details class="settings">
+  <details class="settings" id="dishDetails">
     <summary>Os meus pratos</summary>
     <div id="dishList" style="margin-top:10px"></div>
   </details>
 
-  <details class="settings">
+  <details class="settings" id="updDetails">
     <summary>Atualizações</summary>
     <div class="set-row">
       <span class="num" id="versionLbl">Versão 1.0.1</span>
@@ -261,6 +307,42 @@ details.settings summary { font-weight: 600; cursor: pointer; }
     </div>
     <p class="note" id="updNote">A app procura versões novas sempre que é aberta com internet.</p>
   </details>
+</div>
+
+<div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="wTitle" hidden>
+  <div class="w-inner">
+    <div class="w-media">
+      <video id="wVideo" playsinline preload="metadata"></video>
+      <button class="w-play" id="wPlay" aria-label="Ver a mensagem de boas-vindas" hidden>▶</button>
+      <div class="w-sound" id="wSound" hidden>Liga o som</div>
+      <div class="w-text" id="wText">
+        <svg viewBox="0 0 108 108" aria-hidden="true"><circle cx="54" cy="54" r="54" fill="#17201A"/><circle cx="54" cy="54" r="22" fill="#F2B705"/><circle cx="54" cy="54" r="15" fill="#F5F7F2"/><path fill="#2E6A45" d="M47,60c0,-8 6,-13 14,-13c0,8 -6,13 -14,13z"/></svg>
+        <p>«Olá, que bom ter-te aqui! Com o Diário do Prato é muito simples: tiras uma fotografia ao teu prato e tocas nos alimentos que lá estão. A app faz as contas por ti. Vou mostrar-te como funciona, passo a passo.»</p>
+      </div>
+    </div>
+    <h1 id="wTitle">Olá! Este é o teu Diário do Prato</h1>
+    <p class="w-sub">Regista o que comes em segundos e vê as calorias do dia. O tutorial explica tudo em cerca de um minuto.</p>
+    <div class="w-actions">
+      <button class="btn btn-primary" id="wTour">Ver como funciona</button>
+      <button class="btn btn-ghost" id="wSkip">Agora não</button>
+    </div>
+  </div>
+</div>
+
+<div class="tour" id="tour" hidden>
+  <div class="tour-block"></div>
+  <div class="tour-hole" id="tourHole"></div>
+  <div class="tour-card bottom" id="tourCard" role="dialog" aria-modal="true" aria-labelledby="tourTitle" tabindex="-1">
+    <div class="tour-step"><span id="tourStep">Passo 1 de 18</span><span class="tour-dots" id="tourDots"></span></div>
+    <h3 id="tourTitle"></h3>
+    <p id="tourText"></p>
+    <div class="tour-nav">
+      <button class="ghost" id="tourSkip">Sair</button>
+      <span class="sp"></span>
+      <button class="back" id="tourBack">Anterior</button>
+      <button class="btn-accent" id="tourNext">Seguinte</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -641,7 +723,7 @@ function newDraft(extra) {
   const rec = recentFoods();
   S.draft = { items: [], title: "", meal: guessMeal(), tab: rec.length ? "recentes" : "pratos", q: "", keep: false, ...extra };
   renderDraft();
-  requestAnimationFrame(() => $("#draft").scrollIntoView({ behavior: "smooth", block: "start" }));
+  if (!extra.noScroll) requestAnimationFrame(() => $("#draft").scrollIntoView({ behavior: "smooth", block: "start" }));
 }
 
 function foodsForTab(d) {
@@ -883,6 +965,120 @@ $("#goalSave").onclick = () => {
   if (g < 800 || g > 6000) { toast("Escolhe uma meta entre 800 e 6000 kcal."); return; }
   S.goal = g; lsSet("ddp.goal", g); render(); toast("Meta guardada");
 };
+// ---------- welcome screen ----------
+// Plays www/welcome.mp4 when it exists; otherwise the same message is shown as text.
+const W = { el: $("#welcome"), video: $("#wVideo"), hasVideo: false };
+W.video.addEventListener("loadedmetadata", () => {
+  W.hasVideo = true; $("#wText").hidden = true; $("#wPlay").hidden = false; $("#wSound").hidden = false;
+});
+W.video.addEventListener("error", () => { W.hasVideo = false; $("#wText").hidden = false; $("#wPlay").hidden = true; $("#wSound").hidden = true; });
+W.video.addEventListener("play", () => { $("#wPlay").hidden = true; $("#wSound").hidden = true; });
+W.video.addEventListener("pause", () => { if (W.hasVideo && !W.video.ended) $("#wPlay").hidden = false; });
+W.video.addEventListener("ended", () => { $("#wPlay").hidden = false; $("#wTour").focus(); });
+W.video.addEventListener("click", () => { if (!W.video.paused) W.video.pause(); });
+W.video.src = "welcome.mp4";
+$("#wPlay").onclick = () => { W.video.muted = false; W.video.play().catch(() => {}); };
+function showWelcome() { W.el.hidden = false; document.body.style.overflow = "hidden"; $("#wTour").focus(); }
+function hideWelcome() { W.video.pause(); W.el.hidden = true; document.body.style.overflow = ""; lsSet("ddp.seenWelcome", true); }
+$("#wTour").onclick = () => { hideWelcome(); startTour(); };
+$("#wSkip").onclick = () => { hideWelcome(); toast("O tutorial está sempre em Ajuda, no fundo da app."); };
+$("#helpWelcome").onclick = () => { if (W.hasVideo) W.video.currentTime = 0; showWelcome(); };
+$("#helpTour").onclick = () => startTour();
+
+// ---------- tutorial ----------
+const DEMO_ITEMS = () => [fromFood(byName("Pão integral"), 60), fromFood(byName("Queijo flamengo"), 20), fromFood(byName("Fiambre de peru"), 20)];
+function openDemo() {
+  if (S.draft?.demo) return;
+  T.stash = S.draft || null;
+  newDraft({ demo: true, noScroll: true, items: DEMO_ITEMS(), title: "Sandes mista (exemplo)", tab: "pão e cereais" });
+}
+function closeDemo() {
+  if (!S.draft?.demo) return;
+  S.draft = T.stash; T.stash = null; renderDraft();
+}
+const TOUR = [
+  { title: "Vamos lá", text: "Em cerca de um minuto ficas a saber usar tudo. Toca em «Seguinte» para avançar. Podes sair quando quiseres e rever o tutorial em «Ajuda», no fundo da app." },
+  { sel: "#camBtn", title: "Tira uma foto", text: "Toca em «Tirar foto» para abrir a câmara e fotografar o prato. Da primeira vez, o Android pede autorização para usar a câmara: escolhe «Permitir»." },
+  { sel: "#galBtn", title: "Ou usa uma foto que já tens", text: "«Da galeria» deixa-te escolher uma fotografia que já tiraste antes." },
+  { sel: "#manBtn", title: "Também dá sem foto", text: "«Sem foto» abre logo a lista de alimentos. Os passos seguintes são iguais, com ou sem fotografia." },
+  { sel: "#dResults .tabs", demo: true, title: "Escolhe a categoria", text: "Os alimentos estão organizados por separadores: Pratos, Pão, Queijo e lácteos, Carne e fiambre, Arroz e massa, Fruta e outros. Desliza para o lado para veres todos. «Recentes» mostra o que comes mais vezes." },
+  { sel: "#dResults .grid", demo: true, title: "Toca no que está no prato", text: "Toca num alimento para o pôr no prato: fica com o contorno verde. Toca outra vez para o tirar. Cada alimento entra com uma porção normal, que podes acertar a seguir." },
+  { sel: "#dSearch", demo: true, title: "Procura pelo nome", text: "Escreve parte do nome, por exemplo «bacal» ou «iogurte». Se o alimento não existir, toca em «+ Criar» e escreve tu as calorias. A app guarda-o para a próxima vez." },
+  { sel: "#draft .items", demo: true, title: "Acerta as quantidades", text: "Aqui ficam os alimentos do prato. Se mudares os gramas, as calorias atualizam-se sozinhas. Também podes escrever as calorias diretamente. O «×» tira o alimento." },
+  { sel: "#dMeal", demo: true, title: "Que refeição é", text: "A app escolhe a refeição pela hora (pequeno-almoço, almoço, lanche, jantar ou snack), mas podes mudar. Por cima podes dar um nome à refeição, se quiseres." },
+  { sel: "#draft .keep", demo: true, title: "Guarda os teus pratos", text: "Se comes isto muitas vezes, marca esta opção. O prato fica em «Os meus pratos» e da próxima vez adicionas tudo com um só toque." },
+  { sel: "#dSave", demo: true, title: "Guarda a refeição", text: "Quando estiver tudo certo, toca em «Guardar refeição». «Cancelar» deita fora sem guardar. Esta sandes é só um exemplo e não vai ser guardada." },
+  { sel: ".label", title: "O teu dia", text: "Aqui vês as calorias do dia e quanto falta para a tua meta. A barra fica amarela se passares a meta. Por baixo tens a proteína, os hidratos e a gordura, com a percentagem da meta de cada um." },
+  { sel: "#meals", title: "As tuas refeições", text: "Cada refeição guardada aparece aqui com a foto e os alimentos. «Repetir» volta a registar a mesma refeição. Para apagar, toca em «Apagar» e depois em «Confirmar»." },
+  { sel: ".daynav", title: "Outros dias", text: "Usa as setas para ver os dias anteriores. Se te esqueceste de registar uma refeição, vai a esse dia e regista-a normalmente." },
+  { sel: ".week", title: "Últimos 7 dias", text: "O gráfico mostra as calorias de cada dia. A linha tracejada é a tua meta e as barras amarelas são os dias acima dela. Toca num dia para o abrir." },
+  { sel: "#goalDetails", title: "A tua meta", text: "Em «Meta diária» escolhes as calorias por dia, entre 800 e 6000. As metas de proteína, hidratos e gordura ajustam-se sozinhas." },
+  { sel: "#updDetails", title: "Atualizações", text: "Quando houver uma versão nova, aparece uma barra verde no topo da app. Toca em «Descarregar», abre o ficheiro e instala. Os teus registos mantêm-se." },
+  { title: "Os teus dados", text: "Tudo fica guardado só neste telemóvel e a app funciona sem internet. Atenção: se desinstalares a app, os registos são apagados. Está pronto, bom apetite!" }
+];
+const T = { i: 0, on: false, stash: null };
+function startTour() {
+  T.i = 0; T.on = true; $("#tour").hidden = false; document.body.style.overflow = "hidden";
+  $("#tourDots").innerHTML = TOUR.map(() => "<i></i>").join("");
+  showStep();
+}
+function endTour(done) {
+  T.on = false; $("#tour").hidden = true; document.body.style.overflow = "";
+  closeDemo(); lsSet("ddp.seenWelcome", true);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (done) toast("Tutorial concluído. Podes revê-lo em «Ajuda».");
+}
+function showStep() {
+  const s = TOUR[T.i];
+  if (s.demo) openDemo(); else closeDemo();
+  $("#tourStep").textContent = `Passo ${T.i + 1} de ${TOUR.length}`;
+  [...$("#tourDots").children].forEach((d, k) => d.classList.toggle("on", k <= T.i));
+  $("#tourTitle").textContent = s.title;
+  $("#tourText").textContent = s.text;
+  $("#tourBack").hidden = T.i === 0;
+  $("#tourNext").textContent = T.i === TOUR.length - 1 ? "Terminar" : "Seguinte";
+  const target = s.sel ? document.querySelector(s.sel) : null;
+  if (target) {
+    const d = target.closest("details"); if (d) d.open = true;
+    const r = target.getBoundingClientRect(), free = window.innerHeight - $("#tourCard").offsetHeight - 40;
+    // place the target in the space above the card (a taller target is pinned to the top)
+    const want = r.height > free ? 16 : Math.max(16, (free - r.height) / 2);
+    window.scrollBy({ top: r.top - want, behavior: "instant" });
+  }
+  placeStep();
+  setTimeout(placeStep, 60);
+  $("#tourCard").focus({ preventScroll: true });
+}
+function placeStep() {
+  if (!T.on) return;
+  const s = TOUR[T.i], hole = $("#tourHole"), card = $("#tourCard");
+  const target = s.sel ? document.querySelector(s.sel) : null;
+  const r = target?.getBoundingClientRect();
+  card.classList.remove("top", "bottom", "center");
+  if (!r || !r.width) { hole.classList.add("none"); card.classList.add("center"); return; }
+  hole.classList.remove("none");
+  const pad = 6, vh = window.innerHeight, ch = card.offsetHeight, gap = 24;
+  let top = Math.max(4, r.top - pad), bottom = Math.min(vh - 4, r.bottom + pad);
+  const roomAbove = top - gap, roomBelow = vh - bottom - gap;
+  let side;
+  if (roomBelow >= ch) side = "bottom";
+  else if (roomAbove >= ch) side = "top";
+  else { side = "bottom"; bottom = Math.max(top + 40, Math.min(bottom, vh - ch - gap)); }
+  Object.assign(hole.style, { left: `${r.left - pad}px`, top: `${top}px`, width: `${r.width + pad * 2}px`, height: `${Math.max(0, bottom - top)}px` });
+  card.classList.add(side);
+}
+$("#tourNext").onclick = () => { if (T.i < TOUR.length - 1) { T.i++; showStep(); } else endTour(true); };
+$("#tourBack").onclick = () => { if (T.i > 0) { T.i--; showStep(); } };
+$("#tourSkip").onclick = () => endTour(false);
+window.addEventListener("resize", () => T.on && placeStep());
+window.addEventListener("scroll", () => T.on && placeStep(), { passive: true });
+document.addEventListener("keydown", (e) => {
+  if (!T.on) return;
+  if (e.key === "Escape") endTour(false);
+  else if (e.key === "ArrowRight") $("#tourNext").click();
+  else if (e.key === "ArrowLeft") $("#tourBack").click();
+});
+
 // ---------- updates from GitHub Releases ----------
 // The build number is filled in by the GitHub Actions workflow; local builds stay at 1.
 const APP_BUILD = parseInt("__APP_BUILD__", 10) || 1;
@@ -919,6 +1115,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) { re
 
 render();
 checkUpdate(false);
+if (!lsGet("ddp.seenWelcome", false)) showWelcome();
 })();
 </script>
 </body>
