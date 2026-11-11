@@ -483,17 +483,6 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
     <p class="note">Valores nutricionais: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P. - INSA. v 7.1 - 2026 (portfir.insa.min-saude.pt). Produtos de marca: Open Food Facts (openfoodfacts.org), base de dados aberta (ODbL).</p>
   </details>
 
-  <details class="settings" id="aiDetails">
-    <summary>Reconhecimento com IA</summary>
-    <p class="note" style="margin:10px 0 0">Para a app encontrar cada alimento de um prato misturado (por exemplo arroz, feijão, grelos e entrecosto) e estimar os gramas, liga a IA Gemini da Google. É gratuita: cria uma chave em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> com a tua conta Google, copia-a e cola-a aqui.</p>
-    <div class="key-row">
-      <input type="password" id="aiKey" class="field" placeholder="Cola aqui a chave (começa por AIza…)" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Chave da IA Gemini">
-      <button class="btn btn-accent" id="aiSave" type="button">Guardar</button>
-    </div>
-    <p class="note" id="aiState"></p>
-    <p class="note">A chave fica só neste telemóvel. As fotos são enviadas à Google para análise e, na versão gratuita, a Google pode usá-las para melhorar os seus serviços. Sem chave ou sem internet, a app usa o reconhecimento do telemóvel.</p>
-  </details>
-
   <details class="settings" id="dishDetails">
     <summary>Os meus pratos</summary>
     <div id="dishList" style="margin-top:10px"></div>
@@ -1062,6 +1051,38 @@ const DISH_MAP = {
   "Rye bread": "Pão de centeio", "Cornbread": "Broa de milho", "Hummus": "Húmus",
   "Boston baked beans": "Feijão cozido", "Pork and beans": "Feijão cozido", "Cowboy beans": "Feijão cozido"
 };
+// Parts of a mixed plate: labels the food model gives to a piece of the photo -> one food in the database.
+const PART_GROUPS = [
+  ["Arroz branco cozido", ["Pilaf", "Fried rice", "White rice", "American fried rice", "Majboos", "Maqluba", "Rice and gravy", "Dirty rice", "Coconut rice", "Hokkien fried rice", "Yangzhou fried rice", "Thai fried rice", "Glorified rice", "Risotto", ["Pasta salad", 0.6]]],
+  ["Arroz de feijão", ["Red beans and rice", "Feijoada"]],
+  ["Arroz de tomate", ["Spanish rice", "Jollof rice", "Charleston red rice"]],
+  ["Feijão cozido", ["Boston baked beans", "Pork and beans", "Cowboy beans", "Chili con carne"]],
+  ["Carne de porco grelhada", ["Churrasco", "Cecina", "Char siu", "Pork Bones", "Yakiniku", "Souvlaki", "Shashlik", "Suya", "Carne asada", "Twice-cooked pork", "Red braised pork belly", "Escalope", "Spiedie"]],
+  ["Bife de vaca grelhado", ["Roast beef", "Delmonico steak", "Steak Diane", "Swiss steak", "Salisbury steak", "Steak sandwich"]],
+  ["Coxa de frango assada", ["Fried chicken", "Crispy fried chicken", "Tandoori chicken", "Roast chicken", "Soy sauce chicken", "White cut chicken"]],
+  ["Chouriço", ["Sausage", "Kielbasa", "Chorizo", "Bologna sausage", "Chinese sausage", "Breakfast sausage", "Sausage gravy"]],
+  ["Legumes salteados", ["Minestrone", "Ratatouille", "Utica greens", "Caponata", "Green bean casserole", "Buddha's delight", "Cabbage roll", "Pisto"]],
+  ["Salada verde", ["Garden salad", "Greek salad", "Cobb salad", "Caesar salad", "Salade niçoise"]],
+  ["Batata frita", ["French fries", "Cheese fries", "Potato wedges", "Home fries", "Potatoes O'Brien"]],
+  ["Puré de batata", ["Mashed potato"]], ["Batata assada", ["Baked potato", "Salt potatoes"]],
+  ["Filetes de pescada panados", ["Fried fish", "Fish and chips"]], ["Ovo estrelado", ["Fried egg", "Eggs Benedict"]],
+  ["Massa cozida", ["Spaghetti", "Spaghetti aglio e olio", "Macaroni and cheese", "Carbonara"]]
+];
+const PART_OF = new Map(PART_GROUPS.flatMap(([food, labels]) => labels.map((l) => Array.isArray(l) ? [l[0], [food, l[1]]] : [l, [food, 1]])));
+// strongest evidence per food over the 9 parts; each part adds up its labels for the same food
+function plateParts(crops) {
+  const best = new Map(), hits = new Map();
+  for (const labels of crops || []) {
+    const inPart = new Map();
+    for (const { label, score } of labels) { const p = PART_OF.get(label); if (p) inPart.set(p[0], (inPart.get(p[0]) || 0) + score * p[1]); }
+    for (const [food, sc] of inPart) {
+      best.set(food, Math.max(best.get(food) || 0, sc));
+      if (sc >= 0.12) hits.set(food, (hits.get(food) || 0) + 1);
+    }
+  }
+  return [...best].filter(([food, sc]) => byName(food) && (sc >= 0.2 || (sc >= 0.12 && (hits.get(food) || 0) >= 2)))
+    .sort((a, b) => b[1] - a[1]).slice(0, 5);
+}
 const dishFood = (label) => DISH_MAP[label] || (/pizza/i.test(label) ? "Pizza" : null);
 const AI_WEAK = new Set(["cup", "coffee mug", "bottle", "wine glass", "soup bowl", "water bottle", "pop bottle", "trifle", "chocolate sauce", "eggnog"]);
 // ImageNet labels that the classifier often gives to any cooked plate: they only count when it is quite sure.
@@ -1116,6 +1137,25 @@ async function recognize(d, canvas) {
   const rest = ranked.filter(([n]) => !found.some((f) => f.name === n));
   const alts = [...rest.filter(([n, s]) => dishScore.has(n) && s >= 0.06),
     ...rest.filter(([n, s]) => !dishScore.has(n) && s >= (strong.has(n) && !plate ? 0.2 : 0.3))].slice(0, 5).map(([n]) => n);
+  // a mixed plate (rice + meat + greens…): if the whole photo is not one known dish, list what each part shows
+  const wholeDish = found.length && byName(found[0].name)?.cat === "pratos" && found[0].score >= 0.5;
+  const parts = wholeDish ? [] : plateParts(res.crops);
+  if (parts.length >= 2) {
+    found.length = 0;
+    for (const [n, sc] of parts) found.push({ name: n, score: Math.min(sc, 0.99), n: 1, part: true });
+    // "Arroz de feijão" already includes the rice
+    if (found.some((f) => f.name === "Arroz de feijão")) for (let i = found.length - 1; i >= 0; i--) if (found[i].name === "Arroz branco cozido") found.splice(i, 1);
+  }
+  if (found.some((f) => f.part)) {
+    // starch first, then meat or fish, then the rest: "Arroz branco com carne de porco grelhada, legumes salteados e chouriço"
+    const ORDER = ["arroz e massa", "batata", "pratos", "carne e charcutaria", "peixe", "ovos", "leguminosas", "legumes e salada"];
+    const rank = (f) => { const i = ORDER.indexOf(byName(f.name)?.cat); return i < 0 ? 99 : i; };
+    found.sort((x, y) => rank(x) - rank(y));
+    if (!d.title.trim()) {
+      const nm = found.map((f, i) => { const n = f.name.replace(/ cozid[oa]$/i, ""); return i ? n.toLowerCase() : n; });
+      d.title = nm.length > 1 ? `${nm[0]} com ${nm.slice(1, -1).join(", ")}${nm.length > 2 ? " e " : ""}${nm[nm.length - 1]}` : nm[0];
+    }
+  }
   if (S.draft !== d) return;
   for (const f of found) {
     if (d.items.some((i) => i.name === f.name)) continue;
@@ -1123,10 +1163,10 @@ async function recognize(d, canvas) {
     d.items.push(fromFood(food, food.g * qty));
   }
   if (found.length && !d.title.trim()) d.title = found.map((f) => (f.n > 1 && COUNTABLE.has(f.name) ? `${f.n}× ` : "") + f.name).join(", ");
-  done({ status: found.length ? "found" : "none", found, alts });
+  done({ status: found.length ? "found" : "none", found, alts: alts.filter((n) => !found.some((f) => f.name === n)), parts: found.some((f) => f.part) });
 }
 // ---------- online AI (Google Gemini, the user's own free key) ----------
-const aiKey = () => String(lsGet("ddp.aiKey", "") || "").trim();
+const aiKey = () => ""; // recognition runs only on the phone (no online API)
 const AI_PROMPT = "És um nutricionista português. Olha para a fotografia e identifica CADA alimento que está no prato em separado " +
   "(por exemplo: arroz branco, feijão, grelos, entrecosto, chouriço, batata frita, salada). Para cada um, estima o peso em gramas tal como está no prato " +
   "e os valores nutricionais por 100 g (kcal, proteína, hidratos de carbono e gordura) desse alimento cozinhado como aparece. " +
@@ -1227,9 +1267,10 @@ function aiBanner(d) {
   if (ai.status === "running") return `<div class="ai-box"><span class="ai-dot"></span><span>${ai.cloud ? "A IA está a ver cada alimento do prato…" : "A reconhecer o alimento na foto…"}</span></div>`;
   if (ai.status === "cloud") return `<div class="ai-box ok-box"><b>Encontrei ${ai.names.length} ${ai.names.length === 1 ? "alimento" : "alimentos"}</b><span>${esc(ai.names.join(", "))}. Os gramas são uma estimativa da IA: confirma-os na lista.</span></div>`;
   const note = d.cloudNote ? `<span class="muted" style="font-size:13px">${esc(d.cloudNote)}</span>` : "";
-  const goAI = !aiKey() && ai.status !== "found" ? `<button class="btn btn-plain ai-go" data-goai type="button">Reconhecer pratos misturados com IA</button>` : "";
+  const goAI = "";
   if (ai.status === "error") return `<div class="ai-box muted-box">Não consegui analisar a foto neste telemóvel. Escolhe os alimentos na lista.</div>`;
   const alts = ai.alts?.length ? `<div class="ai-alts"><span>${ai.status === "found" ? "Não é isto? Talvez:" : "Talvez seja:"}</span>${ai.alts.map((n) => `<button class="chip-btn" data-alt="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : "";
+  if (ai.status === "found" && ai.parts) return `<div class="ai-box ok-box">${note}<b>Encontrei ${ai.found.length} alimentos no prato</b><span>${esc(ai.found.map((f) => f.name).join(", "))}. Confirma se está certo, acerta os gramas e acrescenta o que faltar (por exemplo o feijão ou o molho).</span>${alts}</div>`;
   if (ai.status === "found") return `<div class="ai-box ok-box">${note}<b>Reconhecido: ${ai.found.map((f) => esc((f.n > 1 && COUNTABLE.has(f.name) ? f.n + "× " : "") + f.name) + ` <small>${Math.round(f.score * 100)}%</small>`).join(", ")}</b><span>Já está no prato. Confirma a quantidade em baixo.</span>${alts}</div>`;
   return `<div class="ai-box muted-box">${note}<span>Não reconheci nenhum alimento com certeza. Escolhe na lista em baixo.</span>${alts}${goAI}</div>`;
 }
@@ -1429,10 +1470,7 @@ function renderDraft() {
   q("#dClose").onclick = () => { S.draft = null; renderDraft(); };
   q("#dCam") && (q("#dCam").onclick = () => { warmAI(); takePhoto("CAMERA"); });
   q("#dGal") && (q("#dGal").onclick = () => { warmAI(); takePhoto("PHOTOS"); });
-  el.querySelectorAll("[data-goai]").forEach((b) => b.onclick = () => {
-    S.draft = null; renderDraft();
-    const det = $("#aiDetails"); det.open = true; det.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  
   q("#dSearch").oninput = (e) => { d.q = e.target.value; d.more = false; renderPicker(); };
   renderPicker();
   q("#dKeep") && (q("#dKeep").onchange = (e) => { d.keep = e.target.checked; });
@@ -1705,19 +1743,6 @@ $("#kcalGoal").onclick = () => {
   det.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 fillProfile(); renderCalc();
-function renderAIState() {
-  const k = aiKey();
-  $("#aiState").textContent = k ? `IA ligada (chave …${k.slice(-4)}). As fotos passam a ser analisadas alimento a alimento.` : "IA desligada: a app usa só o reconhecimento do telemóvel.";
-  $("#aiKey").value = "";
-  $("#aiKey").placeholder = k ? "Para mudar, cola outra chave" : "Cola aqui a chave (começa por AIza…)";
-}
-$("#aiSave").onclick = () => {
-  const v = $("#aiKey").value.trim();
-  if (!v) { lsSet("ddp.aiKey", ""); renderAIState(); toast("IA desligada"); return; }
-  if (!/^[A-Za-z0-9_\-]{30,60}$/.test(v)) { toast("Esta chave não parece certa. Copia-a outra vez do site."); return; }
-  lsSet("ddp.aiKey", v); renderAIState(); toast("IA ligada. Tira uma foto a um prato para experimentar.");
-};
-renderAIState();
 // ---------- first-run profile (required) ----------
 const GOAL_NAMES = { lose: "perder peso", keep: "manter o peso", gain: "ganhar massa" };
 const profileDone = () => !!(P.sex && P.age && P.weight && P.height && P.act && P.objective);
@@ -1836,7 +1861,6 @@ const TOUR = [
   { sel: "header", title: "Escolher o dia", text: "Toca no calendário, no canto de cima à direita, ou no nome do dia para abrir o mês e escolher qualquer dia. As setas avançam ou recuam um dia. Os dias com registos têm um ponto verde, ou amarelo se passaste a meta." },
   { sel: ".week", title: "Últimos 7 dias", text: "O gráfico mostra as calorias de cada dia. A linha tracejada é a tua meta e as barras amarelas são os dias acima dela. Toca num dia para o abrir." },
   { sel: "#goalDetails", title: "A tua meta", text: "A tua meta foi calculada com os dados que preencheste no início (sexo, idade, peso, altura, atividade e objetivo). Em «Meta diária» podes mudar esses dados, por exemplo quando o teu peso mudar, ou escrever tu as calorias." },
-  { sel: "#aiDetails", title: "Reconhecimento com IA", text: "Para a app separar cada alimento de um prato misturado (arroz, feijão, grelos, entrecosto…), liga aqui a IA Gemini com uma chave gratuita da Google. Sem chave, a app usa o reconhecimento do telemóvel, que conhece pratos inteiros e fruta." },
   { sel: "#updDetails", title: "Atualizações", text: "Quando houver uma versão nova, aparece uma barra verde no topo da app. Toca em «Descarregar», abre o ficheiro e instala. Os teus registos mantêm-se." },
   { title: "Os teus dados", text: "Tudo fica guardado só neste telemóvel e a app funciona sem internet. Atenção: se desinstalares a app, os registos são apagados. Está pronto, bom apetite!" }
 ];
@@ -2047,7 +2071,17 @@ window.FoodAI = {
     const c = classifier.classify(source);
     const d = detector.detect(source);
     const f = food.classify(source);
+    // the food model only names one dish per image, so look at 9 overlapping parts of the plate too
+    const W = source.width, H = source.height, crops = [];
+    const part = document.createElement("canvas"); part.width = Math.round(W / 2); part.height = Math.round(H / 2);
+    const pc = part.getContext("2d");
+    for (const y of [0, 0.25, 0.5]) for (const x of [0, 0.25, 0.5]) {
+      pc.drawImage(source, x * W, y * H, W / 2, H / 2, 0, 0, part.width, part.height);
+      const r = food.classify(part);
+      crops.push((r.classifications[0]?.categories || []).filter((c) => c.index > 0).slice(0, 5).map((c) => ({ label: names[c.index] || "", score: c.score })));
+    }
     return {
+      crops,
       dishes: (f.classifications[0]?.categories || []).filter((x) => x.index > 0).map((x) => ({ label: names[x.index] || "", score: x.score })),
       classes: (c.classifications[0]?.categories || []).map((x) => ({ label: x.categoryName, score: x.score })),
       objects: (d.detections || []).map((x) => ({ label: x.categories[0]?.categoryName, score: x.categories[0]?.score || 0 }))
