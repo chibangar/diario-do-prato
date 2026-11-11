@@ -162,6 +162,11 @@ details.settings summary { font-weight: 600; cursor: pointer; }
 .set-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 .set-row input { width: 110px; }
 .note { font-size: 12px; color: var(--muted); }
+.food.dish { border-color: #C0622F; border-style: dashed; }
+.keep { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
+.keep input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
+.dish-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.dish-row:first-child { border-top: 0; }
 .update { background: var(--accent); color: var(--accent-ink); border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .update p { margin: 0; flex: 1 1 180px; font-size: 14px; }
 .update a { background: var(--accent-ink); color: var(--accent); text-decoration: none; font-weight: 700; border-radius: 10px; padding: 9px 14px; }
@@ -244,6 +249,11 @@ details.settings summary { font-weight: 600; cursor: pointer; }
   </details>
 
   <details class="settings">
+    <summary>Os meus pratos</summary>
+    <div id="dishList" style="margin-top:10px"></div>
+  </details>
+
+  <details class="settings">
     <summary>Atualizações</summary>
     <div class="set-row">
       <span class="num" id="versionLbl">Versão 1.0.1</span>
@@ -258,12 +268,13 @@ details.settings summary { font-weight: 600; cursor: pointer; }
 "use strict";
 
 const CATS = {
+  "pratos": "#C0622F",
   "pão e cereais": "var(--carb)", "arroz e massa": "#D9A21B", "batata": "#B88A2E",
   "laticínios": "#8E7CC3", "carne e charcutaria": "var(--prot)", "peixe": "var(--fat)",
   "ovos": "#D9822B", "leguminosas": "#7A8F3B", "legumes e salada": "var(--accent)",
-  "fruta": "#D4567A", "gorduras e molhos": "#B08D2C", "doces": "#C2549B", "bebidas": "#5B8BD0", "outros": "var(--muted)"
+  "fruta": "#D4567A", "frutos secos": "#8B6B4A", "gorduras e molhos": "#B08D2C", "doces": "#C2549B", "bebidas": "#5B8BD0", "outros": "var(--muted)"
 };
-const TAB_NAMES = { "pão e cereais": "Pão", "arroz e massa": "Arroz e massa", "batata": "Batata", "laticínios": "Queijo e lácteos", "carne e charcutaria": "Carne e fiambre", "peixe": "Peixe", "ovos": "Ovos", "leguminosas": "Feijão e grão", "legumes e salada": "Legumes", "fruta": "Fruta", "gorduras e molhos": "Molhos", "doces": "Doces", "bebidas": "Bebidas", "outros": "Outros" };
+const TAB_NAMES = { "pratos": "Pratos", "frutos secos": "Frutos secos", "pão e cereais": "Pão", "arroz e massa": "Arroz e massa", "batata": "Batata", "laticínios": "Queijo e lácteos", "carne e charcutaria": "Carne e fiambre", "peixe": "Peixe", "ovos": "Ovos", "leguminosas": "Feijão e grão", "legumes e salada": "Legumes", "fruta": "Fruta", "gorduras e molhos": "Molhos", "doces": "Doces", "bebidas": "Bebidas", "outros": "Outros" };
 
 // name, category, default portion (g), per 100 g: kcal, protein, carbs, fat
 const BASE_FOODS = [
@@ -282,7 +293,7 @@ const BASE_FOODS = [
   ["Arroz integral cozido", "arroz e massa", 150, 123, 2.7, 26, 1],
   ["Massa cozida", "arroz e massa", 180, 158, 5.8, 31, 0.9],
   ["Massa integral cozida", "arroz e massa", 180, 149, 6, 30, 1.7],
-  ["Esparguete à bolonhesa", "arroz e massa", 300, 150, 7, 18, 5],
+  ["Esparguete à bolonhesa", "pratos", 350, 150, 7, 18, 5],
   ["Batata cozida", "batata", 150, 87, 1.9, 20, 0.1],
   ["Batata frita", "batata", 120, 312, 3.4, 41, 15],
   ["Puré de batata", "batata", 150, 100, 2, 15, 3.5],
@@ -341,7 +352,197 @@ const BASE_FOODS = [
   ["Refrigerante", "bebidas", 330, 42, 0, 10.6, 0],
   ["Cerveja", "bebidas", 330, 43, 0.5, 3.6, 0],
   ["Vinho tinto", "bebidas", 150, 85, 0.1, 2.6, 0],
-  ["Pizza", "outros", 150, 266, 11, 33, 10]
+  ["Pizza", "pratos", 300, 266, 11, 33, 10],
+  // pratos portugueses e refeições feitas
+  ["Bacalhau à Brás", "pratos", 300, 160, 9, 9, 10],
+  ["Bacalhau com natas", "pratos", 300, 170, 9, 9, 11],
+  ["Bacalhau à Gomes de Sá", "pratos", 350, 150, 10, 10, 8],
+  ["Francesinha", "pratos", 550, 230, 12, 15, 13],
+  ["Cozido à portuguesa", "pratos", 450, 180, 13, 8, 11],
+  ["Feijoada à transmontana", "pratos", 350, 170, 10, 12, 9],
+  ["Arroz de pato", "pratos", 350, 190, 10, 20, 7.5],
+  ["Arroz de marisco", "pratos", 400, 110, 8, 13, 3],
+  ["Arroz de frango", "pratos", 350, 150, 9, 18, 4.5],
+  ["Arroz de tomate", "pratos", 250, 120, 2, 22, 2.5],
+  ["Arroz de feijão", "pratos", 200, 140, 4, 25, 2.5],
+  ["Frango assado / churrasco", "pratos", 250, 215, 25, 0, 13],
+  ["Bitoque (bife, ovo, batata frita, arroz)", "pratos", 500, 200, 10, 15, 11],
+  ["Prego no pão", "pratos", 200, 250, 14, 25, 10],
+  ["Bifana", "pratos", 180, 240, 14, 24, 10],
+  ["Caldo verde", "pratos", 300, 50, 1.8, 5, 2.5],
+  ["Sopa de feijão com couve", "pratos", 300, 60, 3, 8, 1.5],
+  ["Canja de galinha", "pratos", 300, 45, 3, 6, 1],
+  ["Carne de porco à alentejana", "pratos", 350, 190, 14, 7, 12],
+  ["Rojões", "pratos", 300, 260, 18, 5, 19],
+  ["Alheira com ovo e batata frita", "pratos", 450, 230, 9, 14, 15],
+  ["Polvo à lagareiro", "pratos", 400, 140, 14, 8, 6],
+  ["Tripas à moda do Porto", "pratos", 350, 150, 11, 10, 7],
+  ["Esparguete à carbonara", "pratos", 350, 180, 8, 20, 8],
+  ["Lasanha à bolonhesa", "pratos", 350, 140, 8, 13, 6],
+  ["Empadão de carne", "pratos", 350, 140, 7, 13, 7],
+  ["Strogonoff de frango com arroz", "pratos", 350, 150, 9, 15, 6],
+  ["Caril de frango com arroz", "pratos", 400, 150, 9, 17, 5],
+  ["Chili com carne", "pratos", 350, 130, 9, 10, 6],
+  ["Hambúrguer no pão com queijo", "pratos", 220, 260, 14, 24, 12],
+  ["Cachorro-quente", "pratos", 150, 260, 10, 24, 14],
+  ["Tosta mista", "pratos", 150, 260, 13, 25, 12],
+  ["Sandes mista", "pratos", 150, 240, 12, 26, 9],
+  ["Sandes de atum", "pratos", 170, 220, 12, 22, 9],
+  ["Wrap de frango", "pratos", 220, 200, 12, 20, 8],
+  ["Omelete de queijo e fiambre", "pratos", 180, 190, 14, 1.5, 14],
+  ["Salada César", "pratos", 300, 150, 9, 6, 10],
+  ["Salada de atum com grão", "pratos", 300, 140, 11, 12, 5],
+  ["Sushi (8 peças)", "pratos", 240, 150, 6, 25, 3],
+  ["Filetes de pescada panados", "pratos", 150, 230, 13, 18, 12],
+  ["Pastéis de bacalhau", "pratos", 60, 260, 12, 18, 15],
+  ["Rissóis de camarão", "pratos", 60, 280, 7, 28, 15],
+  ["Croquetes", "pratos", 50, 270, 10, 20, 17],
+  // pão e cereais
+  ["Pão de centeio", "pão e cereais", 50, 250, 8.5, 48, 1.7],
+  ["Pão de sementes", "pão e cereais", 60, 280, 11, 40, 8],
+  ["Bolo do caco", "pão e cereais", 80, 270, 8, 52, 3],
+  ["Pão de leite", "pão e cereais", 50, 320, 9, 55, 7],
+  ["Tortilha / wrap", "pão e cereais", 60, 300, 8, 50, 7],
+  ["Granola", "pão e cereais", 45, 450, 10, 64, 17],
+  ["Muesli", "pão e cereais", 45, 360, 10, 66, 6],
+  ["Panquecas", "pão e cereais", 100, 220, 6, 30, 8],
+  ["Bolachas de água e sal", "pão e cereais", 25, 430, 9, 70, 13],
+  // arroz e massa
+  ["Arroz basmati cozido", "arroz e massa", 150, 121, 3.5, 25, 0.4],
+  ["Massa recheada (ravioli)", "arroz e massa", 200, 200, 8, 28, 6],
+  ["Noodles cozidos", "arroz e massa", 180, 138, 4.5, 25, 2],
+  ["Cuscuz cozido", "arroz e massa", 150, 112, 3.8, 23, 0.2],
+  ["Quinoa cozida", "arroz e massa", 150, 120, 4.4, 21, 1.9],
+  // batata
+  ["Batata assada", "batata", 150, 93, 2.5, 21, 0.1],
+  ["Batata a murro", "batata", 200, 130, 2.3, 19, 5],
+  ["Batatas fritas de pacote", "batata", 30, 536, 6.6, 53, 34],
+  // laticínios
+  ["Leite gordo", "laticínios", 200, 64, 3.2, 4.7, 3.6],
+  ["Leite magro", "laticínios", 200, 35, 3.4, 5, 0.1],
+  ["Bebida de soja", "laticínios", 200, 40, 3, 3, 1.8],
+  ["Bebida de aveia", "laticínios", 200, 45, 0.6, 7, 1.5],
+  ["Iogurte açucarado / aroma", "laticínios", 125, 95, 3.3, 15, 2.5],
+  ["Iogurte líquido", "laticínios", 170, 75, 2.8, 12, 1.5],
+  ["Skyr", "laticínios", 150, 63, 11, 4, 0.2],
+  ["Queijo da Serra", "laticínios", 30, 380, 25, 0, 31],
+  ["Queijo de cabra", "laticínios", 30, 360, 22, 0, 30],
+  ["Queijo parmesão", "laticínios", 10, 430, 38, 0, 30],
+  ["Queijo ralado", "laticínios", 20, 300, 23, 2, 22],
+  ["Natas", "laticínios", 30, 300, 2.5, 3, 30],
+  // carne e charcutaria
+  ["Coxa de frango assada", "carne e charcutaria", 120, 230, 24, 0, 15],
+  ["Peru grelhado", "carne e charcutaria", 120, 150, 30, 0, 3],
+  ["Costeletas de porco", "carne e charcutaria", 150, 230, 26, 0, 14],
+  ["Entrecosto", "carne e charcutaria", 200, 300, 24, 0, 23],
+  ["Febras de porco", "carne e charcutaria", 130, 200, 27, 0, 10],
+  ["Lombo de porco assado", "carne e charcutaria", 150, 180, 28, 0, 7],
+  ["Carne picada de vaca", "carne e charcutaria", 120, 250, 26, 0, 16],
+  ["Almôndegas", "carne e charcutaria", 150, 230, 15, 8, 15],
+  ["Bacon", "carne e charcutaria", 20, 540, 37, 1.4, 42],
+  ["Mortadela", "carne e charcutaria", 20, 310, 15, 2, 27],
+  ["Salpicão", "carne e charcutaria", 20, 400, 25, 1, 33],
+  ["Alheira", "carne e charcutaria", 150, 300, 12, 18, 20],
+  ["Panado de frango", "carne e charcutaria", 130, 260, 20, 15, 13],
+  ["Nuggets de frango", "carne e charcutaria", 100, 290, 15, 17, 18],
+  ["Fígado de vaca", "carne e charcutaria", 120, 175, 27, 4, 5],
+  ["Kebab (carne)", "carne e charcutaria", 150, 215, 18, 3, 15],
+  // peixe e marisco
+  ["Dourada grelhada", "peixe", 180, 170, 23, 0, 8],
+  ["Robalo grelhado", "peixe", 180, 125, 24, 0, 2.6],
+  ["Carapau grelhado", "peixe", 150, 160, 22, 0, 8],
+  ["Atum em óleo (escorrido)", "peixe", 80, 190, 27, 0, 9],
+  ["Cavala em lata", "peixe", 80, 200, 19, 0, 14],
+  ["Salmão fumado", "peixe", 50, 117, 18, 0, 4.3],
+  ["Camarão cozido", "peixe", 100, 100, 21, 0.2, 1.5],
+  ["Polvo cozido", "peixe", 150, 85, 15, 2, 1],
+  ["Lulas grelhadas", "peixe", 150, 110, 18, 3, 2.5],
+  ["Mexilhão", "peixe", 100, 86, 12, 3.7, 2.2],
+  // ovos
+  ["Ovos mexidos", "ovos", 120, 150, 10, 1.5, 11],
+  ["Clara de ovo", "ovos", 60, 52, 11, 0.7, 0.2],
+  // leguminosas
+  ["Favas cozidas", "leguminosas", 100, 110, 8, 19, 0.4],
+  ["Tofu", "leguminosas", 100, 76, 8, 1.9, 4.8],
+  ["Edamame", "leguminosas", 80, 121, 12, 9, 5],
+  ["Húmus", "leguminosas", 40, 170, 8, 14, 10],
+  // legumes
+  ["Alface", "legumes e salada", 50, 15, 1.4, 2.9, 0.2],
+  ["Pepino", "legumes e salada", 80, 15, 0.7, 3.6, 0.1],
+  ["Pimento", "legumes e salada", 80, 26, 1, 6, 0.3],
+  ["Cebola", "legumes e salada", 50, 40, 1.1, 9, 0.1],
+  ["Couve cozida", "legumes e salada", 100, 25, 2, 4, 0.3],
+  ["Espinafres cozidos", "legumes e salada", 100, 23, 3, 3.8, 0.3],
+  ["Feijão-verde cozido", "legumes e salada", 100, 31, 1.8, 7, 0.2],
+  ["Couve-flor cozida", "legumes e salada", 100, 25, 2, 5, 0.3],
+  ["Abóbora", "legumes e salada", 100, 26, 1, 6.5, 0.1],
+  ["Curgete", "legumes e salada", 100, 17, 1.2, 3.1, 0.3],
+  ["Cogumelos salteados", "legumes e salada", 80, 50, 3, 3, 3],
+  ["Milho doce", "legumes e salada", 60, 86, 3.3, 19, 1.4],
+  ["Beterraba", "legumes e salada", 80, 43, 1.6, 10, 0.2],
+  ["Legumes salteados", "legumes e salada", 150, 60, 2, 7, 3],
+  // fruta
+  ["Abacate", "fruta", 70, 160, 2, 8.5, 15],
+  ["Melancia", "fruta", 250, 30, 0.6, 7.6, 0.2],
+  ["Melão", "fruta", 200, 34, 0.8, 8, 0.2],
+  ["Ananás", "fruta", 150, 50, 0.5, 13, 0.1],
+  ["Pêssego", "fruta", 150, 39, 0.9, 10, 0.3],
+  ["Manga", "fruta", 150, 60, 0.8, 15, 0.4],
+  ["Mirtilos", "fruta", 100, 57, 0.7, 14, 0.3],
+  ["Framboesas", "fruta", 100, 52, 1.2, 12, 0.7],
+  ["Cerejas", "fruta", 100, 63, 1, 16, 0.2],
+  ["Ameixa", "fruta", 70, 46, 0.7, 11, 0.3],
+  ["Tangerina", "fruta", 80, 53, 0.8, 13, 0.3],
+  ["Figos", "fruta", 50, 74, 0.8, 19, 0.3],
+  // frutos secos
+  ["Nozes", "frutos secos", 30, 654, 15, 14, 65],
+  ["Amêndoas", "frutos secos", 30, 580, 21, 22, 50],
+  ["Amendoins", "frutos secos", 30, 570, 26, 16, 49],
+  ["Cajus", "frutos secos", 30, 553, 18, 30, 44],
+  ["Passas", "frutos secos", 30, 300, 3, 79, 0.5],
+  ["Tâmaras", "frutos secos", 30, 280, 2.5, 75, 0.4],
+  // gorduras, molhos e açúcares
+  ["Óleo vegetal", "gorduras e molhos", 10, 884, 0, 0, 100],
+  ["Margarina", "gorduras e molhos", 10, 540, 0.2, 0.7, 60],
+  ["Molho de tomate", "gorduras e molhos", 60, 50, 1.5, 8, 1.5],
+  ["Molho de francesinha", "gorduras e molhos", 150, 120, 3, 8, 8],
+  ["Pesto", "gorduras e molhos", 20, 450, 5, 6, 45],
+  ["Mostarda", "gorduras e molhos", 10, 66, 4, 6, 3.5],
+  ["Compota", "gorduras e molhos", 20, 250, 0.4, 62, 0.1],
+  ["Mel", "gorduras e molhos", 20, 304, 0.3, 82, 0],
+  ["Açúcar", "gorduras e molhos", 5, 400, 0, 100, 0],
+  ["Creme de chocolate para barrar", "gorduras e molhos", 20, 540, 6, 57, 31],
+  // doces
+  ["Chocolate negro", "doces", 25, 580, 8, 35, 45],
+  ["Bola de Berlim", "doces", 90, 380, 6, 45, 20],
+  ["Pão de ló", "doces", 60, 330, 7, 60, 6],
+  ["Arroz doce", "doces", 150, 150, 3.5, 26, 3.5],
+  ["Mousse de chocolate", "doces", 100, 260, 5, 25, 16],
+  ["Leite-creme", "doces", 120, 160, 4.5, 22, 6],
+  ["Pudim flan", "doces", 120, 140, 4, 23, 3.5],
+  ["Gelado", "doces", 100, 200, 3.5, 24, 10],
+  ["Bolo de arroz", "doces", 70, 400, 6, 55, 18],
+  ["Queque", "doces", 70, 400, 6, 52, 19],
+  ["Donut", "doces", 60, 420, 6, 49, 22],
+  ["Salame de chocolate", "doces", 50, 420, 5, 55, 20],
+  ["Tarte de maçã", "doces", 120, 260, 2.5, 36, 12],
+  ["Bolachas de chocolate", "doces", 30, 500, 6, 64, 24],
+  ["Barra de cereais", "doces", 25, 400, 6, 70, 10],
+  // bebidas
+  ["Água", "bebidas", 500, 0, 0, 0, 0],
+  ["Galão", "bebidas", 250, 40, 2.3, 3.5, 1.8],
+  ["Meia de leite", "bebidas", 200, 45, 2.5, 4, 2],
+  ["Cappuccino", "bebidas", 180, 45, 2.5, 4, 2],
+  ["Chá sem açúcar", "bebidas", 250, 1, 0, 0.2, 0],
+  ["Sumo de fruta (pacote)", "bebidas", 200, 45, 0.3, 11, 0],
+  ["Refrigerante zero", "bebidas", 330, 1, 0, 0, 0],
+  ["Batido de fruta", "bebidas", 300, 60, 1, 13, 0.5],
+  ["Leite com chocolate", "bebidas", 200, 75, 3.3, 10, 2],
+  ["Bebida energética", "bebidas", 250, 45, 0, 11, 0],
+  ["Cerveja sem álcool", "bebidas", 330, 22, 0.3, 5, 0],
+  ["Vinho branco", "bebidas", 150, 82, 0.1, 2.6, 0],
+  // outros
+  ["Proteína em pó (dose)", "outros", 30, 380, 75, 8, 5]
 ].map(([name, cat, g, kcal, p, c, f]) => ({ name, cat, g, kcal, p, c, f }));
 
 const MEALS = ["Pequeno-almoço", "Almoço", "Lanche", "Jantar", "Snack"];
@@ -375,7 +576,7 @@ function toast(msg) {
   el.textContent = msg; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 2400);
 }
 
-const S = { meals: lsGet("ddp.meals", []), custom: lsGet("ddp.custom", []), day: todayKey(), goal: lsGet("ddp.goal", 2000), draft: null };
+const S = { meals: lsGet("ddp.meals", []), custom: lsGet("ddp.custom", []), dishes: lsGet("ddp.dishes", []), day: todayKey(), goal: lsGet("ddp.goal", 2000), draft: null };
 const allFoods = () => [...S.custom, ...BASE_FOODS];
 
 function saveMeals() {
@@ -438,7 +639,7 @@ $("#galIn").onchange = (e) => { onFile(e.target.files[0]); e.target.value = ""; 
 // ---------- draft ----------
 function newDraft(extra) {
   const rec = recentFoods();
-  S.draft = { items: [], title: "", meal: guessMeal(), tab: rec.length ? "recentes" : "pão e cereais", q: "", ...extra };
+  S.draft = { items: [], title: "", meal: guessMeal(), tab: rec.length ? "recentes" : "pratos", q: "", keep: false, ...extra };
   renderDraft();
   requestAnimationFrame(() => $("#draft").scrollIntoView({ behavior: "smooth", block: "start" }));
 }
@@ -452,14 +653,23 @@ function foodsForTab(d) {
 function renderPicker() {
   const d = S.draft, box = $("#dResults"); if (!d || !box) return;
   const rec = recentFoods();
-  if (d.tab === "recentes" && !rec.length) d.tab = "pão e cereais";
-  const tabs = [...(rec.length ? [["recentes", "Recentes", ""]] : []), ...Object.keys(CATS).map((c) => [c, TAB_NAMES[c], CATS[c]])];
-  const foods = foodsForTab(d), added = new Set(d.items.map((i) => i.name)), qq = d.q.trim();
+  if ((d.tab === "recentes" && !rec.length) || (d.tab === "meus" && !S.dishes.length)) d.tab = "pratos";
+  const tabs = [...(rec.length ? [["recentes", "Recentes", ""]] : []), ...(S.dishes.length ? [["meus", "Os meus pratos", ""]] : []), ...Object.keys(CATS).map((c) => [c, TAB_NAMES[c], CATS[c]])];
+  const qq = d.q.trim(), nq = norm(qq);
+  const foods = d.tab === "meus" && !qq ? [] : foodsForTab(d), added = new Set(d.items.map((i) => i.name));
+  const dishes = S.dishes.map((x, i) => ({ ...x, i })).filter((x) => qq ? norm(x.name).includes(nq) : d.tab === "meus");
   const tabsEl = box.querySelector(".tabs"), keepScroll = tabsEl ? tabsEl.scrollLeft : 0;
   box.innerHTML = `
     ${qq ? "" : `<div class="tabs" role="tablist">${tabs.map(([k, n, col]) => `<button class="tab" role="tab" data-tab="${esc(k)}" aria-selected="${k === d.tab}">${col ? `<i style="background:${col}"></i>` : ""}${esc(n)}</button>`).join("")}</div>`}
-    <div class="grid">${foods.map((f) => `<button class="food ${added.has(f.name) ? "added" : ""}" data-food="${esc(f.name)}"><b>${esc(f.name)}</b><span>${f.g} g · ${r0(f.kcal * f.g / 100)} kcal</span></button>`).join("")}</div>
+    <div class="grid">${dishes.map((x) => `<button class="food dish" data-dish="${x.i}"><b>${esc(x.name)}</b><span>${x.items.length} alimentos · ${r0(sum(x.items, "kcal"))} kcal</span></button>`).join("")}${foods.map((f) => `<button class="food ${added.has(f.name) ? "added" : ""}" data-food="${esc(f.name)}"><b>${esc(f.name)}</b><span>${f.g} g · ${r0(f.kcal * f.g / 100)} kcal</span></button>`).join("")}</div>
+    ${qq && !foods.length && !dishes.length ? `<p class="note" style="margin:0">Não encontrei «${esc(qq)}». Cria-o e escreve as calorias.</p>` : ""}
     ${qq ? `<button class="create" id="dCreate">+ Criar «${esc(qq)}»</button>` : ""}`;
+  box.querySelectorAll("[data-dish]").forEach((b) => b.onclick = () => {
+    const x = S.dishes[+b.dataset.dish]; if (!x) return;
+    d.items.push(...x.items.map((i) => ({ ...i })));
+    if (!d.title.trim()) d.title = x.name;
+    d.q = ""; renderDraft(); toast(`«${x.name}» adicionado`);
+  });
   const t = box.querySelector(".tabs"); if (t) t.scrollLeft = keepScroll;
   box.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => { d.tab = b.dataset.tab; renderPicker(); });
   box.querySelectorAll("[data-food]").forEach((b) => b.onclick = () => {
@@ -504,6 +714,7 @@ function renderDraft() {
             <button class="x" data-rm="${i}" aria-label="Remover ${esc(it.name)}">×</button>
           </div>`).join("")}</div></div>` : ""}
       <div class="draft-total"><span>Total</span><span class="num">${r0(tot)} kcal</span></div>
+      ${d.items.length > 1 ? `<label class="keep"><input type="checkbox" id="dKeep" ${d.keep ? "checked" : ""}> Guardar também em «Os meus pratos» para repetir com um toque</label>` : ""}
       <div class="draft-actions">
         <button class="btn btn-plain" id="dCancel">Cancelar</button>
         <button class="btn btn-accent" id="dSave" ${d.items.length ? "" : "disabled"}>Guardar refeição</button>
@@ -514,6 +725,7 @@ function renderDraft() {
   q("#dMeal").onchange = (e) => { d.meal = e.target.value; };
   q("#dSearch").oninput = (e) => { d.q = e.target.value; renderPicker(); };
   renderPicker();
+  q("#dKeep") && (q("#dKeep").onchange = (e) => { d.keep = e.target.checked; });
   q("#dCancel").onclick = () => { S.draft = null; renderDraft(); };
   q("#dSave").onclick = saveDraft;
   el.querySelectorAll(".item input").forEach((inp) => {
@@ -546,6 +758,10 @@ function saveDraft() {
     }
   }
   lsSet("ddp.custom", S.custom.slice(0, 200));
+  if (d.keep && d.items.length > 1) {
+    S.dishes = [{ name: meal.title, items: meal.items }, ...S.dishes.filter((x) => x.name !== meal.title)].slice(0, 100);
+    lsSet("ddp.dishes", S.dishes);
+  }
   S.meals = [meal, ...S.meals];
   if (!saveMeals()) { S.meals = S.meals.filter((m) => m !== meal); toast("Memória cheia: apaga refeições antigas."); return; }
   S.draft = null; renderDraft(); render(); toast("Refeição guardada");
@@ -553,10 +769,20 @@ function saveDraft() {
 }
 
 // ---------- day view ----------
+const byName = (n) => BASE_FOODS.find((f) => f.name === n);
 const EXAMPLE = {
   id: "ex", meal: "Lanche", ts: 0, title: "Sandes mista em pão integral", example: true,
-  items: [fromFood(BASE_FOODS[1], 70), fromFood(BASE_FOODS[20], 20), fromFood(BASE_FOODS[29], 25), fromFood(BASE_FOODS[61], 5)]
+  items: [fromFood(byName("Pão integral"), 70), fromFood(byName("Queijo flamengo"), 20), fromFood(byName("Fiambre de peru"), 25), fromFood(byName("Manteiga"), 5)]
 };
+function renderDishes() {
+  const box = $("#dishList");
+  box.innerHTML = S.dishes.length ? S.dishes.map((x, i) => `<div class="dish-row"><span><b>${esc(x.name)}</b> <span class="muted num">${r0(sum(x.items, "kcal"))} kcal</span></span><button class="del" data-dishdel="${i}">Apagar</button></div>`).join("")
+    : `<p class="note">Ainda não tens pratos guardados. Ao guardar uma refeição com vários alimentos, marca «Guardar também em Os meus pratos».</p>`;
+  box.querySelectorAll("[data-dishdel]").forEach((b) => b.onclick = () => {
+    if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = "Confirmar"; setTimeout(() => { b.classList.remove("armed"); b.textContent = "Apagar"; }, 3000); return; }
+    S.dishes.splice(+b.dataset.dishdel, 1); lsSet("ddp.dishes", S.dishes); renderDishes(); toast("Prato apagado");
+  });
+}
 function dayLabel(k) {
   const t = todayKey();
   if (k === t) return "Hoje";
@@ -605,6 +831,7 @@ function render() {
     };
   });
   renderWeek();
+  renderDishes();
   if (document.activeElement !== $("#goalIn")) $("#goalIn").value = S.goal;
 }
 
