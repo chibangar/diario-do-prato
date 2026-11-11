@@ -197,6 +197,19 @@ details.settings summary { font-weight: 600; cursor: pointer; }
 .keep input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
 .dish-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
 .dish-row:first-child { border-top: 0; }
+/* first-run profile */
+.setup { position: fixed; inset: 0; z-index: 920; background: var(--paper); color: var(--ink); overflow-y: auto;
+  padding: max(24px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.setup-inner { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.setup h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; }
+.setup .lead { margin: 8px 0 0; color: var(--muted); font-size: 15px; }
+.setup .calc { margin: 0; padding: 0; border: 0; gap: 16px; }
+.setup .q { display: flex; flex-direction: column; gap: 6px; }
+.setup .q > span { font-size: 13px; font-weight: 600; }
+.setup .field, .setup select { font-size: 16px; padding: 12px; }
+.setup .seg span { padding: 12px 8px; font-size: 14.5px; }
+.setup .err { margin: 0; color: var(--danger); font-size: 14px; font-weight: 600; }
+.setup .btn-primary { width: 100%; font-size: 17px; padding: 15px; }
 /* calorie calculator */
 .calc { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
 .calc h3 { font-size: 16px; font-weight: 700; }
@@ -283,7 +296,7 @@ details.settings summary { font-weight: 600; cursor: pointer; }
 .upd-progress.indeterminate i { width: 35%; animation: updslide 1.2s ease-in-out infinite; }
 @keyframes updslide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 .upd-alt { flex: 1 1 100%; color: inherit; font-size: 13px; opacity: .9; }
-.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 20; max-width: calc(100% - 32px); }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 1100; max-width: calc(100% - 32px); }
 @media (max-width: 400px) {
   .item, .items-head { grid-template-columns: 1fr 64px 66px 28px; gap: 6px; }
   .kcal-row .v { font-size: 36px; }
@@ -415,6 +428,47 @@ details.settings summary { font-weight: 600; cursor: pointer; }
     </div>
     <p class="note" id="updNote">A app procura versões novas sempre que é aberta com internet.</p>
   </details>
+</div>
+
+<div class="setup" id="setup" role="dialog" aria-modal="true" aria-labelledby="setupTitle" hidden>
+  <div class="setup-inner">
+    <div>
+      <h1 id="setupTitle">Os teus dados</h1>
+      <p class="lead">Com estes dados a app calcula o teu metabolismo basal e quantas calorias deves comer por dia. Ficam guardados só neste telemóvel e podes mudá-los em «Meta diária».</p>
+    </div>
+    <div class="calc">
+      <div class="q"><span>Sexo</span>
+        <div class="seg" role="radiogroup" aria-label="Sexo">
+          <label><input type="radio" name="sSex" value="m"><span>Homem</span></label>
+          <label><input type="radio" name="sSex" value="f"><span>Mulher</span></label>
+        </div>
+      </div>
+      <div class="calc-grid">
+        <label class="f">Idade<input type="number" id="sAge" class="field num" min="14" max="100" inputmode="numeric" placeholder="anos"></label>
+        <label class="f">Peso (kg)<input type="number" id="sWeight" class="field num" min="30" max="300" step="0.1" inputmode="decimal" placeholder="kg"></label>
+        <label class="f">Altura (cm)<input type="number" id="sHeight" class="field num" min="120" max="230" inputmode="numeric" placeholder="cm"></label>
+      </div>
+      <label class="f">Atividade física
+        <select id="sAct" class="field">
+          <option value="">Escolhe…</option>
+          <option value="1.2">Sedentária: pouco ou nenhum exercício</option>
+          <option value="1.375">Ligeira: exercício 1 a 3 dias por semana</option>
+          <option value="1.55">Moderada: exercício 3 a 5 dias por semana</option>
+          <option value="1.725">Intensa: exercício 6 a 7 dias por semana</option>
+          <option value="1.9">Muito intensa: treino 2 vezes por dia ou trabalho físico</option>
+        </select>
+      </label>
+      <div class="q"><span>O teu objetivo</span>
+        <div class="seg" role="radiogroup" aria-label="Objetivo">
+          <label><input type="radio" name="sGoal" value="lose"><span>Perder peso</span></label>
+          <label><input type="radio" name="sGoal" value="keep"><span>Manter</span></label>
+          <label><input type="radio" name="sGoal" value="gain"><span>Ganhar massa</span></label>
+        </div>
+      </div>
+      <p class="err" id="sErr" role="alert" hidden></p>
+      <button class="btn btn-primary" id="sGo" type="button">Calcular a minha meta</button>
+    </div>
+  </div>
 </div>
 
 <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="wTitle" hidden>
@@ -1404,7 +1458,7 @@ $("#cCalc").onclick = () => {
 };
 $("#cOut").onclick = (e) => {
   const b = e.target.closest("[data-goal]"); if (!b) return;
-  S.goal = Number(b.dataset.goal); lsSet("ddp.goal", S.goal); render(); renderCalc();
+  S.goal = Number(b.dataset.goal); P.objective = b.dataset.kind; lsSet("ddp.profile", P); lsSet("ddp.goal", S.goal); render(); renderCalc();
   toast(`Meta guardada: ${S.goal.toLocaleString("pt-PT")} kcal por dia`);
 };
 $("#kcalGoal").onclick = () => {
@@ -1412,6 +1466,44 @@ $("#kcalGoal").onclick = () => {
   det.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 fillProfile(); renderCalc();
+// ---------- first-run profile (required) ----------
+const GOAL_NAMES = { lose: "perder peso", keep: "manter o peso", gain: "ganhar massa" };
+const profileDone = () => !!(P.sex && P.age && P.weight && P.height && P.act && P.objective);
+let afterProfile = null;
+function needProfile(then) {
+  if (profileDone()) { then?.(); return; }
+  afterProfile = then || null;
+  const el = $("#setup");
+  if (P.sex) document.querySelector(`input[name="sSex"][value="${P.sex}"]`).checked = true;
+  if (P.age) $("#sAge").value = P.age;
+  if (P.weight) $("#sWeight").value = P.weight;
+  if (P.height) $("#sHeight").value = P.height;
+  if (P.act) $("#sAct").value = String(P.act);
+  if (P.objective) document.querySelector(`input[name="sGoal"][value="${P.objective}"]`).checked = true;
+  el.hidden = false; document.body.style.overflow = "hidden"; el.scrollTop = 0;
+}
+$("#sGo").onclick = () => {
+  const err = $("#sErr"), fail = (m, focus) => { err.textContent = m; err.hidden = false; focus?.focus(); };
+  const sex = document.querySelector('input[name="sSex"]:checked')?.value;
+  const age = num($("#sAge").value), weight = num($("#sWeight").value), height = num($("#sHeight").value);
+  const act = Number($("#sAct").value), objective = document.querySelector('input[name="sGoal"]:checked')?.value;
+  if (!sex) return fail("Escolhe Homem ou Mulher.");
+  if (age < 14 || age > 100) return fail("Escreve a tua idade (14 a 100 anos).", $("#sAge"));
+  if (weight < 30 || weight > 300) return fail("Escreve o teu peso em kg (30 a 300).", $("#sWeight"));
+  if (height < 120 || height > 230) return fail("Escreve a tua altura em cm (120 a 230).", $("#sHeight"));
+  if (!act) return fail("Escolhe a tua atividade física.", $("#sAct"));
+  if (!objective) return fail("Escolhe o teu objetivo.");
+  err.hidden = true;
+  Object.assign(P, { sex, age: r0(age), weight: r1(weight), height: r0(height), act, objective });
+  lsSet("ddp.profile", P);
+  const g = calcGoals(P);
+  S.goal = g[objective]; lsSet("ddp.goal", S.goal);
+  fillProfile(); render(); renderCalc();
+  $("#setup").hidden = true; document.body.style.overflow = "";
+  toast(`A tua meta: ${S.goal.toLocaleString("pt-PT")} kcal por dia para ${GOAL_NAMES[objective]}. Metabolismo basal: ${g.bmr.toLocaleString("pt-PT")} kcal.`);
+  const then = afterProfile; afterProfile = null;
+  if (then) setTimeout(then, 400);
+};
 $("#nextDay").onclick = () => { if (S.day < todayKey()) { S.day = shiftKey(S.day, 1); render(); } };
 $("#goalSave").onclick = () => {
   const g = r0($("#goalIn").value);
@@ -1459,8 +1551,8 @@ function stopVoice() {
 voiceBtn.onclick = () => { if (W.playing) stopVoice(); else playVoice(); };
 function showWelcome() { W.el.hidden = false; document.body.style.overflow = "hidden"; $("#wTour").focus(); playVoice(); }
 function hideWelcome() { stopVoice(); W.el.hidden = true; document.body.style.overflow = ""; lsSet("ddp.seenWelcomeVoice", true); }
-$("#wTour").onclick = () => { hideWelcome(); startTour(); };
-$("#wSkip").onclick = () => { hideWelcome(); toast("O tutorial está sempre em Ajuda, no fundo da app."); };
+$("#wTour").onclick = () => { hideWelcome(); needProfile(() => startTour()); };
+$("#wSkip").onclick = () => { hideWelcome(); needProfile(() => toast("O tutorial está sempre em Ajuda, no fundo da app.")); };
 $("#helpWelcome").onclick = () => showWelcome();
 $("#helpTour").onclick = () => startTour();
 
@@ -1491,7 +1583,7 @@ const TOUR = [
   { sel: "#meals", title: "As tuas refeições", text: "Cada refeição guardada aparece aqui com a foto e os alimentos. «Repetir» volta a registar a mesma refeição. Para apagar, toca em «Apagar» e depois em «Confirmar»." },
   { sel: "header", title: "Escolher o dia", text: "Toca no calendário, no canto de cima à direita, ou no nome do dia para abrir o mês e escolher qualquer dia. As setas avançam ou recuam um dia. Os dias com registos têm um ponto verde, ou amarelo se passaste a meta." },
   { sel: ".week", title: "Últimos 7 dias", text: "O gráfico mostra as calorias de cada dia. A linha tracejada é a tua meta e as barras amarelas são os dias acima dela. Toca num dia para o abrir." },
-  { sel: "#goalDetails", title: "A tua meta", text: "Em «Meta diária» escreves as calorias por dia ou tocas em «Calcular a minha meta»: com o sexo, a idade, o peso, a altura e a atividade, a app calcula o metabolismo basal e quanto comer para perder peso, manter ou ganhar massa." },
+  { sel: "#goalDetails", title: "A tua meta", text: "A tua meta foi calculada com os dados que preencheste no início (sexo, idade, peso, altura, atividade e objetivo). Em «Meta diária» podes mudar esses dados, por exemplo quando o teu peso mudar, ou escrever tu as calorias." },
   { sel: "#updDetails", title: "Atualizações", text: "Quando houver uma versão nova, aparece uma barra verde no topo da app. Toca em «Descarregar», abre o ficheiro e instala. Os teus registos mantêm-se." },
   { title: "Os teus dados", text: "Tudo fica guardado só neste telemóvel e a app funciona sem internet. Atenção: se desinstalares a app, os registos são apagados. Está pronto, bom apetite!" }
 ];
@@ -1666,6 +1758,7 @@ window.Capacitor?.Plugins?.App?.addListener?.("resume", () => checkUpdate(false)
 render();
 checkUpdate(false);
 if (!lsGet("ddp.seenWelcomeVoice", false)) showWelcome();
+else needProfile();
 })();
 </script>
 <script type="module">
