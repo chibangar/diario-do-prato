@@ -9,8 +9,8 @@ Enquanto não existir, mostra o mesmo texto escrito.
 Fala devagar, num tom calmo, como se estivesses a explicar a uma amiga.
 Pausas curtas onde está «/».
 
-> Olá, que bom ter-te aqui! /
-> Com o Diário do Prato é muito simples: /
+> Bem-vindo ao Diário do Prato! /
+> É muito simples: /
 > tiras uma fotografia ao teu prato /
 > e tocas nos alimentos que lá estão. /
 > A app faz as contas por ti. /
