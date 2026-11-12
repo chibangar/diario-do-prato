@@ -498,7 +498,7 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
   <details class="settings" id="acctDetails">
     <summary>A minha conta</summary>
     <div id="acctBox"></div>
-    <p class="note">Entrar é opcional. Por agora serve para mostrar o teu nome e a tua foto; os registos continuam guardados só neste telemóvel.</p>
+    <p class="note">Entrar é opcional. Com a conta, os teus registos, a meta e os teus pratos ficam guardados na conta (servidores da Google, na Europa) e voltam se trocares de telemóvel. As fotos das refeições ficam só no telemóvel.</p>
   </details>
 
   <details class="settings" id="helpDetails">
@@ -1056,7 +1056,8 @@ const sum = (items, k) => items.reduce((a, it) => a + num(it[k]), 0);
 const norm = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const guessMeal = () => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h < 11 ? MEALS[0] : h < 15.5 ? MEALS[1] : h < 18.5 ? MEALS[2] : h < 22.5 ? MEALS[3] : MEALS[4]; };
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
-const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
+const SYNC_KEYS = new Set(["ddp.meals", "ddp.custom", "ddp.dishes", "ddp.goal", "ddp.profile", "ddp.plan"]);
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); if (SYNC_KEYS.has(k)) setTimeout(() => cloudPush(), 0); return true; } catch { return false; } };
 function fromFood(f, grams) {
   const g = grams ?? f.g, k = g / 100;
   return { name: f.name, detail: "", cat: f.cat, g, kcal: r0(f.kcal * k), p: r1(f.p * k), c: r1(f.c * k), f: r1(f.f * k) };
@@ -1949,6 +1950,7 @@ function render() {
   list.querySelectorAll("[data-del]").forEach((b) => {
     b.onclick = () => {
       if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = "Confirmar"; setTimeout(() => { b.classList.remove("armed"); b.textContent = "Apagar"; }, 3000); return; }
+      lsSet("ddp.deleted", [b.dataset.del, ...lsGet("ddp.deleted", [])].slice(0, 500));
       S.meals = S.meals.filter((m) => m.id !== b.dataset.del); saveMeals(); render(); toast("Refeição apagada");
     };
   });
@@ -2284,6 +2286,7 @@ $("#helpWelcome").onclick = () => showWelcome();
 // ---------- what's new (shown once after each update) ----------
 // Rewrite this list in every release: it is what the person reads right after updating.
 const NEWS = [
+  "Cópia na conta: se entrares com Google em «A minha conta», os teus registos ficam guardados na conta e voltam se trocares de telemóvel. Quem já tinha entrado tem de sair e entrar outra vez.",
   "Editar: cada refeição guardada tem agora o botão «Editar», para corrigir alimentos ou gramas sem a apagar.",
   "Código de barras: tira uma foto ao código de um produto, ou escreve os números em «Adicionar comida», e a app encontra-o.",
   "Marcas de nutrição desportiva: Prozis, MyProtein, Zumub e EU Nutrition na pesquisa, com filtro por marca (cerca de 3500 produtos).",
@@ -2317,8 +2320,11 @@ function renderAcct() {
   const pic = user?.photo && /^https:\/\//.test(user.photo) ? `<img src="${esc(user.photo)}" alt="" referrerpolicy="no-referrer">` : "";
   $("#acctBtn").innerHTML = pic || PERSON;
   $("#acctBox").innerHTML = user
-    ? `<div class="acct">${pic || `<span class="ph">${esc((user.name || "?")[0].toUpperCase())}</span>`}<div class="who"><b>${esc(user.name || "Conta Google")}</b><span>${esc(user.email || "")}</span></div><button class="btn btn-plain" id="acctOut" type="button">Sair</button></div>`
+    ? `<div class="acct">${pic || `<span class="ph">${esc((user.name || "?")[0].toUpperCase())}</span>`}<div class="who"><b>${esc(user.name || "Conta Google")}</b><span>${esc(user.email || "")}</span></div><button class="btn btn-plain" id="acctOut" type="button">Sair</button></div>
+       <p class="note" id="syncState" style="margin:10px 0 0"></p>
+       <div class="help-actions" style="margin-top:8px"><button class="btn btn-plain" id="syncNow" type="button">Guardar cópia agora</button><button class="btn btn-plain" id="syncPull" type="button">Repor da conta</button></div>`
     : `<button class="g-btn" id="acctIn" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.500c3.500 0 6.600 1.200 9.100 3.600l6.800-6.800C35.800 2.500 30.300 0 24 0 14.600 0 6.500 5.400 2.600 13.200l7.900 6.200C12.400 13.700 17.700 9.500 24 9.500z"/><path fill="#4285F4" d="M46.500 24.500c0-1.600-.1-3.100-.4-4.500H24v9h12.700c-.6 3-2.300 5.500-4.800 7.200l7.700 6c4.500-4.200 6.900-10.300 6.900-17.700z"/><path fill="#FBBC05" d="M10.500 28.600c-.5-1.400-.8-3-.8-4.600s.3-3.200.8-4.600l-7.900-6.200C1 16.500 0 20.100 0 24s1 7.500 2.600 10.800l7.900-6.200z"/><path fill="#34A853" d="M24 48c6.500 0 11.900-2.100 15.900-5.800l-7.700-6c-2.200 1.500-4.900 2.300-8.200 2.300-6.300 0-11.600-4.200-13.500-9.900l-7.900 6.200C6.500 42.600 14.600 48 24 48z"/></svg>Entrar com Google</button>`;
+  setTimeout(() => { try { renderSync(); } catch { /* not ready yet */ } }, 0);
   const inB = $("#acctIn"), outB = $("#acctOut");
   if (inB) inB.onclick = async () => {
     inB.disabled = true;
@@ -2328,6 +2334,8 @@ function renderAcct() {
       const p = r?.result?.profile || {};
       user = { name: String(p.name || p.givenName || "").slice(0, 80), email: String(p.email || "").slice(0, 120), photo: String(p.imageUrl || "").slice(0, 500) };
       lsSet("ddp.user", user); renderAcct(); toast(`Olá, ${user.name || "bem-vindo"}!`);
+      // account copy: sign in to the app's database with the same Google identity, then merge both sides
+      try { await fbSignIn(r?.result?.idToken); await cloudSync(); } catch { renderSync("Não consegui ligar a cópia na conta. Tenta «Guardar cópia agora»."); }
     } catch (e) {
       const m = String(e?.message || e);
       toast(e?.code === "no-native" ? "A entrada com Google só funciona na app instalada no telemóvel."
@@ -2337,13 +2345,111 @@ function renderAcct() {
   };
   if (outB) outB.onclick = async () => {
     try { await socialInit(); await social("logout", { provider: "google" }); } catch { /* signed out locally anyway */ }
-    user = null; lsSet("ddp.user", null); renderAcct(); toast("Saíste da conta.");
+    user = null; lsSet("ddp.user", null); FB = null; lsSet("ddp.fb", null); renderAcct(); toast("Saíste da conta. Os registos continuam neste telemóvel.");
   };
 }
 $("#acctBtn").onclick = () => { const d = $("#acctDetails"); d.open = true; d.scrollIntoView({ behavior: "smooth", block: "start" }); };
 renderAcct();
 // cloud copy of the diary: filled in when the account backup is set up
-function cloudPush() {}
+// A signed-in person keeps one document in Firestore: users/{uid}/backup/main, readable only by them.
+const FB_KEY = "AIzaSyCi2-yR6E7XhQuHUD9QfEGb3Wt6RDzVr3s"; // public Firebase web key (access is limited by the database rules)
+const FB_DOC = (uid) => `https://firestore.googleapis.com/v1/projects/nutrilente-b4547/databases/(default)/documents/users/${uid}/backup/main`;
+let FB = lsGet("ddp.fb", null), pushTimer = null, syncing = false;
+async function fbPost(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error?.message || String(r.status)), { status: r.status });
+  return j;
+}
+async function fbSignIn(googleIdToken) {
+  if (!googleIdToken) throw new Error("no token");
+  const j = await fbPost(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FB_KEY}`,
+    { postBody: `id_token=${encodeURIComponent(googleIdToken)}&providerId=google.com`, requestUri: "http://localhost", returnSecureToken: true });
+  FB = { uid: j.localId, token: j.idToken, refresh: j.refreshToken, exp: Date.now() + (Number(j.expiresIn) || 3600) * 1000 - 60000 };
+  lsSet("ddp.fb", FB);
+}
+async function fbToken() {
+  if (!FB?.refresh) throw new Error("signed out");
+  if (FB.token && Date.now() < FB.exp) return FB.token;
+  const r = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FB_KEY}`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(FB.refresh)}` });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error("refresh"), { status: r.status });
+  FB = { ...FB, token: j.id_token, refresh: j.refresh_token || FB.refresh, exp: Date.now() + (Number(j.expires_in) || 3600) * 1000 - 60000 };
+  lsSet("ddp.fb", FB);
+  return FB.token;
+}
+function renderSync(msg) {
+  const el = $("#syncState"); if (!el) return;
+  const at = lsGet("ddp.syncAt", 0);
+  el.textContent = msg || (!FB?.refresh ? "Para ativar a cópia na conta, toca em «Sair» e entra outra vez."
+    : at ? `Cópia na conta guardada em ${new Date(at).toLocaleString("pt-PT", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.` : "Cópia na conta: ainda não guardada.");
+}
+// what goes to the account: everything except the photos
+function backupData() {
+  const slim = (m) => { const { thumb, ...rest } = m; return rest; };
+  let meals = [...S.meals].sort((a, b) => b.ts - a.ts).map(slim);
+  const pack = () => JSON.stringify({ v: 1, updated: Date.now(), meals, custom: S.custom, dishes: S.dishes, goal: S.goal, profile: P, plan: lsGet("ddp.plan", null), deleted: lsGet("ddp.deleted", []) });
+  let out = pack();
+  while (out.length > 900000 && meals.length > 50) { meals = meals.slice(0, Math.floor(meals.length * 0.8)); out = pack(); } // one document holds about 1 MB
+  return out;
+}
+async function cloudWrite() {
+  const t = await fbToken();
+  const r = await fetch(FB_DOC(FB.uid), { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` }, body: JSON.stringify({ fields: { data: { stringValue: backupData() }, updated: { integerValue: String(Date.now()) } } }) });
+  if (!r.ok) throw Object.assign(new Error("write"), { status: r.status });
+  lsSet("ddp.syncAt", Date.now()); renderSync();
+}
+async function cloudRead() {
+  const t = await fbToken();
+  const r = await fetch(FB_DOC(FB.uid), { headers: { Authorization: `Bearer ${t}` } });
+  if (r.status === 404) return null;
+  if (!r.ok) throw Object.assign(new Error("read"), { status: r.status });
+  const j = await r.json();
+  try { return JSON.parse(j.fields?.data?.stringValue || "null"); } catch { return null; }
+}
+// bring the account copy into this phone: keep everything from both sides, minus what was deleted
+function mergeCloud(c) {
+  if (!c) return 0;
+  const gone = new Set([...(c.deleted || []), ...lsGet("ddp.deleted", [])]);
+  const have = new Set(S.meals.map((m) => m.id));
+  const extra = (c.meals || []).filter((m) => m?.id && !have.has(m.id) && !gone.has(m.id) && Array.isArray(m.items));
+  S.meals = [...S.meals.filter((m) => !gone.has(m.id)), ...extra];
+  const byName = (list, add) => { const n = new Set(list.map((x) => x.name)); return [...list, ...(add || []).filter((x) => x?.name && !n.has(x.name))]; };
+  S.custom = byName(S.custom, c.custom).slice(0, 200); S.dishes = byName(S.dishes, c.dishes).slice(0, 100);
+  if (!profileDone() && c.profile?.sex) { Object.assign(P, c.profile); if (c.goal) S.goal = c.goal; }
+  if (!lsGet("ddp.plan", null) && c.plan) { plan = c.plan; localStorage.setItem("ddp.plan", JSON.stringify(plan)); }
+  // write without scheduling another push for each key
+  for (const [k, v] of [["ddp.meals", S.meals], ["ddp.custom", S.custom], ["ddp.dishes", S.dishes], ["ddp.goal", S.goal], ["ddp.profile", P], ["ddp.deleted", [...gone].slice(0, 500)]]) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full */ } }
+  fillProfile(); render(); renderCalc(); renderPlan();
+  return extra.length;
+}
+async function cloudSync(say) {
+  if (!FB?.refresh || syncing) return;
+  syncing = true; renderSync("A sincronizar com a conta…");
+  try {
+    const n = mergeCloud(await cloudRead());
+    await cloudWrite();
+    if (say) toast(n ? `Recuperei ${n} ${n === 1 ? "refeição" : "refeições"} da conta.` : "Está tudo igual à conta.");
+    if (!$("#setup").hidden && profileDone()) { $("#setup").hidden = true; document.body.style.overflow = ""; }
+  } catch (e) {
+    renderSync(e.status === 401 || e.status === 400 ? "A sessão da cópia expirou. Toca em «Sair» e entra outra vez." : "Sem ligação à conta. A cópia fica para a próxima vez que houver internet.");
+    if (say) toast("Não consegui ligar à conta. Verifica a internet.");
+  }
+  syncing = false;
+}
+function cloudPush() {
+  if (!FB?.refresh) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => { cloudWrite().catch(() => renderSync("Sem ligação à conta. A cópia fica para a próxima vez que houver internet.")); }, 4000);
+}
+document.addEventListener("click", (e) => {
+  if (e.target.closest("#syncNow")) cloudWrite().then(() => toast("Cópia guardada na conta.")).catch(() => toast("Não consegui guardar. Verifica a internet ou entra outra vez."));
+  if (e.target.closest("#syncPull")) cloudSync(true);
+});
+renderSync();
+// catch up when the app opens or comes back with internet
+if (FB?.refresh) setTimeout(() => cloudSync(), 2500);
+window.addEventListener("online", () => cloudSync());
 // ---------- theme ----------
 function renderTheme() {
   const t = document.documentElement.dataset.theme || "auto";
