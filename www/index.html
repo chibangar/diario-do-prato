@@ -536,6 +536,27 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
   .scan::before, .scan::after, .wrap > section, .mgroup, .mission.just, .add-btn.spin { animation: none; }
   button, .food, .tab { transition: none; }
 }
+/* "what should I eat" */
+.idea-btn { width: 100%; display: flex; align-items: center; gap: 14px; text-align: left; border: 0; border-radius: 20px; padding: 16px 18px; color: #1B1600;
+  background: linear-gradient(120deg, var(--hi), #FFE58A 55%, var(--carb)); box-shadow: 0 10px 26px color-mix(in srgb, var(--hi) 35%, transparent); }
+.idea-btn .em { font-size: 30px; line-height: 1; }
+.idea-btn b { display: block; font-size: 17px; }
+.idea-btn small { display: block; font-size: 13px; opacity: .8; }
+.idea { max-height: calc(100vh - 40px); overflow-y: auto; }
+.idea .i-meal { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.idea .i-meal button { flex: none; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: 13px; }
+.idea .i-meal button[aria-pressed="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.idea h3 { font-size: 20px; font-weight: 800; margin: 2px 0 0; }
+.idea .i-why { color: var(--muted); font-size: 13px; margin: 0; }
+.idea ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.idea li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.idea li:first-child { border-top: 0; }
+.idea li span { font-family: var(--f-num); color: var(--muted); white-space: nowrap; }
+.idea .i-tot { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; }
+.idea .i-tot div { background: var(--soft); border-radius: 12px; padding: 8px 4px; font-size: 11.5px; color: var(--muted); }
+.idea .i-tot b { display: block; font-family: var(--f-num); font-size: 16px; color: var(--ink); }
+.idea .i-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.idea .i-acts .btn { flex: 1 1 140px; }
 .key-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .key-row input { flex: 1 1 200px; min-width: 0; }
 </style>
@@ -576,6 +597,8 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <div class="mbars" id="macros"></div>
     <div class="sum-foot"><span>Meta <button class="goal-link" id="kcalGoal" type="button"></button></span><span>Comido <b id="kcalTotal">0</b></span><span id="kcalLeft"></span></div>
   </section>
+
+  <button class="idea-btn" id="ideaBtn" type="button"><span class="em" aria-hidden="true">🤔</span><span><b>Não sei o que comer</b><small>A app escolhe uma refeição à medida do que te falta hoje</small></span></button>
 
   <section class="card mcard" id="missions">
     <div class="m-top"><div class="lvl" id="mLvl"><div><small>NÍVEL</small><b>1</b></div></div><div class="t"><b id="mTitle">Missões</b><span id="mXp"></span></div><span class="streak" id="mStreak"></span></div>
@@ -829,6 +852,10 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <ul id="newsList"></ul>
     <div class="cal-foot"><button class="btn btn-accent" id="newsOk" type="button">Entendi</button></div>
   </div>
+</div>
+
+<div class="cal-back" id="ideaSheet" role="dialog" aria-modal="true" aria-labelledby="ideaTitle" hidden>
+  <div class="cal idea" id="ideaBox"></div>
 </div>
 
 <div class="tour" id="tour" hidden>
@@ -2693,13 +2720,100 @@ function renderNotif(msg) {
 const autoUpd = () => lsGet("ddp.autoUpd", true) !== false;
 $("#autoUpd").checked = autoUpd();
 $("#autoUpd").onchange = (e) => { lsSet("ddp.autoUpd", e.target.checked); toast(e.target.checked ? "Atualizações automáticas ligadas." : "Atualizações automáticas desligadas."); };
+// ---------- "I don't know what to eat": a meal built for what is left today ----------
+// Each idea: protein + base (+ vegetables), the portions are scaled to the calories and protein still missing.
+const IDEAS = {
+  "Pequeno-almoço": [
+    { t: "Papas de aveia com fruta", items: [["Flocos de aveia", "c"], ["Leite meio-gordo", 250], ["Banana", 120], ["Proteína em pó (dose)", "p"]] },
+    { t: "Iogurte grego com granola caseira", items: [["Iogurte grego", "p"], ["Flocos de aveia", "c"], ["Morangos", 120], ["Mel", 10]] },
+    { t: "Tostas com ovos mexidos", items: [["Ovos mexidos", "p"], ["Pão integral", "c"], ["Queijo fresco", 40], ["Kiwi", 80]] },
+    { t: "Pão com fiambre de peru e queijo fresco", items: [["Pão de forma integral", "c"], ["Fiambre de peru", "p"], ["Queijo fresco", 60], ["Maçã", 150]] },
+    { t: "Skyr com mirtilos e amêndoas", items: [["Skyr", "p"], ["Mirtilos", 100], ["Flocos de aveia", "c"], ["Amêndoas", 15]] }
+  ],
+  "Almoço": [
+    { t: "Frango grelhado com arroz e brócolos", items: [["Peito de frango grelhado", "p"], ["Arroz branco cozido", "c"], ["Brócolos cozidos", 150], ["Azeite", 10]] },
+    { t: "Salmão com batata-doce e salada", items: [["Salmão grelhado", "p"], ["Batata-doce assada", "c"], ["Salada verde", 120], ["Azeite", 5]] },
+    { t: "Bife com massa integral e legumes", items: [["Bife de vaca grelhado", "p"], ["Massa integral cozida", "c"], ["Legumes salteados", 150]] },
+    { t: "Pescada com batata e feijão-verde", items: [["Pescada cozida", "p"], ["Batata cozida", "c"], ["Feijão-verde cozido", 150], ["Azeite", 10]] },
+    { t: "Wrap de atum com grão", items: [["Atum em lata (ao natural)", "p"], ["Tortilha / wrap", "c"], ["Grão-de-bico cozido", 80], ["Salada verde", 80]] },
+    { t: "Peru com quinoa e espinafres", items: [["Peru grelhado", "p"], ["Quinoa cozida", "c"], ["Espinafres cozidos", 120], ["Azeite", 10]] }
+  ],
+  "Lanche": [
+    { t: "Iogurte grego com fruta", items: [["Iogurte grego", "p"], ["Banana", 100], ["Nozes", 15]] },
+    { t: "Tostas com queijo fresco e fiambre", items: [["Tostas", "c"], ["Queijo fresco", 60], ["Fiambre de peru", "p"]] },
+    { t: "Batido de proteína com banana", items: [["Proteína em pó (dose)", "p"], ["Leite magro", 250], ["Banana", "c"]] },
+    { t: "Skyr com mirtilos", items: [["Skyr", "p"], ["Mirtilos", 100], ["Flocos de aveia", "c"]] },
+    { t: "Pão com manteiga de amendoim e fruta", items: [["Pão integral", "c"], ["Manteiga de amendoim", 15], ["Iogurte natural", "p"], ["Maçã", 120]] }
+  ],
+  "Jantar": [
+    { t: "Omelete com salada e batata", items: [["Omelete (2 ovos)", "p"], ["Batata cozida", "c"], ["Salada verde", 150], ["Azeite", 5]] },
+    { t: "Dourada com legumes e arroz integral", items: [["Dourada grelhada", "p"], ["Arroz integral cozido", "c"], ["Legumes salteados", 180]] },
+    { t: "Frango com cuscuz e brócolos", items: [["Peito de frango grelhado", "p"], ["Cuscuz cozido", "c"], ["Brócolos cozidos", 150], ["Azeite", 10]] },
+    { t: "Febras com feijão e salada", items: [["Febras de porco", "p"], ["Feijão cozido", "c"], ["Salada verde", 150]] },
+    { t: "Salmão com massa e espinafres", items: [["Salmão grelhado", "p"], ["Massa cozida", "c"], ["Espinafres cozidos", 120]] },
+    { t: "Lentilhas com ovo cozido e legumes", items: [["Lentilhas cozidas", "c"], ["Ovo cozido", "p"], ["Legumes salteados", 150], ["Azeite", 10]] }
+  ]
+};
+IDEAS.Snack = IDEAS.Lanche;
+const MEAL_SHARE = { "Pequeno-almoço": 0.25, "Almoço": 0.35, "Lanche": 0.12, "Jantar": 0.28, "Snack": 0.1 };
+const ID = { meal: null, n: 0 };
+const round = (g, step) => Math.max(step, Math.round(g / step) * step);
+function buildIdea(meal, n) {
+  const k = todayKey(), st = dayStats(k), goal = dayGoal(k), pT = macroTargets(goal).p;
+  const done = new Set(S.meals.filter((m) => m.day === k).map((m) => m.meal));
+  const left = Math.max(0, goal - st.kcal), leftP = Math.max(0, pT - st.p);
+  // what is left is shared between this meal and the meals still to come today
+  const order = ["Pequeno-almoço", "Almoço", "Lanche", "Jantar"], idx = Math.max(0, order.indexOf(meal));
+  const todo = order.slice(idx).filter((m) => m === meal || !done.has(m));
+  const shares = todo.reduce((a, m) => a + MEAL_SHARE[m], 0) || 1;
+  // a normal-sized meal: between 60 % and 130 % of this meal's usual share of the day, never more than what is left
+  const usual = goal * MEAL_SHARE[meal];
+  let kcal = Math.min(Math.max(left * (MEAL_SHARE[meal] / shares), usual * 0.6), usual * 1.3);
+  if (left < kcal) kcal = Math.max(150, left);
+  const pWant = Math.min(Math.max(leftP * (MEAL_SHARE[meal] / shares), 15), meal === "Lanche" ? 25 : 45);
+  const list = IDEAS[meal] || IDEAS.Almoço, tpl = list[((n % list.length) + list.length) % list.length];
+  const food = (name) => findFood(name);
+  // protein item first (to hit protein), then fixed items, then the carb item fills the calories
+  const items = [];
+  const pi = tpl.items.find((x) => x[1] === "p"), ci = tpl.items.find((x) => x[1] === "c");
+  if (pi) { const f = food(pi[0]); const g = Math.min(f.g * 1.6, Math.max(f.g * 0.6, (pWant / Math.max(f.p, 1)) * 100)); items.push(fromFood(f, round(g, f.g <= 40 ? 5 : 10))); }
+  for (const [name, g] of tpl.items) if (typeof g === "number") items.push(fromFood(food(name), g));
+  if (ci) {
+    const f = food(ci[0]), have = sum(items, "kcal");
+    const g = Math.min(f.g * 2, Math.max(f.g * 0.4, ((kcal - have) / Math.max(f.kcal, 1)) * 100));
+    items.push(fromFood(f, round(g, f.g <= 60 ? 5 : 10)));
+  }
+  return { meal, title: tpl.t, items, kcal: sum(items, "kcal"), p: sum(items, "p"), c: sum(items, "c"), f: sum(items, "f"), target: r0(kcal), left: r0(left), leftP: r0(leftP) };
+}
+function renderIdea() {
+  const it = buildIdea(ID.meal, ID.n);
+  $("#ideaBox").innerHTML = `
+    <div class="cal-head"><h2 id="ideaTitle">Sugestão para ti</h2><button id="ideaX" type="button" aria-label="Fechar">×</button></div>
+    <div class="i-meal">${["Pequeno-almoço", "Almoço", "Lanche", "Jantar"].map((m) => `<button type="button" data-imeal="${m}" aria-pressed="${m === ID.meal}">${m}</button>`).join("")}</div>
+    <h3>${esc(it.title)}</h3>
+    <p class="i-why">${it.left > 0 ? `Faltam-te ${it.left} kcal e ${it.leftP} g de proteína hoje. Esta refeição tem cerca de ${r0(it.kcal)} kcal.` : "Já chegaste à meta de hoje: esta é uma opção leve."}</p>
+    <ul>${it.items.map((x) => `<li>${esc(x.name)}<span>${r0(x.g)} g</span></li>`).join("")}</ul>
+    <div class="i-tot"><div>Calorias<b>${r0(it.kcal)}</b></div><div>Proteína<b>${r0(it.p)} g</b></div><div>Hidratos<b>${r0(it.c)} g</b></div><div>Gordura<b>${r0(it.f)} g</b></div></div>
+    <div class="i-acts"><button class="btn btn-plain" id="ideaNext" type="button">🔄 Outra ideia</button><button class="btn btn-accent" id="ideaEat" type="button">Vou comer isto</button></div>`;
+  $("#ideaX").onclick = closeIdea;
+  $("#ideaNext").onclick = () => { ID.n++; renderIdea(); };
+  $("#ideaEat").onclick = () => {
+    closeIdea(); burst($("#ideaBtn"));
+    newDraft({ meal: it.meal, title: it.title, items: it.items.map((x) => ({ ...x })) });
+  };
+  document.querySelectorAll("[data-imeal]").forEach((b) => b.onclick = () => { ID.meal = b.dataset.imeal; ID.n = Math.floor(Math.random() * 6); renderIdea(); });
+}
+function closeIdea() { $("#ideaSheet").hidden = true; }
+$("#ideaBtn").onclick = () => {
+  const g = guessMeal(); ID.meal = g === "Snack" ? (new Date().getHours() < 12 ? "Pequeno-almoço" : "Lanche") : g;
+  ID.n = Math.floor(Math.random() * 6);
+  renderIdea(); $("#ideaSheet").hidden = false;
+};
+$("#ideaSheet").addEventListener("click", (e) => { if (e.target === $("#ideaSheet")) closeIdea(); });
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Missões de fitness: todos os dias e todas as semanas, com XP, níveis e série de dias seguidos 🔥.",
-  "Notificações: lembretes das refeições, da pesagem e das missões. Podes desligá-las em «Notificações».",
-  "Atualizações automáticas: a app descarrega sozinha e abre o instalador (o Android pede só um toque).",
-  "Botões novos: efeito líquido, brilho, partículas e vibração ao tocar."
+  "«Não sei o que comer»: um botão na página principal sugere uma refeição à medida das calorias e da proteína que te faltam hoje. Podes pedir outra ideia ou pô-la logo no prato."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
@@ -2894,6 +3008,7 @@ const TOUR = [
   { sel: "#summary", title: "O teu dia", text: "O anel mostra quantas calorias ainda podes comer hoje. As cores são os hidratos, a proteína e a gordura que já comeste, e as barras ao lado mostram quanto falta de cada um para a tua meta." },
   { sel: "#trainBtn", title: "Dia de treino", text: "Nos dias em que treinas, a meta sobe com as calorias do treino. A app sabe os teus dias de treino, mas podes tocar aqui para mudar o dia de hoje." },
   { sel: "#weightCard", title: "O teu peso", text: "Regista o peso uma vez por semana. O gráfico mostra a evolução e a meta de calorias e de proteína ajusta-se sozinha ao teu peso." },
+  { sel: "#ideaBtn", title: "Não sabes o que comer?", text: "Toca aqui e a app sugere uma refeição com as calorias e a proteína que te faltam hoje. «Outra ideia» troca a sugestão e «Vou comer isto» põe tudo no prato, pronto a guardar." },
   { sel: "#missions", title: "Missões", text: "Todos os dias e todas as semanas tens missões de fitness: proteína, calorias, treino, pesagem e dias seguidos. Cada missão dá XP e sobes de nível. A chama mostra quantos dias seguidos registaste." },
   { sel: "#meals", title: "As tuas refeições", text: "O dia está dividido em pequeno-almoço, almoço, lanche, jantar, snack e suplementação. O «+» adiciona comida a essa refeição. «Repetir» volta a registar a mesma coisa. Para apagar, toca em «Apagar» e depois em «Confirmar»." },
   { sel: "header", title: "Escolher o dia", text: "Toca no calendário, no canto de cima à direita, ou no nome do dia para abrir o mês e escolher qualquer dia. As setas avançam ou recuam um dia. Os dias com registos têm um ponto verde, ou amarelo se passaste a meta." },
