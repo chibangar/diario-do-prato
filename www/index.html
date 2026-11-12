@@ -141,6 +141,37 @@ select, .field { border: 1px solid var(--line); background: var(--paper); border
 .item .nm input:focus { outline: none; border-bottom: 1px solid var(--accent); }
 .item .sub { font-size: 12px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .unit { position: relative; }
+/* adaptive goal (weight card) */
+.adapt { margin-top: 12px; border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: var(--paper); }
+.adapt b { font-size: 15px; } .adapt p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
+.adapt .nums { display: flex; gap: 8px; flex-wrap: wrap; }
+.adapt .nums span { flex: 1 1 90px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); padding: 8px; font-size: 12px; color: var(--muted); }
+.adapt .nums span b { display: block; font-size: 16px; color: var(--ink); font-family: var(--f-num); }
+.adapt .row { display: flex; gap: 8px; } .adapt .row .btn { flex: 1; }
+/* repeat yesterday */
+.again-btn { width: 100%; border: 1px dashed var(--line); background: transparent; color: var(--accent); border-radius: 12px; padding: 9px 12px; font-weight: 700; font-size: 13px; margin-top: 6px; }
+.again-day { width: 100%; border: 0; border-radius: 14px; padding: 12px 14px; font-weight: 800; background: var(--soft); color: var(--ink); margin-bottom: 10px; text-align: left; display: flex; gap: 10px; align-items: center; }
+.again-day small { display: block; font-weight: 500; color: var(--muted); }
+/* water */
+.water { display: flex; flex-direction: column; gap: 10px; }
+.water .w-top { display: flex; align-items: center; gap: 10px; }
+.water .w-top h2 { margin: 0; font-size: 17px; flex: 1; }
+.water .w-top .amt { font-family: var(--f-num); font-size: 15px; font-weight: 700; }
+.water .glasses { display: flex; flex-wrap: wrap; gap: 6px; }
+.water .glasses button { width: 30px; height: 38px; border: 2px solid #5AA9E6; border-top-width: 1px; border-radius: 4px 4px 10px 10px; background: transparent; padding: 0; position: relative; overflow: hidden; }
+.water .glasses button::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: linear-gradient(#8CCBFF, #3D8FD6); transition: height .35s cubic-bezier(.2,1.4,.4,1); }
+.water .glasses button.full::after { height: 82%; }
+.water .w-acts { display: flex; gap: 8px; }
+.water .w-acts .btn { flex: 1; }
+/* weekly summary */
+.wk-sum { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.wk-sum .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.wk-sum .grid2 div { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: var(--paper); }
+.wk-sum .grid2 small { display: block; color: var(--muted); font-size: 12px; }
+.wk-sum .grid2 b { font-family: var(--f-num); font-size: 18px; }
+.wk-sum .grid2 i { font-style: normal; font-size: 12px; color: var(--muted); }
+.wk-sum ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
+.wk-btn { border: 0; background: transparent; color: var(--accent); font-weight: 700; font-size: 13px; padding: 4px 0; }
 /* NutriLente scanner: live camera with guided angles */
 .scanx { position: fixed; inset: 0; z-index: 2500; background: #000; color: #fff; display: flex; flex-direction: column; overflow: hidden; }
 .scanx video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -710,6 +741,12 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
 
   <button class="idea-btn" id="ideaBtn" type="button"><span class="em" aria-hidden="true">🤔</span><span><b>Não sei o que comer</b><small>A app escolhe uma refeição à medida do que te falta hoje</small></span></button>
 
+  <section class="card water" id="waterCard" aria-labelledby="waterT">
+    <div class="w-top"><span aria-hidden="true" style="font-size:22px">💧</span><h2 id="waterT">Água</h2><span class="amt" id="waterAmt"></span></div>
+    <div class="glasses" id="waterGlasses"></div>
+    <div class="w-acts"><button class="btn btn-plain" id="waterMinus" type="button" aria-label="Tirar um copo">− Copo</button><button class="btn btn-accent" id="waterPlus" type="button">+ Copo (250 ml)</button></div>
+  </section>
+
   <section class="card mcard" id="missions">
     <div class="m-top"><div class="lvl" id="mLvl"><div><small>NÍVEL</small><b>1</b></div></div><div class="t"><b id="mTitle">Missões</b><span id="mXp"></span></div><span class="streak" id="mStreak"></span></div>
     <div class="xpbar"><i id="mXpBar" style="width:0%"></i></div>
@@ -728,10 +765,11 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <div id="wChart"></div>
     <div class="w-form"><input type="number" id="wIn" class="field num" min="30" max="300" step="0.1" inputmode="decimal" placeholder="Peso de hoje (kg)" aria-label="Peso de hoje em kg"><button class="btn btn-accent" id="wSave" type="button">Registar</button></div>
     <p class="note" style="margin:8px 0 0">Pesa-te de manhã, em jejum, uma vez por semana. A meta ajusta-se ao teu peso.</p>
+    <div id="wAdapt"></div>
   </section>
 
   <section class="week">
-    <div class="sec-head" style="padding:0 4px 6px"><h2 style="font-size:16px">Últimos 7 dias</h2><span class="muted" style="font-size:12px">toca num dia para o abrir</span></div>
+    <div class="sec-head" style="padding:0 4px 6px"><h2 style="font-size:16px">Últimos 7 dias</h2><button class="wk-btn" id="wkOpen" type="button">Resumo da semana ›</button></div>
     <div id="week"></div>
   </section>
 
@@ -973,6 +1011,7 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <h2 id="scanTitle"></h2>
     <p id="scanText"></p>
     <p id="scanWarn" class="warn" hidden></p>
+    <p style="font-size:12px;opacity:.75;margin-top:4px">Embalagem? Aponta para o código de barras: lê sozinho.</p>
   </div>
   <div class="bottom">
     <div class="thumbs" id="scanThumbs"></div>
@@ -980,6 +1019,15 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <button class="done" id="scanDone" type="button" hidden>Analisar</button>
   </div>
   <div class="flash" id="scanFlash"></div>
+</div>
+
+<div class="cal-back" id="wkSheet" role="dialog" aria-modal="true" aria-labelledby="wkTitle" hidden>
+  <div class="cal wk-sum">
+    <h2 id="wkTitle">Resumo da semana</h2>
+    <p class="ver" id="wkRange" style="margin:0"></p>
+    <div id="wkBody"></div>
+    <div class="cal-foot"><button class="btn btn-plain" id="wkPrev" type="button">‹ Semana anterior</button><button class="btn btn-accent" id="wkOk" type="button">Fechar</button></div>
+  </div>
 </div>
 
 <div class="cal-back" id="loginSheet" role="dialog" aria-modal="true" aria-labelledby="loginTitle" hidden>
@@ -1376,7 +1424,7 @@ const sum = (items, k) => items.reduce((a, it) => a + num(it[k]), 0);
 const norm = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const guessMeal = () => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h < 11 ? MEALS[0] : h < 15.5 ? MEALS[1] : h < 18.5 ? MEALS[2] : h < 22.5 ? MEALS[3] : MEALS[4]; };
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
-const SYNC_KEYS = new Set(["ddp.burned", "ddp.units", "ddp.meals", "ddp.custom", "ddp.dishes", "ddp.goal", "ddp.profile", "ddp.plan", "ddp.weights", "ddp.trainDays", "ddp.trainDone", "ddp.missions"]);
+const SYNC_KEYS = new Set(["ddp.water", "ddp.burned", "ddp.units", "ddp.meals", "ddp.custom", "ddp.dishes", "ddp.goal", "ddp.profile", "ddp.plan", "ddp.weights", "ddp.trainDays", "ddp.trainDone", "ddp.missions"]);
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); if (SYNC_KEYS.has(k)) setTimeout(() => cloudPush(), 0); return true; } catch { return false; } };
 // Household units (1 ovo, 1 scoop, 1 fatia…). The weight stays in grams; the unit is a shortcut.
 // [pattern on the plain name, unit, plural, grams per unit, or "p" = the food's own portion (brand products)]
@@ -2009,7 +2057,7 @@ function scanRender() {
 async function openScan() {
   if (!navigator.mediaDevices?.getUserMedia) return takePhoto("CAMERA");
   const root = $("#scanx");
-  Object.assign(SC, { shots: [], step: 0, tilt: null, torch: false });
+  Object.assign(SC, { shots: [], step: 0, tilt: null, torch: false, busy: false });
   root.hidden = false; $("#scanMsg").hidden = false; $("#scanMsg").textContent = "A abrir a câmara…";
   scanRender();
   try {
@@ -2031,14 +2079,35 @@ async function openScan() {
   $("#scanAng").hidden = false;
   // light check twice a second
   const probe = document.createElement("canvas"); probe.width = probe.height = 32;
-  SC.timer = setInterval(() => {
+  // packaged food: read the barcode live, no photo needed
+  let lastCode = "", det = null;
+  try { if ("BarcodeDetector" in window) det = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e"] }); } catch { det = null; }
+  SC.timer = setInterval(async () => {
     if (!v.videoWidth) return;
+    if (det && !SC.busy) {
+      SC.busy = true;
+      try {
+        const r = await det.detect(v), code = r[0]?.rawValue ? String(r[0].rawValue) : "";
+        if (code && code === lastCode && !$("#scanx").hidden) { scanBarcode(code); return; }
+        lastCode = code;
+      } catch { /* keep scanning */ } finally { SC.busy = false; }
+    }
     const g = probe.getContext("2d", { willReadFrequently: true }); g.drawImage(v, 0, 0, 32, 32);
     const px = g.getImageData(0, 0, 32, 32).data; let L = 0; for (let i = 0; i < px.length; i += 4) L += px[i] * 0.3 + px[i + 1] * 0.59 + px[i + 2] * 0.11;
     L /= 1024;
     const w = $("#scanWarn");
     w.hidden = L >= 55; w.textContent = $("#scanTorch").hidden ? "Pouca luz: aproxima-te de uma janela ou acende uma luz." : "Pouca luz: toca em 💡 ou acende uma luz.";
   }, 500);
+}
+async function scanBarcode(code) {
+  closeScan(); haptic("MEDIUM");
+  const keepMeal = S.draft && !S.draft.preview && !S.draft.demo ? S.draft.meal : null;
+  newDraft({ ...(keepMeal ? { meal: keepMeal } : {}), ai: { status: "running" } });
+  const d = S.draft, p = await productByCode(code);
+  if (S.draft !== d) return;
+  if (p) { addProduct(d, p); d.ai = { status: "barcode", name: p.name }; }
+  else { d.ai = { status: "none" }; d.cloudNote = `Li o código de barras ${code}, mas não conheço este produto. Procura pelo nome ou cria-o.`; }
+  renderDraft();
 }
 function closeScan() {
   clearInterval(SC.timer);
@@ -2575,12 +2644,17 @@ function render() {
 
   $("#mealCount").textContent = meals.length ? `${meals.length} ${meals.length === 1 ? "refeição" : "refeições"}` : "";
   const list = $("#meals");
+  const prevKey = shiftKey(S.day, -1), prevMeals = S.meals.filter((m) => m.day === prevKey && Array.isArray(m.items)).sort((a, b) => a.ts - b.ts);
+  const prevLbl = dayLabel(prevKey) === "Ontem" ? "ontem" : "o dia anterior";
   const ICONS = { "Pequeno-almoço": "☕", "Almoço": "🍽️", "Lanche": "🥪", "Jantar": "🍲", "Snack": "🍎", "Suplementação": "💊" };
   list.innerHTML = MEALS.map((name) => {
     const ms = meals.filter((m) => m.meal === name), kc = sum(ms.flatMap((m) => m.items || []), "kcal");
     return `<div class="mgroup"><div class="mg-head"><span class="mg-ic" aria-hidden="true">${ICONS[name] || "🍴"}</span><div class="t"><b>${name}</b><small>${r0(kc)} kcal</small></div>
-      <button class="add-btn" type="button" data-add="${name}" aria-label="Adicionar: ${name}">+</button></div>${ms.map(mealCard).join("")}</div>`;
+      <button class="add-btn" type="button" data-add="${name}" aria-label="Adicionar: ${name}">+</button></div>${ms.map(mealCard).join("")}${!ms.length && prevMeals.some((m) => m.meal === name) ? `<button class="again-btn" type="button" data-same="${name}">↻ Igual a ${prevLbl}: ${esc(prevMeals.filter((m) => m.meal === name).map((m) => m.title).join(", ").slice(0, 60))}</button>` : ""}</div>`;
   }).join("");
+  if (!meals.length && prevMeals.length) list.insertAdjacentHTML("afterbegin", `<button class="again-day" type="button" id="sameDay"><span style="font-size:20px" aria-hidden="true">↻</span><span>Repetir o dia de ${prevLbl}<small>${prevMeals.length} ${prevMeals.length === 1 ? "refeição" : "refeições"} · ${r0(sum(prevMeals.flatMap((m) => m.items || []), "kcal"))} kcal</small></span></button>`);
+  $("#sameDay") && ($("#sameDay").onclick = () => { const n = copyMeals(prevMeals, S.day); toast(`${n} ${n === 1 ? "refeição copiada" : "refeições copiadas"} de ${prevLbl}`); });
+  list.querySelectorAll("[data-same]").forEach((b) => b.onclick = () => { const n = copyMeals(prevMeals.filter((m) => m.meal === b.dataset.same), S.day); toast(`${b.dataset.same}: ${n === 1 ? "copiado" : n + " refeições copiadas"} de ${prevLbl}`); });
   list.querySelectorAll("[data-add]").forEach((b) => b.onclick = () => newDraft(b.dataset.add === "Suplementação" ? { meal: b.dataset.add, tab: "suplementos" } : { meal: b.dataset.add }));
   list.querySelectorAll("[data-del]").forEach((b) => {
     b.onclick = () => {
@@ -2602,6 +2676,7 @@ function render() {
     };
   });
   renderWeek();
+  try { renderWater(); renderAdapt(); } catch { /* first paint */ }
   if (typeof renderWeight === "function") try { renderWeight(); } catch { /* first paint */ }
   if (typeof renderMissions === "function") try { renderMissions(); } catch { /* first paint */ }
   renderDishes();
@@ -3055,6 +3130,117 @@ function renderBurn() {
 $("#trainBtn").onclick = () => {
   const o = trainOverride(); o[S.day] = !isTrainDay(S.day); lsSet("ddp.trainDays", o); render();
 };
+// ---------- adaptive goal: the real daily burn from what was eaten and how the weight moved ----------
+// About 7700 kcal per kg of body weight. Uses the last 21 days: at least 3 weigh-ins over 10+ days
+// and 10 days with the meals logged (days with under half the goal count as incomplete and are left out).
+function adaptiveGoal() {
+  if (!profileDone()) return null;
+  const t = todayKey(), from = shiftKey(t, -21);
+  const ws = weights().filter((w) => w.d >= from && w.d <= t);
+  if (ws.length < 3) return { need: "weigh", have: ws.length };
+  const x0 = dateOf(ws[0].d).getTime(), xs = ws.map((w) => (dateOf(w.d).getTime() - x0) / 864e5), ys = ws.map((w) => w.kg);
+  const span = xs[xs.length - 1];
+  if (span < 10) return { need: "weigh", have: ws.length };
+  const mx = xs.reduce((a, b) => a + b, 0) / xs.length, my = ys.reduce((a, b) => a + b, 0) / ys.length;
+  const slope = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0) / (xs.reduce((a, x) => a + (x - mx) ** 2, 0) || 1); // kg per day
+  const days = [];
+  for (let k = from; k < t; k = shiftKey(k, 1)) { const st = dayStats(k); if (st.meals && st.kcal >= st.goal * 0.5) days.push(st.kcal); }
+  if (days.length < 10) return { need: "log", have: days.length };
+  const intake = days.reduce((a, b) => a + b, 0) / days.length;
+  const tdee = intake - slope * 7700;
+  const bmr = calcGoals(P).bmr, floor = P.sex === "m" ? 1500 : 1200, r10 = (n) => Math.round(n / 10) * 10;
+  let target = P.objective === "lose" ? Math.max(tdee - 500, bmr, floor) : P.objective === "gain" ? tdee + 300 : tdee;
+  // the goal saved is the rest-day one: training days get their extra on top
+  target -= trainKcal(P) * (P.days || []).length / 7;
+  target = Math.max(target, P.objective === "lose" ? Math.max(bmr, floor) : floor); // never under the resting burn
+  target = Math.max(floor, Math.min(S.goal + 400, Math.max(S.goal - 400, target))); // at most 400 kcal per change
+  return { tdee: r10(tdee), intake: r10(intake), perWeek: Math.round(slope * 7 * 100) / 100, goal: r10(target), days: days.length, weighs: ws.length };
+}
+function renderAdapt() {
+  const box = $("#wAdapt"); if (!box) return;
+  const a = adaptiveGoal();
+  if (!a) { box.innerHTML = ""; return; }
+  if (a.need) {
+    box.innerHTML = `<div class="adapt"><b>🧠 Meta inteligente</b><p>${a.need === "weigh"
+      ? `Pesa-te pelo menos 3 vezes ao longo de 2 semanas (tens ${a.have}). A app compara o peso com o que comeste e diz-te o teu gasto real.`
+      : `Regista as refeições do dia todo em pelo menos 10 dias das últimas 3 semanas (tens ${a.have}). Depois a app calcula o teu gasto real.`}</p></div>`;
+    return;
+  }
+  const skip = lsGet("ddp.adaptSkip", ""), diff = a.goal - S.goal;
+  const fmt = (n) => String(n).replace(".", ",");
+  const trend = a.perWeek === 0 ? "estável" : `${a.perWeek > 0 ? "+" : ""}${fmt(a.perWeek)} kg/semana`;
+  const offer = Math.abs(diff) >= 100 && !(skip && skip > shiftKey(todayKey(), -7));
+  box.innerHTML = `<div class="adapt"><b>🧠 Meta inteligente</b>
+    <div class="nums"><span>Comes em média<b>${a.intake} kcal</b></span><span>O teu peso<b>${trend}</b></span><span>Gasto real<b>${a.tdee} kcal</b></span></div>
+    <p>${offer ? `Com o teu objetivo (${(GOAL_NAMES[P.objective] || "").toLowerCase()}), a meta certa é <b>${a.goal} kcal</b> nos dias sem treino (agora tens ${S.goal}).` : `A tua meta (${S.goal} kcal) está certa para o teu objetivo. A app volta a ver daqui a uns dias.`}</p>
+    ${offer ? `<div class="row"><button class="btn btn-plain" id="adNo" type="button">Agora não</button><button class="btn btn-accent" id="adOk" type="button">Usar ${a.goal} kcal</button></div>` : ""}
+    <p style="font-size:12px">Baseado em ${a.weighs} pesagens e ${a.days} dias registados nas últimas 3 semanas.</p></div>`;
+  if (offer) {
+    $("#adOk").onclick = () => { S.goal = a.goal; P.manualGoal = true; P.adaptive = true; lsSet("ddp.profile", P); lsSet("ddp.goal", S.goal); lsSet("ddp.adaptSkip", todayKey()); render(); renderCalc(); toast(`Nova meta: ${S.goal} kcal`); };
+    $("#adNo").onclick = () => { lsSet("ddp.adaptSkip", todayKey()); renderAdapt(); };
+  }
+}
+// ---------- repeat yesterday ----------
+function copyMeals(list, toDay) {
+  const base = dateOf(toDay);
+  const copies = list.map((m) => { const d = new Date(m.ts); const t = new Date(base); t.setHours(d.getHours(), d.getMinutes(), d.getSeconds()); return { ...m, id: uid(), day: toDay, ts: t.getTime(), items: m.items.map((i) => ({ ...i })) }; });
+  S.meals.push(...copies); saveMeals(); render(); scheduleNotifs(); cloudPush?.();
+  return copies.length;
+}
+// ---------- water ----------
+const waterOf = (k) => Number(lsGet("ddp.water", {})[k]) || 0;
+const waterGoal = () => { const kg = P.weight || 70; return Math.max(1500, Math.min(4000, Math.round(kg * 35 / 250) * 250)); };
+function setWater(ml) { const o = lsGet("ddp.water", {}); ml = Math.max(0, Math.min(8000, ml)); if (ml) o[S.day] = ml; else delete o[S.day]; lsSet("ddp.water", o); renderWater(); renderMissions(); }
+function renderWater() {
+  const ml = waterOf(S.day), goal = waterGoal(), n = Math.ceil(goal / 250), have = Math.round(ml / 250);
+  const L = (v) => String(Math.round(v / 100) / 10).replace(".", ",");
+  $("#waterAmt").textContent = `${L(ml)} / ${L(goal)} L`;
+  $("#waterGlasses").innerHTML = Array.from({ length: Math.max(n, have) }, (_, i) => `<button type="button" class="${i < have ? "full" : ""}" data-glass="${i + 1}" aria-label="${i + 1} copos"></button>`).join("");
+  $("#waterGlasses").querySelectorAll("[data-glass]").forEach((b) => b.onclick = () => { const g = +b.dataset.glass; setWater((g === have ? g - 1 : g) * 250); haptic("LIGHT"); });
+}
+$("#waterPlus").onclick = () => { const before = waterOf(S.day); setWater(before + 250); haptic("LIGHT"); if (before < waterGoal() && before + 250 >= waterGoal()) burst($("#waterPlus"), 24); };
+$("#waterMinus").onclick = () => setWater(waterOf(S.day) - 250);
+// ---------- weekly summary ----------
+let wkOffset = 0;
+function weekSummary(end) {
+  const keys = Array.from({ length: 7 }, (_, i) => shiftKey(end, i - 6));
+  const st = keys.map((k) => dayStats(k)), logged = st.filter((x) => x.meals);
+  const avg = (a, f) => (a.length ? a.reduce((s, x) => s + f(x), 0) / a.length : 0);
+  const w = weights().filter((x) => x.d <= end), before = [...w].reverse().find((x) => x.d < keys[0]), last = [...w].reverse().find((x) => x.d >= keys[0]);
+  const td = trainDone(), water = keys.map(waterOf).filter(Boolean);
+  return {
+    keys, logged: logged.length, kcal: avg(logged, (x) => x.kcal), goal: avg(logged.length ? logged : st, (x) => x.goal),
+    p: avg(logged, (x) => x.p), pT: avg(logged.length ? logged : st, (x) => x.pT), inGoal: st.filter(inGoal).length,
+    protOk: st.filter((x) => x.meals && x.p >= x.pT * 0.9).length, train: keys.filter((k) => td[k]).length, trainWant: (P.days || []).length,
+    wFrom: before?.kg ?? null, wTo: last?.kg ?? null, water: avg(water.map((v) => ({ v })), (x) => x.v), waterDays: water.length
+  };
+}
+function renderWeekSummary() {
+  const end = shiftKey(todayKey(), -7 * wkOffset), s7 = weekSummary(end), f = (n) => String(n).replace(".", ",");
+  const a = dateOf(s7.keys[0]), b = dateOf(end);
+  $("#wkRange").textContent = `${a.getDate()} ${MONTHS[a.getMonth()]} a ${b.getDate()} ${MONTHS[b.getMonth()]}${wkOffset ? "" : " (últimos 7 dias)"}`;
+  if (!s7.logged) { $("#wkBody").innerHTML = `<p class="note">Não há refeições registadas nesta semana.</p>`; return; }
+  const dW = s7.wFrom != null && s7.wTo != null ? Math.round((s7.wTo - s7.wFrom) * 10) / 10 : null;
+  const tips = [];
+  if (s7.logged < 5) tips.push("Regista mais dias: com 5 ou mais a meta inteligente fica muito mais certa.");
+  if (s7.protOk < 4) tips.push(`Proteína abaixo do alvo em vários dias. Junta uma fonte de proteína (ovos, iogurte grego, frango, atum) a cada refeição.`);
+  if (s7.kcal > s7.goal * 1.07) tips.push(`Comeste em média ${r0(s7.kcal - s7.goal)} kcal acima da meta. Vê em que refeição isso acontece mais.`);
+  else if (s7.kcal < s7.goal * 0.8) tips.push("Ficaste bastante abaixo da meta. Comer pouco demais faz perder músculo e dá mais fome ao fim de semana.");
+  if (s7.trainWant && s7.train < s7.trainWant) tips.push(`Treinaste ${s7.train} de ${s7.trainWant} vezes. Marca «Já treinei» nas missões quando treinares.`);
+  if (!tips.length) tips.push("Semana muito boa. Continua assim! 🔥");
+  $("#wkBody").innerHTML = `<div class="grid2">
+    <div><small>Calorias por dia</small><b>${r0(s7.kcal)}</b> <i>/ ${r0(s7.goal)} kcal</i></div>
+    <div><small>Proteína por dia</small><b>${r0(s7.p)} g</b> <i>/ ${r0(s7.pT)} g</i></div>
+    <div><small>Dias na meta</small><b>${s7.inGoal}</b> <i>de 7</i></div>
+    <div><small>Dias registados</small><b>${s7.logged}</b> <i>de 7</i></div>
+    <div><small>Peso</small><b>${dW == null ? "—" : (dW > 0 ? "+" : "") + f(dW) + " kg"}</b> ${s7.wTo != null ? `<i>agora ${f(s7.wTo)} kg</i>` : ""}</div>
+    <div><small>${s7.trainWant ? "Treinos" : "Água por dia"}</small><b>${s7.trainWant ? `${s7.train}/${s7.trainWant}` : s7.waterDays ? f(Math.round(s7.water / 100) / 10) + " L" : "—"}</b></div>
+  </div><b style="font-size:15px">Para a próxima semana</b><ul>${tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`;
+}
+function openWeekSummary() { wkOffset = 0; renderWeekSummary(); $("#wkSheet").hidden = false; $("#wkOk").focus(); }
+$("#wkOpen").onclick = openWeekSummary;
+$("#wkOk").onclick = () => { $("#wkSheet").hidden = true; };
+$("#wkPrev").onclick = () => { wkOffset++; renderWeekSummary(); $("#wkPrev").textContent = "‹ Semana anterior"; };
 // ---------- missions, XP, levels, streak ----------
 const LEVELS = [[0, "Iniciante"], [100, "Em forma"], [250, "Focado"], [500, "Consistente"], [900, "Atleta"], [1500, "Máquina"], [2500, "Elite"], [4000, "Lenda"]];
 const weekStart = (k) => { const d = dateOf(k); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return keyOf(d); };
@@ -3079,6 +3265,8 @@ function missionList() {
     { id: "prot", ic: "💪", t: `Chega aos ${r0(st.pT)} g de proteína`, p: Math.min(1, st.p / (st.pT * 0.9 || 1)), lbl: `${r0(st.p)} g`, xp: 15 },
     { id: "kcal", ic: "🎯", t: "Fica dentro da meta de calorias", p: st.kcal > st.goal * 1.05 ? 0 : Math.min(1, st.kcal / (st.goal * 0.85 || 1)), lbl: st.kcal > st.goal * 1.05 ? "passaste" : `${r0(st.kcal)} kcal`, xp: 15, end: true }
   ];
+  const wml = waterOf(t), wg = waterGoal();
+  daily.push({ id: "water", ic: "💧", t: `Bebe ${String(wg / 1000).replace(".", ",")} L de água`, p: Math.min(1, wml / wg), lbl: `${String(Math.round(wml / 100) / 10).replace(".", ",")} L`, xp: 10 });
   if (isTrainDay(t)) daily.push({ id: "train", ic: "🏋️", t: "Faz o treino de hoje", p: td[t] ? 1 : 0, lbl: "", xp: 20, act: td[t] ? "" : "Já treinei" });
   const nIn = week.filter((k) => inGoal(dayStats(k))).length, nProt = week.filter((k) => { const x = dayStats(k); return x.p >= x.pT * 0.9; }).length;
   const nTrain = week.filter((k) => td[k]).length, want = (P.days || []).length;
@@ -3166,6 +3354,13 @@ async function doSchedule() {
       if (when.getTime() <= now) continue;
       if (w === 0 && lsGet("ddp.weights", []).some((x) => x.d >= ws)) continue;
       list.push({ id: 1100 + w, title: "Hora da pesagem ⚖️", body: "Pesa-te em jejum e regista na NutriLente. A meta ajusta-se sozinha.", schedule: { at: when.toISOString(), allowWhileIdle: true } });
+    }
+  }
+  if (cfg.weigh || cfg.missions) {
+    for (let d = 0; d < 7; d++) {
+      const k = shiftKey(t, d); if (dateOf(k).getDay() !== 0) continue;
+      const when = at(k, 20, 0); if (when.getTime() <= now) continue;
+      list.push({ id: 1250, title: "O teu resumo da semana 📊", body: "Vê como correu a semana: calorias, proteína, peso e treinos. Abre a NutriLente › Resumo da semana.", schedule: { at: when.toISOString(), allowWhileIdle: true } });
     }
   }
   if (list.length) await LN("schedule", { notifications: list.map((n) => ({ ...n, smallIcon: "ic_stat_nutrilente", iconColor: "#2E6A45" })) });
@@ -3305,9 +3500,11 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Câmara nova da NutriLente: ao tocar no botão de fotografar, a app abre a sua própria câmara e guia-te em 3 ângulos: de cima, inclinado e do lado.",
-  "Um medidor mostra se o telemóvel está no ângulo certo (fica verde ✓) e a app avisa quando há pouca luz. Nos telemóveis que têm, há o botão 💡 para acender a luz.",
-  "A app junta as 3 fotos: encontra alimentos escondidos numa só foto e, com a IA Gemini, estima melhor os gramas. Podes tocar em «Já chega» depois da primeira foto."
+  "Meta inteligente: no cartão do peso, a app compara o que comeste com a evolução do teu peso nas últimas 3 semanas, calcula o teu gasto real e propõe a meta certa.",
+  "Repetir rápido: «↻ Igual a ontem» em cada refeição vazia e «Repetir o dia de ontem» quando o dia está vazio.",
+  "Água: copos com um toque, meta pelo teu peso e uma missão nova.",
+  "Resumo da semana: calorias, proteína, dias na meta, peso e treinos, com dicas. Chega também como notificação ao domingo às 20:00.",
+  "Código de barras ao vivo: na câmara, aponta para a embalagem e a app reconhece o produto sem tirar foto."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
@@ -3427,7 +3624,7 @@ function renderSync(msg) {
 function backupData() {
   const slim = (m) => { const { thumb, ...rest } = m; return rest; };
   let meals = [...S.meals].sort((a, b) => b.ts - a.ts).map(slim);
-  const pack = () => JSON.stringify({ v: 1, updated: Date.now(), meals, custom: S.custom, dishes: S.dishes, goal: S.goal, profile: P, plan: lsGet("ddp.plan", null), deleted: lsGet("ddp.deleted", []), weights: lsGet("ddp.weights", []), trainDays: lsGet("ddp.trainDays", {}), trainDone: lsGet("ddp.trainDone", {}), missions: lsGet("ddp.missions", {}), burned: lsGet("ddp.burned", {}), units: lsGet("ddp.units", {}) });
+  const pack = () => JSON.stringify({ v: 1, updated: Date.now(), meals, custom: S.custom, dishes: S.dishes, goal: S.goal, profile: P, plan: lsGet("ddp.plan", null), deleted: lsGet("ddp.deleted", []), weights: lsGet("ddp.weights", []), trainDays: lsGet("ddp.trainDays", {}), trainDone: lsGet("ddp.trainDone", {}), missions: lsGet("ddp.missions", {}), burned: lsGet("ddp.burned", {}), units: lsGet("ddp.units", {}), water: lsGet("ddp.water", {}) });
   let out = pack();
   while (out.length > 900000 && meals.length > 50) { meals = meals.slice(0, Math.floor(meals.length * 0.8)); out = pack(); } // one document holds about 1 MB
   return out;
@@ -3460,7 +3657,7 @@ function mergeCloud(c) {
   try { localStorage.setItem("ddp.weights", JSON.stringify([...wl.values()].sort((a, b) => (a.d < b.d ? -1 : 1)).slice(-400))); } catch { /* full */ }
   try { localStorage.setItem("ddp.trainDone", JSON.stringify({ ...(c.trainDone || {}), ...lsGet("ddp.trainDone", {}) })); localStorage.setItem("ddp.missions", JSON.stringify({ ...(c.missions || {}), ...lsGet("ddp.missions", {}) })); } catch { /* full */ }
   try { localStorage.setItem("ddp.trainDays", JSON.stringify({ ...(c.trainDays || {}), ...lsGet("ddp.trainDays", {}) })); } catch { /* full */ }
-  try { localStorage.setItem("ddp.burned", JSON.stringify({ ...(c.burned || {}), ...lsGet("ddp.burned", {}) })); localStorage.setItem("ddp.units", JSON.stringify({ ...(c.units || {}), ...lsGet("ddp.units", {}) })); } catch { /* full */ }
+  try { localStorage.setItem("ddp.burned", JSON.stringify({ ...(c.burned || {}), ...lsGet("ddp.burned", {}) })); localStorage.setItem("ddp.units", JSON.stringify({ ...(c.units || {}), ...lsGet("ddp.units", {}) })); localStorage.setItem("ddp.water", JSON.stringify({ ...(c.water || {}), ...lsGet("ddp.water", {}) })); } catch { /* full */ }
   if (!lsGet("ddp.plan", null) && c.plan) { plan = c.plan; localStorage.setItem("ddp.plan", JSON.stringify(plan)); }
   // write without scheduling another push for each key
   for (const [k, v] of [["ddp.meals", S.meals], ["ddp.custom", S.custom], ["ddp.dishes", S.dishes], ["ddp.goal", S.goal], ["ddp.profile", P], ["ddp.deleted", [...gone].slice(0, 500)]]) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full */ } }
