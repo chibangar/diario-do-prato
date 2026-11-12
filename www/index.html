@@ -141,6 +141,19 @@ select, .field { border: 1px solid var(--line); background: var(--paper); border
 .item .nm input:focus { outline: none; border-bottom: 1px solid var(--accent); }
 .item .sub { font-size: 12px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .unit { position: relative; }
+/* household units under the food name: − 2 ovos + · 1 ovo = 55 g */
+.qty { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.qty .stp { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); overflow: hidden; }
+.qty .stp button { width: 30px; height: 28px; border: 0; background: transparent; color: var(--ink); font-size: 17px; font-weight: 700; line-height: 1; }
+.qty .stp button:active { background: var(--line); }
+.qty .stp b { min-width: 64px; text-align: center; font-size: 13px; padding: 0 4px; white-space: nowrap; }
+.qty .ug { border: 0; background: transparent; color: var(--muted); font-size: 12px; padding: 4px 2px; text-decoration: underline dotted; text-underline-offset: 3px; }
+.qty .ug.add { color: var(--accent); text-decoration: none; font-weight: 600; }
+.qty-ed { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.qty-ed input { border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+.qty-ed input[data-un] { width: 110px; } .qty-ed input[data-ugr] { width: 64px; text-align: right; font-family: var(--f-num); }
+.qty-ed button { border: 0; border-radius: 8px; padding: 7px 12px; font-weight: 700; background: var(--accent); color: #fff; }
+.qty-ed button.ghost { background: transparent; color: var(--muted); padding: 7px 6px; }
 .unit input { width: 100%; border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 8px 26px 8px 6px; text-align: right; font-family: var(--f-num); font-size: 14px; }
 .unit span { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 10.5px; color: var(--muted); pointer-events: none; }
 .x { border: 0; background: transparent; color: var(--muted); font-size: 22px; line-height: 1; width: 32px; height: 36px; border-radius: 8px; }
@@ -1259,12 +1272,97 @@ const sum = (items, k) => items.reduce((a, it) => a + num(it[k]), 0);
 const norm = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const guessMeal = () => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h < 11 ? MEALS[0] : h < 15.5 ? MEALS[1] : h < 18.5 ? MEALS[2] : h < 22.5 ? MEALS[3] : MEALS[4]; };
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
-const SYNC_KEYS = new Set(["ddp.meals", "ddp.custom", "ddp.dishes", "ddp.goal", "ddp.profile", "ddp.plan", "ddp.weights", "ddp.trainDays", "ddp.trainDone", "ddp.missions"]);
+const SYNC_KEYS = new Set(["ddp.units", "ddp.meals", "ddp.custom", "ddp.dishes", "ddp.goal", "ddp.profile", "ddp.plan", "ddp.weights", "ddp.trainDays", "ddp.trainDone", "ddp.missions"]);
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); if (SYNC_KEYS.has(k)) setTimeout(() => cloudPush(), 0); return true; } catch { return false; } };
+// Household units (1 ovo, 1 scoop, 1 fatia…). The weight stays in grams; the unit is a shortcut.
+// [pattern on the plain name, unit, plural, grams per unit, or "p" = the food's own portion (brand products)]
+const UNIT_RULES = [
+  [/omelete|mexid|tortilha|ovos? de (pascoa|chocolate)/, null],
+  [/\bclaras?\b/, "clara", "claras", 33],
+  [/\bgemas?\b/, "gema", "gemas", 17],
+  [/\bovos?\b|\begg/, "ovo", "ovos", 55],
+  [/whey|proteina (em po|whey|isolad|concentrad)|protein (powder|isolate)|isolate|caseina|casein|gainer|impact|evolution(ary)? whey|clear whey/, "scoop", "scoops", "p30"],
+  [/creatin/, "dose", "doses", 5],
+  [/barra|\bbar\b|protein bar/, "barra", "barras", "p"],
+  [/iogurte|yogur|skyr|kefir/, "iogurte", "iogurtes", "p125"],
+  [/pao de forma|pao forma|toast/, "fatia", "fatias", 25],
+  [/broa/, "fatia", "fatias", 40],
+  [/carcaca|papo.seco|pao branco|pao de mistura|pao integral|\bpao\b|bola de mafra|baguete/, "pão", "pães", 50],
+  [/tostas?\b|biscoit|bolacha|cookie|galleta/, "unidade", "unidades", 8],
+  [/croissant|bola de berlim|pastel de nata|queque|muffin|donut|dónute/, "unidade", "unidades", "p"],
+  [/fiambre|peito de peru|presunto|chourico|salame|mortadela/, "fatia", "fatias", 15],
+  [/queijo (fresco|fresh)|requeijao/, "unidade", "unidades", "p"],
+  [/queijo|cheese/, "fatia", "fatias", 20],
+  [/pizza/, "fatia", "fatias", 110],
+  [/\bbolo\b|tarte|cheesecake/, "fatia", "fatias", 80],
+  [/azeite|oleo\b/, "colher de sopa", "colheres de sopa", 10],
+  [/manteiga de amendoim|creme de amendoim|peanut/, "colher de sopa", "colheres de sopa", 15],
+  [/manteiga|margarina|planta/, "colher de chá", "colheres de chá", 5],
+  [/\bmel\b|compota|doce de|nutella|creme de cacau/, "colher de sopa", "colheres de sopa", 15],
+  [/acucar/, "colher de chá", "colheres de chá", 5],
+  [/\bleite\b|bebida (de|vegetal)|\bmilk\b/, "copo", "copos", 250],
+  [/sumo|nectar|\bjuice\b/, "copo", "copos", 200],
+  [/cerveja|\bbeer\b|\bsuper bock\b|sagres/, "garrafa", "garrafas", 330],
+  [/vinho|\bwine\b/, "copo", "copos", 150],
+  [/refrigerante|coca.cola|\bcola\b|\bpepsi|ice tea|fanta|sumol|7.?up/, "lata", "latas", 330],
+  [/\bcafe\b|expresso|espresso/, "café", "cafés", 30],
+  [/atum|sardinha.*lata|cavala.*lata/, "lata", "latas", 80],
+  [/amendo|noz|nozes|caju|avela|pistach|frutos secos|amendoim|mix de/, "mão-cheia", "mãos-cheias", 30],
+  [/\bbanana/, "banana", "bananas", 120],
+  [/\bmaca\b|\bmacas\b/, "maçã", "maçãs", 150],
+  [/laranja/, "laranja", "laranjas", 150],
+  [/\bpera\b|\bperas\b/, "pera", "peras", 160],
+  [/kiwi/, "kiwi", "kiwis", 75],
+  [/tangerina|clementina|mandarina/, "tangerina", "tangerinas", 70],
+  [/pessego/, "pêssego", "pêssegos", 150],
+  [/ameixa/, "ameixa", "ameixas", 60],
+  [/morango/, "morango", "morangos", 12],
+  [/tomate cherry/, "tomate", "tomates", 15],
+  [/\btomate\b/, "tomate", "tomates", 120],
+  [/cenoura/, "cenoura", "cenouras", 80],
+  [/batata doce/, "batata", "batatas", 200],
+  [/\bbatatas? (cozida|assada|a murro)/, "batata", "batatas", 150],
+  [/hamburguer|burger/, "hambúrguer", "hambúrgueres", 100],
+  [/salsicha/, "salsicha", "salsichas", 45],
+  [/\bbifes?\b/, "bife", "bifes", 120],
+  [/peito de frango|frango grelhado|peito/, "peito", "peitos", 150],
+  [/flocos de aveia|\baveia\b|cereais|granola|muesli/, "colher de sopa", "colheres de sopa", 10]
+];
+const plainName = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const plural = (u) => { const [w, ...r] = u.split(" "); const pw = /[aeiou]$/.test(w) ? w + "s" : /[rzs]$/.test(w) ? w + "es" : /l$/.test(w) ? w.slice(0, -1) + "is" : w + "s"; return [pw, ...r].join(" "); };
+// the user's own units, per food name (e.g. «Whey» → 1 scoop = 40 g)
+const myUnits = () => lsGet("ddp.units", {});
+function unitOf(it) {
+  const mine = myUnits()[plainName(it.name)];
+  if (mine && mine.g > 0) return { u: mine.u, pl: mine.pl || plural(mine.u), g: mine.g, mine: true };
+  const n = plainName(it.name);
+  for (const r of UNIT_RULES) {
+    if (!r[0].test(n)) continue;
+    if (!r[1]) return null;
+    let g = r[3];
+    if (typeof g === "string") { const fb = Number(g.slice(1)) || 0, own = it.unitG || 0; g = own >= 5 && own <= 400 ? own : fb || own; }
+    return g > 0 ? { u: r[1], pl: r[2], g } : null;
+  }
+  return null;
+}
+const fmtCount = (n) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.round(n)) : String(Math.round(n * 10) / 10).replace(".", ","));
+function qtyText(it) {
+  const U = unitOf(it); if (!U || !(it.g > 0)) return "";
+  const n = it.g / U.g; if (n < 0.25 || n > 40) return "";
+  return `${fmtCount(n)} ${Math.round(n * 10) / 10 === 1 || n < 1 ? U.u : U.pl}`;
+}
+// change an item's weight and scale its calories and macros with it
+function setGrams(it, v) {
+  v = Math.max(0, Math.round(v));
+  const ratio = it.g > 0 ? v / it.g : 0;
+  if (ratio) { it.kcal = r0(it.kcal * ratio); it.p = r1(it.p * ratio); it.c = r1(it.c * ratio); it.f = r1(it.f * ratio); }
+  it.g = v;
+}
 function fromFood(f, grams) {
   const g = grams ?? f.g, k = g / 100;
   const it = { name: f.name, detail: "", cat: f.cat, g, kcal: r0(f.kcal * k), p: r1(f.p * k), c: r1(f.c * k), f: r1(f.f * k) };
   if (f.img) it.img = f.img;
+  if (f.g > 0) it.unitG = f.g;
   return it;
 }
 let toastT;
@@ -2028,7 +2126,8 @@ function renderDraft() {
         <div class="items">${d.items.map((it, i) => `
           <div class="item" data-i="${i}">
             <div class="nm">${it.img ? `<div class="nm-row">${thumb(it.img, "pimg sm")}<input value="${esc(it.name)}" data-k="name" aria-label="Nome do alimento"></div>` : `<input value="${esc(it.name)}" data-k="name" aria-label="Nome do alimento">`}
-              <span class="sub"><span class="cat"><i style="background:${catColor(it.cat)}"></i>${esc(TAB_NAMES[it.cat] || it.cat)}</span><span class="num">P ${r0(it.p)} · H ${r0(it.c)} · G ${r0(it.f)}</span></span></div>
+              <span class="sub"><span class="cat"><i style="background:${catColor(it.cat)}"></i>${esc(TAB_NAMES[it.cat] || it.cat)}</span><span class="num">P ${r0(it.p)} · H ${r0(it.c)} · G ${r0(it.f)}</span></span>
+              ${qtyRow(it, i, d)}</div>
             <div class="unit"><input type="number" inputmode="numeric" min="0" value="${r0(it.g)}" data-k="g" aria-label="Gramas de ${esc(it.name)}"><span>g</span></div>
             <div class="unit"><input type="number" inputmode="numeric" min="0" value="${r0(it.kcal)}" data-k="kcal" aria-label="Calorias de ${esc(it.name)}"><span>kcal</span></div>
             <button class="x" data-rm="${i}" aria-label="Remover ${esc(it.name)}">×</button>
@@ -2084,12 +2183,48 @@ function renderDraft() {
       const it = d.items[+e.target.closest(".item").dataset.i], k = e.target.dataset.k;
       if (k === "name") { it.name = e.target.value.trim() || it.name; return renderDraft(); }
       const v = num(e.target.value);
-      if (k === "g") { const ratio = it.g > 0 ? v / it.g : 0; if (ratio) { it.kcal = r0(it.kcal * ratio); it.p = r1(it.p * ratio); it.c = r1(it.c * ratio); it.f = r1(it.f * ratio); } it.g = v; }
+      if (k === "g") setGrams(it, v);
       else it.kcal = r0(v);
       renderDraft();
     };
   });
   el.querySelectorAll("[data-rm]").forEach((b) => b.onclick = () => { d.items.splice(+b.dataset.rm, 1); renderDraft(); });
+  // units: − / + change by one unit (from 1 unit, − goes to half), ✎ sets how much one unit weighs
+  const step = (i, dir) => {
+    const it = d.items[i], U = unitOf(it); if (!U) return;
+    const n = it.g / U.g;
+    let next = dir > 0 ? (n < 1 ? 1 : Math.floor(n + 1e-6) + 1) : (n <= 1.05 ? 0.5 : Math.ceil(n - 1e-6) - 1);
+    if (dir < 0 && n <= 0.55) return;
+    setGrams(it, next * U.g); haptic("LIGHT"); renderDraft();
+  };
+  el.querySelectorAll("[data-qi]").forEach((b) => b.onclick = () => step(+b.dataset.qi, 1));
+  el.querySelectorAll("[data-qd]").forEach((b) => b.onclick = () => step(+b.dataset.qd, -1));
+  el.querySelectorAll("[data-ue]").forEach((b) => b.onclick = () => { d.unitEdit = +b.dataset.ue; renderDraft(); setTimeout(() => el.querySelector(d.unitEdit !== undefined && unitOf(d.items[d.unitEdit]) ? "[data-ugr]" : "[data-un]")?.focus(), 50); });
+  el.querySelector("[data-ucancel]") && (el.querySelector("[data-ucancel]").onclick = () => { d.unitEdit = undefined; renderDraft(); });
+  el.querySelector("[data-uok]") && (el.querySelector("[data-uok]").onclick = () => {
+    const i = +el.querySelector("[data-uok]").dataset.uok, it = d.items[i];
+    const u = el.querySelector("[data-un]").value.trim().slice(0, 30), g = num(el.querySelector("[data-ugr]").value);
+    if (!u || !(g > 0)) { toast("Escreve o nome da unidade e quantos gramas tem."); return; }
+    const before = unitOf(it), n = before ? it.g / before.g : 1;
+    const all = myUnits(); all[plainName(it.name)] = { u, pl: plural(u), g: Math.round(g) }; lsSet("ddp.units", all);
+    // keep the same number of units (e.g. 1 scoop now = 40 g)
+    setGrams(it, Math.max(0.5, Math.round(n * 2) / 2) * g);
+    d.unitEdit = undefined; toast(`Guardado: 1 ${u} de «${it.name}» = ${Math.round(g)} g`); renderDraft();
+  });
+  el.querySelector("[data-ugr]")?.addEventListener("keydown", (e) => { if (e.key === "Enter") el.querySelector("[data-uok]").click(); });
+}
+
+function qtyRow(it, i, d) {
+  const U = unitOf(it);
+  if (d.unitEdit === i) {
+    const u = U?.u || "", g = U?.g || "";
+    return `<div class="qty-ed">1 <input data-un value="${esc(u)}" placeholder="scoop, ovo…" aria-label="Nome da unidade"> = <input data-ugr type="number" inputmode="numeric" min="1" value="${g}" aria-label="Gramas por unidade"> g
+      <button type="button" data-uok="${i}">OK</button><button type="button" class="ghost" data-ucancel>Cancelar</button></div>`;
+  }
+  if (!U) return `<div class="qty"><button type="button" class="ug add" data-ue="${i}">+ Medir por unidade (ex.: 1 scoop)</button></div>`;
+  const n = it.g / U.g;
+  return `<div class="qty"><span class="stp"><button type="button" data-qd="${i}" aria-label="Menos 1 ${esc(U.u)}">−</button><b>${n >= 0.25 && n <= 99 ? fmtCount(n) + " " + esc(Math.round(n * 10) / 10 === 1 || n < 1 ? U.u : U.pl) : "—"}</b><button type="button" data-qi="${i}" aria-label="Mais 1 ${esc(U.u)}">+</button></span>
+    <button type="button" class="ug" data-ue="${i}" aria-label="Mudar quanto pesa 1 ${esc(U.u)}">1 ${esc(U.u)} = ${r0(U.g)} g ✎</button></div>`;
 }
 
 function saveDraft() {
@@ -2098,7 +2233,7 @@ function saveDraft() {
   const meal = {
     id: uid(), day: S.day, ts: day.getTime(), meal: d.meal,
     title: (d.title.trim() || d.items.map((i) => i.name).slice(0, 3).join(", ")).slice(0, 80),
-    items: d.items.map(({ name, detail, cat, g, kcal, p, c, f, img }) => (img ? { name, detail, cat, g, kcal, p, c, f, img } : { name, detail, cat, g, kcal, p, c, f })),
+    items: d.items.map(({ name, detail, cat, g, kcal, p, c, f, img, unitG }) => Object.assign({ name, detail, cat, g, kcal, p, c, f }, img ? { img } : {}, unitG ? { unitG } : {})),
     thumb: d.thumb || ""
   };
   // remember new foods the user created, per 100 g
@@ -2244,7 +2379,7 @@ function mealCardOld(m) {
     <div class="mid">
       <div class="when">${esc(m.meal)}${when ? " · " + when : ""}${m.example ? '<span class="example-tag">Exemplo</span>' : ""}</div>
       <h3>${esc(m.title)}</h3>
-      <div class="chips">${items.map((it) => `<span class="chip"><i style="background:${catColor(it.cat)}"></i>${esc(it.name)} <b>${r0(it.g)} g</b></span>`).join("")}</div>
+      <div class="chips">${items.map((it) => `<span class="chip"><i style="background:${catColor(it.cat)}"></i>${esc(it.name)} <b>${qtyText(it) ? esc(qtyText(it)) + " · " : ""}${r0(it.g)} g</b></span>`).join("")}</div>
     </div>
     <div class="right">
       <span class="kc">${r0(kcal)} <small>kcal</small></span>
@@ -2890,7 +3025,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Abertura nova: ao abrir a app aparece o logótipo animado com som. Podes desligar a animação ou só o som em «Aparência»."
+  "Medir por unidade: além dos gramas, cada alimento mostra «1 ovo», «1 scoop», «1 fatia»… com botões − e + para mudar a quantidade. Os gramas aparecem sempre ao lado.",
+  "Podes acertar quanto pesa a tua unidade: toca em «1 scoop = 30 g ✎» e muda para 40 g, por exemplo. A app lembra-se para a próxima vez.",
+  "Num alimento sem unidade, toca em «+ Medir por unidade» e cria a tua (ex.: 1 tigela = 250 g)."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
