@@ -869,7 +869,7 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <p class="note" style="margin:10px 0 0">Para a app ver cada alimento de um prato misturado (arroz, feijão, grelos, entrecosto, batatas, salada…), descarrega uma vez o modelo de reconhecimento. Funciona no telemóvel, sem internet e sem contas.</p>
     <div class="set-row"><span class="note" id="recState" style="flex:1 1 180px">A verificar…</span><button class="btn btn-accent" id="recDl" type="button">Descarregar</button></div>
     <div class="upd-progress" id="recProg" hidden style="background:var(--soft)"><i style="background:var(--accent)"></i></div>
-    <p class="note">Modelo: OpenAI CLIP ViT-B/32 (licença MIT), cerca de 64 MB, guardado na app.</p>
+    <p class="note">Modelo: OpenAI CLIP ViT-B/16 (licença MIT), cerca de 100 MB, guardado na app.</p>
   </details>
 
   <details class="settings" id="dishDetails">
@@ -1737,7 +1737,8 @@ const findFood = (n) => byName(n) || allFoods().find((f) => f.name === n);
 // CLIP gives each part of the photo a probability per description; descriptions of the same food add up.
 // A food counts when it wins a part of the plate (or is very likely somewhere) and adds up over the parts.
 // Per kind (starch, protein, vegetables…) only the most likely food stays, unless another one clearly wins parts of its own.
-const CLIP_KIND = (f) => /^(Sopa|Caldo|Canja)/.test(f.name) ? "sopa" : ["arroz e massa", "batata", "pão e cereais", "leguminosas", "pratos"].includes(f.cat) ? "base"
+// potatoes are their own kind: rice and potatoes often share a Portuguese plate
+const CLIP_KIND = (f) => /^(Sopa|Caldo|Canja)/.test(f.name) ? "sopa" : f.cat === "batata" ? "batata" : ["arroz e massa", "pão e cereais", "leguminosas", "pratos"].includes(f.cat) ? "base"
   : ["carne e charcutaria", "peixe"].includes(f.cat) ? "prot" : f.cat || "outros";
 function clipFoods(res) {
   const L = res.labels, per = new Map();
@@ -1792,7 +1793,7 @@ async function recognize(d, canvas) {
   let clip = null;
   try {
     for (let i = 0; i < 30 && !window.FoodClip; i++) await wait(100);
-    if (window.FoodClip && !(await window.FoodClip.ready()) && navigator.onLine !== false) {
+    if (window.FoodClip?.available && !(await window.FoodClip.ready()) && navigator.onLine !== false) {
       // first photo: fetch the food-by-food model by itself (once), showing the progress
       let last = -1;
       const show = (p) => { if (S.draft === d && p - last >= 0.02) { last = p; d.ai = { status: "dl", p }; renderDraft(); } };
@@ -2149,7 +2150,7 @@ async function recognizeAngles(d, extra) {
   if (S.draft !== d || !window.FoodClip || !(await window.FoodClip.ready().catch(() => false))) return;
   const seen = new Map();
   for (const c of extra) {
-    let clip; try { clip = await window.FoodClip.analyze(c); } catch { continue; }
+    let clip; try { clip = await window.FoodClip.analyze(c, true); } catch { continue; }
     for (const f of clipFoods(clip)) { const o = seen.get(f.name) || { n: 0, max: 0 }; o.n++; o.max = Math.max(o.max, f.max); seen.set(f.name, o); }
   }
   if (S.draft !== d) return;
@@ -2159,6 +2160,10 @@ async function recognizeAngles(d, extra) {
     if (d.items.some((i) => i.name === name) || d.items.length >= 8) continue;
     if (!(o.n >= 2 || o.max >= (dish ? 0.6 : 0.5))) continue;
     const food = findFood(name); if (!food) continue;
+    // drinks: often a bottle or glass at the edge of the photo, so only when every other angle clearly shows it
+    if (food.cat === "bebidas" && !(o.n >= 2 && o.max >= 0.7)) continue;
+    // a whole dish (feijoada, cozido…) next to foods already found on the plate would count the same food twice
+    if (food.cat === "pratos" && !/^(Arroz|Sopa|Caldo|Canja)/.test(food.name) && d.items.length) continue;
     d.items.push({ ...fromFood(food), auto: true }); added.push(name);
   }
   const ai = d.ai || {};
@@ -2192,7 +2197,7 @@ function aiBanner(d) {
   if (ai.status === "barcode") return `<div class="ai-box ok-box"><b>Produto: ${esc(ai.name)}</b><span>Encontrado pelo código de barras. Confirma os gramas na lista.</span></div>`;
   if (ai.status === "cloud") return `<div class="ai-box ok-box"><b>Encontrei ${ai.names.length} ${ai.names.length === 1 ? "alimento" : "alimentos"}${ai.angles > 1 ? ` · ${ai.angles} ângulos` : ""}</b><span>${esc(ai.names.join(", "))}. Os gramas são uma estimativa da IA: confirma-os na lista.</span></div>`;
   const note = d.cloudNote ? `<span class="muted" style="font-size:13px">${esc(d.cloudNote)}</span>` : "";
-  const goAI = d.clipOk === false && d._canvas ? `<button class="btn btn-plain ai-go" data-clipdl type="button">Reconhecer cada alimento do prato<small>Descarrega o modelo uma vez (${window.FoodClip?.MODEL_MB || 64} MB, melhor em Wi-Fi). Depois funciona sem internet.</small></button>` : "";
+  const goAI = d.clipOk === false && d._canvas && window.FoodClip?.available ? `<button class="btn btn-plain ai-go" data-clipdl type="button">Reconhecer cada alimento do prato<small>Descarrega o modelo uma vez (${window.FoodClip?.MODEL_MB || 100} MB, melhor em Wi-Fi). Depois funciona sem internet.</small></button>` : "";
   if (ai.status === "error") return `<div class="ai-box muted-box">Não consegui analisar a foto neste telemóvel. Escolhe os alimentos na lista.</div>`;
   // a packaged product: only the products from its label, not guesses from the picture
   if (false) return `<div class="ai-box"><b>Li o texto de uma embalagem</b><span>Não tenho a certeza de qual é o produto, por isso não pus nada no prato. Toca no certo:</span><div class="ai-alts">${d.packMaybe.map((i) => `<button class="chip-btn" data-prod="${i}">${esc(superItem(window.OFF_PT[i]).name)}</button>`).join("")}</div><span class="muted" style="font-size:13px">Não está aqui? Fotografa a frente com o nome e a marca bem visíveis, ou o código de barras.</span></div>`;
@@ -3078,9 +3083,9 @@ async function renderRec(p) {
   if (typeof p === "number" && p < 1) { st.textContent = `A descarregar: ${Math.round(p * 100)}%`; btn.hidden = true; bar.hidden = false; bar.querySelector("i").style.width = p * 100 + "%"; return; }
   bar.hidden = true;
   for (let i = 0; i < 40 && !window.FoodClip; i++) await new Promise((r) => setTimeout(r, 100));
-  const ok = window.FoodClip ? await window.FoodClip.ready() : false;
-  st.textContent = ok ? "Ativo: a app vê cada alimento do prato." : "Ainda não descarregado.";
-  btn.hidden = ok;
+  const ok = window.FoodClip ? await window.FoodClip.ready() : false, can = !!window.FoodClip?.available;
+  st.textContent = ok ? "Ativo: a app vê cada alimento do prato." : can ? "Ainda não descarregado." : "Só funciona na app instalada no telemóvel.";
+  btn.hidden = ok || !can;
 }
 function renderAIState() {
   const k = aiKey();
@@ -3763,9 +3768,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Voz ao abrir: depois da animação do logótipo, uma voz em português de Portugal dá-te as boas-vindas. Podes desligá-la em «Aparência» › «Voz de boas-vindas ao abrir».",
-  "Vários produtos na mesma foto: a app lê o texto de cada embalagem em separado.",
-  "Novo botão «📷 Fotografar outro produto»: o produto junta-se à mesma refeição."
+  "Reconhecimento de pratos muito mais certeiro: a app passa a usar um modelo maior e mais preciso. Por exemplo, frango assado com arroz e batatas já não é confundido com feijoada.",
+  "Na primeira foto, a app descarrega o novo modelo uma vez (cerca de 100 MB, de preferência em Wi-Fi). O modelo antigo é apagado para libertar espaço.",
+  "Garrafas e copos no fundo da foto já não são acrescentados à refeição."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
@@ -4003,7 +4008,7 @@ const TOUR = [
   { sel: "#goalDetails", title: "A tua meta", text: "Em «Meta diária» vês o metabolismo basal, a meta nos dias de treino e de descanso e a proteína para o teu peso. Toca em «Alterar os meus dados» para mudar idade, peso, treino ou objetivo." },
   { sel: "#planDetails", title: "Plano de dieta", text: "Em «O meu plano de dieta», a IA cria um dia de refeições à tua medida, com os teus dados e a tua meta. Cada refeição tem o botão «Registar esta refeição»." },
   { sel: "#aiDetails", title: "IA Gemini", text: "Para a app identificar cada alimento da foto com a IA da Google e criar o plano de dieta, cola aqui uma chave gratuita da Google. Sem chave, a app usa o reconhecimento do telemóvel." },
-  { sel: "#recDetails", title: "Reconhecer cada alimento", text: "Para a app ver cada alimento de um prato misturado (arroz, feijão, grelos, entrecosto…), toca aqui em «Descarregar» uma vez (cerca de 64 MB, de preferência em Wi-Fi). Depois funciona sem internet." },
+  { sel: "#recDetails", title: "Reconhecer cada alimento", text: "Para a app ver cada alimento de um prato misturado (arroz, feijão, grelos, entrecosto…), toca aqui em «Descarregar» uma vez (cerca de 100 MB, de preferência em Wi-Fi). Depois funciona sem internet." },
   { sel: "#notifDetails", title: "Notificações", text: "A app lembra-te das refeições, da pesagem e das missões. Aqui podes desligar tudo ou só alguns lembretes." },
   { sel: "#updDetails", title: "Atualizações", text: "Quando houver uma versão nova, aparece uma barra verde no topo da app. Toca em «Descarregar», abre o ficheiro e instala. Os teus registos mantêm-se." },
   { title: "Os teus dados", text: "Tudo fica guardado só neste telemóvel e a app funciona sem internet. Atenção: se desinstalares a app, os registos são apagados. Está pronto, bom apetite!" }

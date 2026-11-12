@@ -17,6 +17,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         registerPlugin(AppUpdaterPlugin.class);
         registerPlugin(WelcomeVoicePlugin.class);
         registerPlugin(TextReaderPlugin.class);
+        registerPlugin(ModelStorePlugin.class);
         super.onCreate(savedInstanceState);
         // let the welcome voice start as soon as the app opens
         if (getBridge() != null && getBridge().getWebView() != null) {
