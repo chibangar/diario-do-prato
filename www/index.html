@@ -1585,14 +1585,20 @@ function processImg(img) {
   return { preview: c.toDataURL("image/jpeg", 0.8), thumb: t.toDataURL("image/jpeg", 0.7), canvas: c };
 }
 async function onPhotoSrc(src) {
-  let photo;
-  try { photo = processImg(await imgFromSrc(src)); }
+  let photo, big = null;
+  try {
+    const img = await imgFromSrc(src);
+    photo = processImg(img);
+    const sc = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    big = document.createElement("canvas"); big.width = Math.round(img.naturalWidth * sc); big.height = Math.round(img.naturalHeight * sc);
+    big.getContext("2d").drawImage(img, 0, 0, big.width, big.height);
+  }
   catch { toast("Não consegui abrir esta imagem. Tenta outra."); return; }
   const { canvas, ...rest } = photo;
   const keepMeal = S.draft && !S.draft.preview && !S.draft.demo ? S.draft.meal : null;
   newDraft({ ...rest, ...(keepMeal ? { meal: keepMeal } : {}), ai: { status: "running", cloud: !!aiKey() } });
   S.draft._canvas = canvas;
-  recognizeAny(S.draft, canvas);
+  recognizeAny(S.draft, canvas, null, big);
 }
 
 // ---------- food recognition (on-device, MediaPipe) ----------
@@ -1862,7 +1868,7 @@ async function recognize(d, canvas) {
   if (clip && clipFoods.rank) {
     const rank = clipFoods.rank;
     // nothing passed the strict rules: still give the most likely food instead of nothing
-    if (!found.length && rank[0] && rank[0].max >= 0.12 && clipFoods.notFood < 0.5) { found.push({ name: rank[0].name, score: Math.min(rank[0].max, 0.99), n: 1 }); guess = true; }
+    // nothing passed the strict rules: offer the most likely foods, without adding any
     const more = rank.filter((c) => c.sum >= 0.12 && !found.some((f) => f.name === c.name)).slice(0, 5).map((c) => c.name);
     alts.length = 0; if (found.length || clipFoods.notFood < 0.5) alts.push(...more);
   }
@@ -1877,6 +1883,8 @@ async function recognize(d, canvas) {
     }
   }
   if (S.draft !== d) return;
+  // one food under 50 %: too unsure to add; it becomes the first suggestion
+  if (d.noAuto || (found.length === 1 && !found[0].part && found[0].score < 0.5)) { alts.unshift(...found.map((f) => f.name)); found.length = 0; }
   for (const f of found) {
     if (d.items.some((i) => i.name === f.name)) continue;
     const food = findFood(f.name); if (!food) continue;
@@ -1884,7 +1892,7 @@ async function recognize(d, canvas) {
     d.items.push({ ...fromFood(food, food.g * qty), auto: true });
   }
   if (found.length && !d.title.trim()) d.title = found.map((f) => (f.n > 1 && COUNTABLE.has(f.name) ? `${f.n}× ` : "") + f.name).join(", ");
-  done({ status: found.length ? "found" : "none", found, alts: alts.filter((n) => !found.some((f) => f.name === n)), parts: found.some((f) => f.part), guess, noFood: !!clip && !found.length });
+  done({ status: found.length ? "found" : "none", found, alts: [...new Set(alts)].filter((n) => !found.some((f) => f.name === n)), parts: found.some((f) => f.part), guess, noFood: !!clip && !found.length });
 }
 // ---------- online AI (Google Gemini, the user's own free key) ----------
 const aiKey = () => String(lsGet("ddp.aiKey", "") || "").trim();
@@ -1957,8 +1965,99 @@ function aiItem(x) {
   const k = g / 100, nn = norm(name), cat = (CAT_GUESS.find(([re]) => re.test(nn)) || [0, "outros"])[1];
   return { name, detail: "", cat, g, kcal: r0(num(x.kcal100) * k), p: r1(num(x.protein100) * k), c: r1(num(x.carbs100) * k), f: r1(num(x.fat100) * k), custom: true };
 }
-async function recognizeAny(d, canvas, shots) {
-  const code = await readBarcode(canvas);
+// Words that say nothing about which product it is (nutrition table, legal text, units)
+const PACK_STOP = new Set(("de do da dos das com sem para por pelo pela the and with for of en con los las del la el le les du des une per " +
+  "kcal kj energia valor energetico nutricional informacao nutrition hidratos carbono acucares azucares sal gordura gorduras grasas saturados saturadas " +
+  "fibra fibras ingredientes ingredients lote consumir antes conservar frio peso liquido neto net contem contiene produto producto fabricado embalado " +
+  "dose porcao porcion rdi alergenos www com portugal espana origem").split(" "));
+const packTokens = (t) => norm(t).split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !PACK_STOP.has(w)).map((w) => (w.length > 4 ? w.replace(/s$/, "") : w));
+let PACK = null;
+function packIndex() {
+  if (PACK) return PACK;
+  const L = window.OFF_PT, toks = [], df = new Map(), inv = new Map(), brands = new Set(), asBrand = new Map(), asName = new Map();
+  L.forEach((r, i) => {
+    const nt = [...new Set(packTokens(r[0]))], bt = [...new Set(packTokens(r[1] || ""))];
+    toks.push([nt, bt]);
+    bt.forEach((t) => asBrand.set(t, (asBrand.get(t) || 0) + 1)); nt.forEach((t) => asName.set(t, (asName.get(t) || 0) + 1));
+    for (const t of new Set([...nt, ...bt])) { df.set(t, (df.get(t) || 0) + 1); let a = inv.get(t); if (!a) inv.set(t, (a = [])); a.push(i); }
+  });
+  // a brand word: used mostly as a brand ("hacendado", "mimosa"), not a common word of names ("protein", "natural")
+  for (const [t, n] of asBrand) if (n >= 3 && n > (asName.get(t) || 0)) brands.add(t);
+  return (PACK = { toks, df, inv, brands, N: L.length });
+}
+// sure: every meaningful word of the product name was read (and the brand, when a brand was read)
+function matchPackaging(text) {
+  const X = packIndex(), seen = new Set(packTokens(text));
+  // a brand counts only when it was really read (not one of the near words added below)
+  const brandRead = [...seen].some((t) => X.brands.has(t) && (X.df.get(t) || 0) <= 2500);
+  // words cut at the edge of the photo or misread by one letter: "stracciatell" -> "stracciatella"
+  for (const t of [...seen]) {
+    if (X.inv.has(t) || t.length < 6) continue;
+    for (const k of X.inv.keys()) if (k.length > t.length && k.length - t.length <= 3 && k.startsWith(t)) seen.add(k);
+    for (const k of X.inv.keys()) if (k.length === t.length && k.length >= 7) { let d = 0; for (let j = 0; j < k.length && d < 2; j++) if (k[j] !== t[j]) d++; if (d === 1) seen.add(k); }
+  }
+  const w = (t) => Math.log((X.N + 1) / ((X.df.get(t) || 0) + 1));
+  const score = () => {
+    const cand = new Set(); for (const t of seen) for (const i of X.inv.get(t) || []) cand.add(i);
+    const out = [];
+    for (const i of cand) {
+      const [nt, bt] = X.toks[i]; if (!nt.length) continue;
+      const hit = nt.filter((t) => seen.has(t)); if (!hit.length) continue;
+      const tot = nt.reduce((a, t) => a + w(t), 0), hw = hit.reduce((a, t) => a + w(t), 0), cov = hw / (tot || 1);
+      const brand = bt.length > 0 && bt.some((t) => seen.has(t));
+      const distinct = hit.filter((t) => (X.df.get(t) || 0) <= 400).length;
+      // a tie goes to the product without extra words the label did not show ("Leite 50+ Meio-Gordo" vs "Leite Meio-Gordo")
+      const extra = norm(window.OFF_PT[i][0]).split(/[^a-z0-9]+/).filter(Boolean).length - hit.length;
+      out.push({ i, cov, brand, hit, distinct, nt, s: cov * (hw + (brand ? 4 : 0)) - 0.05 * Math.max(0, extra) });
+    }
+    return out.sort((a, b) => b.s - a.s);
+  };
+  const sure = [], maybe = [], names = new Set();
+  for (let round = 0; round < 3; round++) {
+    const list = score().filter((c) => !names.has(norm(window.OFF_PT[c.i][0]))), best = list[0];
+    if (!best) break;
+    // no brand read and another brand has the same product: ask instead of guessing
+    const rival = !best.brand && list.find((c) => c !== best && c.s >= best.s * 0.9 && norm(window.OFF_PT[c.i][1] || "") !== norm(window.OFF_PT[best.i][1] || ""));
+    if (rival) break;
+    const ok = best.cov >= 0.85 && best.distinct >= 1 && (best.hit.length >= 2 || (best.brand && best.nt.length === 1 && (X.df.get(best.nt[0]) || 0) <= 40)) && (best.brand || !brandRead);
+    if (!ok) break;
+    sure.push(best.i); names.add(norm(window.OFF_PT[best.i][0]));
+    best.nt.forEach((t) => seen.delete(t)); // the next product must be found with other words
+  }
+  for (const c of score()) {
+    if (maybe.length >= 4) break;
+    if (names.has(norm(window.OFF_PT[c.i][0])) || c.cov < 0.7 || !c.distinct || c.hit.length < 2) continue;
+    names.add(norm(window.OFF_PT[c.i][0])); maybe.push(c.i);
+  }
+  return { sure, maybe };
+}
+async function readPackText(canvases) {
+  const C = window.Capacitor;
+  if (!C?.isNativePlatform?.() || typeof C.nativePromise !== "function") return "";
+  let text = "";
+  for (const c of canvases) {
+    if (!c) continue;
+    try { const r = await C.nativePromise("TextReader", "read", { image: c.toDataURL("image/jpeg", 0.9) }); text += "\n" + (r?.text || ""); } catch { /* no text */ }
+  }
+  return text.trim();
+}
+async function recognizeAny(d, canvas, shots, big) {
+  // printed text on packaging (on the phone, no internet): the product's own name and brand
+  try {
+    const text = await readPackText(shots?.length ? shots : [big || canvas]);
+    if (S.draft !== d) return;
+    if (text && packTokens(text).length && await loadSuper()) {
+      const m = matchPackaging(text);
+      if (S.draft !== d) return;
+      if (m.sure.length) {
+        for (const i of m.sure) addProduct(d, superItem(window.OFF_PT[i]));
+        d.ai = { status: "pack", names: m.sure.map((i) => superItem(window.OFF_PT[i]).name), maybe: m.maybe.slice(0, 3) };
+        renderDraft(); return;
+      }
+      if (m.maybe.length) { d.packMaybe = m.maybe; d.noAuto = true; } // a packaged product we are not sure of: only offer options
+    }
+  } catch { /* fall back to the picture */ }
+  const code = await readBarcode(big || canvas);
   if (code) {
     const p = await productByCode(code);
     if (S.draft !== d) return;
@@ -1988,7 +2087,7 @@ async function recognizeAny(d, canvas, shots) {
     d.ai = { status: "running" }; renderDraft();
   }
   await recognize(d, canvas);
-  if (shots?.length > 1) await recognizeAngles(d, shots.slice(1));
+  if (shots?.length > 1 && !d.noAuto) await recognizeAngles(d, shots.slice(1));
 }
 // the other angles: a food the top photo missed is added when another angle clearly shows it
 async function recognizeAngles(d, extra) {
@@ -2028,16 +2127,20 @@ function aiBanner(d) {
   const ai = d.ai; if (!ai) return "";
   if (ai.status === "running") return `<div class="ai-box"><span class="ai-dot"></span><span>${ai.angles > 1 ? `A juntar as ${ai.angles} fotos do prato… ` : ""}${ai.cloud ? "A IA está a ver cada alimento do prato…" : ai.deep ? "A ver cada alimento do prato… (pode demorar uns segundos)" : "A reconhecer o alimento na foto…"}</span></div>`;
   if (ai.status === "dl") return `<div class="ai-box"><span class="ai-dot"></span><span>A descarregar o reconhecimento de alimentos: ${Math.round((ai.p || 0) * 100)}%. Só acontece uma vez.</span></div>`;
+  if (ai.status === "pack") return `<div class="ai-box ok-box"><b>Li na embalagem: ${esc(ai.names.join(", "))}</b><span>Encontrado pelo nome e pela marca escritos no produto. Confirma a quantidade na lista.</span>${ai.maybe?.length ? `<div class="ai-alts"><span>Também pode ser:</span>${ai.maybe.map((i) => `<button class="chip-btn" data-prod="${i}">${esc(superItem(window.OFF_PT[i]).name)}</button>`).join("")}</div>` : ""}</div>`;
   if (ai.status === "barcode") return `<div class="ai-box ok-box"><b>Produto: ${esc(ai.name)}</b><span>Encontrado pelo código de barras. Confirma os gramas na lista.</span></div>`;
   if (ai.status === "cloud") return `<div class="ai-box ok-box"><b>Encontrei ${ai.names.length} ${ai.names.length === 1 ? "alimento" : "alimentos"}${ai.angles > 1 ? ` · ${ai.angles} ângulos` : ""}</b><span>${esc(ai.names.join(", "))}. Os gramas são uma estimativa da IA: confirma-os na lista.</span></div>`;
   const note = d.cloudNote ? `<span class="muted" style="font-size:13px">${esc(d.cloudNote)}</span>` : "";
   const goAI = d.clipOk === false && d._canvas ? `<button class="btn btn-plain ai-go" data-clipdl type="button">Reconhecer cada alimento do prato<small>Descarrega o modelo uma vez (${window.FoodClip?.MODEL_MB || 64} MB, melhor em Wi-Fi). Depois funciona sem internet.</small></button>` : "";
   if (ai.status === "error") return `<div class="ai-box muted-box">Não consegui analisar a foto neste telemóvel. Escolhe os alimentos na lista.</div>`;
-  const alts = ai.alts?.length ? `<div class="ai-alts"><span>${ai.status === "found" ? "Não é isto? Talvez:" : "Talvez seja:"}</span>${ai.alts.map((n) => `<button class="chip-btn" data-alt="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : "";
+  // a packaged product: only the products from its label, not guesses from the picture
+  if (d.noAuto && d.packMaybe?.length && window.OFF_PT && ai.status !== "running" && ai.status !== "dl") return `<div class="ai-box"><b>Li o texto de uma embalagem</b><span>Não tenho a certeza de qual é o produto, por isso não pus nada no prato. Toca no certo:</span><div class="ai-alts">${d.packMaybe.map((i) => `<button class="chip-btn" data-prod="${i}">${esc(superItem(window.OFF_PT[i]).name)}</button>`).join("")}</div><span class="muted" style="font-size:13px">Não está aqui? Fotografa a frente com o nome e a marca bem visíveis, ou o código de barras.</span></div>`;
+  const alts = (ai.alts?.length ? `<div class="ai-alts"><span>${ai.status === "found" ? "Não é isto? Talvez:" : "Talvez seja:"}</span>${ai.alts.map((n) => `<button class="chip-btn" data-alt="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : "")
+    + (d.packMaybe?.length && window.OFF_PT ? `<div class="ai-alts"><span>Pela embalagem:</span>${d.packMaybe.map((i) => `<button class="chip-btn" data-prod="${i}">${esc(superItem(window.OFF_PT[i]).name)}</button>`).join("")}</div>` : "");
   if (ai.status === "found" && ai.parts) return `<div class="ai-box ok-box">${note}<b>Encontrei ${ai.found.length} alimentos no prato${ai.angles > 1 ? ` · vi ${ai.angles} ângulos` : ""}</b><span>${esc(ai.found.map((f) => f.name).join(", "))}. Confirma se está certo, acerta os gramas e acrescenta o que faltar.</span>${alts}${goAI}</div>`;
   if (ai.status === "found" && ai.guess) return `<div class="ai-box ok-box">${note}<b>Parece ser: ${esc(ai.found[0].name)}</b><span>Não tenho a certeza. Já está no prato: se não for isto, tira-o no «×» e toca numa sugestão ou procura na lista.</span>${alts.replace("Não é isto? Talvez:", "Ou talvez:")}</div>`;
   if (ai.status === "found") return `<div class="ai-box ok-box">${note}<b>Reconhecido: ${ai.found.map((f) => esc((f.n > 1 && COUNTABLE.has(f.name) ? f.n + "× " : "") + f.name) + ` <small>${Math.round(f.score * 100)}%</small>`).join(", ")}</b><span>Já está no prato. Confirma a quantidade em baixo.</span>${alts}${goAI}</div>`;
-  return `<div class="ai-box muted-box">${note}<span>${ai.noFood ? "Não vi comida nesta foto. Aproxima a câmara do prato, com boa luz, e tenta outra vez. Ou escolhe na lista em baixo." : "Não reconheci nenhum alimento com certeza. Escolhe na lista em baixo."}</span>${alts}${goAI}</div>`;
+  return `<div class="ai-box muted-box">${note}<span>${ai.noFood ? "Não vi comida nesta foto. Aproxima a câmara do prato, com boa luz, e tenta outra vez. Ou escolhe na lista em baixo." : "Não tenho a certeza do que é, por isso não pus nada no prato. Toca na opção certa ou procura em baixo. Num produto embalado, fotografa a frente com o nome bem visível ou o código de barras."}</span>${alts}${goAI}</div>`;
 }
 async function onFile(file) {
   if (!file) return;
@@ -2502,6 +2605,12 @@ function renderDraft() {
   q("#dKeep") && (q("#dKeep").onchange = (e) => { d.keep = e.target.checked; });
   q("#dCancel").onclick = () => { S.draft = null; renderDraft(); };
   q("#dSave").onclick = saveDraft;
+  el.querySelectorAll("[data-prod]").forEach((b) => b.onclick = () => {
+    const row = window.OFF_PT?.[+b.dataset.prod]; if (!row) return;
+    const p = superItem(row), idx = d.items.findIndex((i) => i.name === p.name);
+    if (idx >= 0) d.items.splice(idx, 1); else addProduct(d, p);
+    renderDraft();
+  });
   el.querySelectorAll("[data-alt]").forEach((b) => b.onclick = () => {
     const name = b.dataset.alt, idx = d.items.findIndex((i) => i.name === name);
     if (idx >= 0) d.items.splice(idx, 1); else { const f = findFood(name); if (f) d.items.push(fromFood(f)); }
@@ -3574,9 +3683,8 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Campo «Calorias gastas» arrumado: ocupa a largura toda do cartão, tem valores rápidos (300, 500, 800, 1000) e mostra a meta nova antes de guardares.",
-  "As calorias gastas nunca baixam a meta: num dia de treino fica o maior dos dois valores.",
-  "Calorias gastas: a app desconta a atividade que a meta já conta e soma metade do resto (no máximo +800 kcal), para manteres o défice."
+  "Produtos embalados: a app lê o nome e a marca escritos na embalagem (no telemóvel, sem internet) e encontra o produto certo entre os mais de 17 000 do Pingo Doce, Continente, Mercadona, Lidl e outros.",
+  "Menos erros: quando a app não tem a certeza, já não põe nada no prato. Mostra as opções mais prováveis para escolheres com um toque."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
