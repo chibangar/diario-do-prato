@@ -25,8 +25,9 @@ public class WelcomeVoicePlugin extends Plugin {
     @PluginMethod
     public void play(PluginCall call) {
         stopInternal(true);
-        // only the app's own sounds: the welcome voice (default) or the opening sound
-        String file = "intro.mp3".equals(call.getString("file")) ? "intro.mp3" : "welcome.mp3";
+        // only the app's own sounds: the welcome voice (default), the opening sound or the short greeting
+        String asked = call.getString("file");
+        String file = "intro.mp3".equals(asked) || "ola.mp3".equals(asked) ? asked : "welcome.mp3";
         try {
             MediaPlayer mp = new MediaPlayer();
             mp.setAudioAttributes(new AudioAttributes.Builder()

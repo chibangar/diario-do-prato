@@ -842,6 +842,7 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <p class="note">«Automático» segue o modo claro ou escuro do telemóvel.</p>
     <label class="sw" style="border-top:1px solid var(--line)"><span>Animação ao abrir a app<small>O logótipo animado, cerca de 2,5 segundos</small></span><input type="checkbox" id="introOn"></label>
     <label class="sw"><span>Som da animação</span><input type="checkbox" id="introSnd"></label>
+    <label class="sw"><span>Voz de boas-vindas ao abrir<small>Uma frase curta em português de Portugal</small></span><input type="checkbox" id="greetOn"></label>
   </details>
 
   <details class="settings" id="planDetails">
@@ -3725,6 +3726,14 @@ $("#ideaBtn").onclick = () => {
 };
 $("#ideaSheet").addEventListener("click", (e) => { if (e.target === $("#ideaSheet")) closeIdea(); });
 // ---------- opening animation ----------
+// short spoken greeting each time the app opens (after the logo animation)
+const greetOn = () => lsGet("ddp.greet", true) !== false;
+function greet() {
+  if (!greetOn()) return;
+  const C = window.Capacitor;
+  if (C?.isNativePlatform?.() && typeof C.nativePromise === "function") C.nativePromise("WelcomeVoice", "play", { file: "ola.mp3" }).catch(() => {});
+  else { try { const a = new Audio("ola.mp3"); a.play().catch(() => {}); } catch { /* no sound */ } }
+}
 const introOn = () => lsGet("ddp.intro", true) !== false, introSound = () => lsGet("ddp.introSound", true) !== false;
 function playIntro(then) {
   const el = $("#intro");
@@ -3754,10 +3763,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Vários produtos na mesma foto: a app lê o texto de cada embalagem em separado e mostra cada produto.",
-  "Leitura mais tolerante: letras inclinadas ou cortadas («SRACCIATE», «PROTEIME») já são reconhecidas.",
-  "Novo botão «📷 Fotografar outro produto»: se faltar algum, fotografas só esse e ele junta-se à mesma refeição.",
-  "Fotos com mais resolução para ler melhor nomes e marcas."
+  "Voz ao abrir: depois da animação do logótipo, uma voz em português de Portugal dá-te as boas-vindas. Podes desligá-la em «Aparência» › «Voz de boas-vindas ao abrir».",
+  "Vários produtos na mesma foto: a app lê o texto de cada embalagem em separado.",
+  "Novo botão «📷 Fotografar outro produto»: o produto junta-se à mesma refeição."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
@@ -3952,11 +3960,13 @@ function renderTheme() {
 $("#themeSeg").onclick = (e) => {
   const b = e.target.closest("[data-theme-set]"); if (!b) return;
   document.documentElement.dataset.theme = b.dataset.themeSet; lsSet("ddp.theme", b.dataset.themeSet); renderTheme();
+};
+renderTheme();
+// opening: animation, its sound and the spoken greeting
 $("#introOn").checked = lsGet("ddp.intro", true) !== false; $("#introSnd").checked = lsGet("ddp.introSound", true) !== false;
 $("#introOn").onchange = (e) => lsSet("ddp.intro", e.target.checked);
 $("#introSnd").onchange = (e) => lsSet("ddp.introSound", e.target.checked);
-};
-renderTheme();
+$("#greetOn").checked = greetOn(); $("#greetOn").onchange = (e) => { lsSet("ddp.greet", e.target.checked); if (e.target.checked) greet(); };
 $("#helpTour").onclick = () => startTour();
 
 // ---------- tutorial ----------
@@ -4174,10 +4184,10 @@ render();
 renderNotif(); setTimeout(() => scheduleNotifs(), 4000);
 checkUpdate(false);
 // opening animation with sound, then the usual start (welcome the first time, else profile / news)
-playIntro(() => askLogin(() => {
+playIntro(() => { if (lsGet("ddp.seenWelcomeVoice", false)) greet(); askLogin(() => {
   if (!lsGet("ddp.seenWelcomeVoice", false)) { lsSet("ddp.newsBuild", APP_BUILD); showWelcome(); }
   else { needProfile(); if (lsGet("ddp.newsBuild", 0) !== APP_BUILD) showNews(); }
-}));
+}); });
 })();
 </script>
 <script type="module">
