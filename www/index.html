@@ -949,6 +949,14 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
           <label><input type="radio" name="sGoal" value="gain"><span>Ganhar massa</span></label>
         </div>
       </div>
+      <div class="q"><span>Como gostas de comer</span>
+        <div class="seg" role="radiogroup" aria-label="Estilo de alimentação">
+          <label><input type="radio" name="sDiet" value="bal"><span>Equilibrado</span></label>
+          <label><input type="radio" name="sDiet" value="less"><span>Menos hidratos</span></label>
+          <label><input type="radio" name="sDiet" value="low"><span>Baixo em hidratos</span></label>
+        </div>
+        <small class="note" id="sDietNote" style="display:block;margin-top:6px"></small>
+      </div>
       <p class="err" id="sErr" role="alert" hidden></p>
       <button class="btn btn-primary" id="sGo" type="button">Calcular a minha meta</button>
       <button class="btn btn-plain" id="sCancel" type="button" hidden>Cancelar</button>
@@ -2778,13 +2786,17 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !CAL.el.
 // ---------- calorie calculator (Mifflin-St Jeor) ----------
 const P = lsGet("ddp.profile", {});
 const GOAL_NAMES = { lose: "perder peso", keep: "manter o peso", gain: "ganhar massa" };
+// diet style: share of calories from carbs (balanced = what is left after protein and 25 % fat, about 45 %)
+const DIETS = { bal: ["Equilibrado", null, "Cerca de 45 % de hidratos e 25 % de gordura, o recomendado para quem treina."], less: ["Menos hidratos", 0.3, "Cerca de 30 % de hidratos; o resto vem da proteína e de gorduras boas (azeite, frutos secos, peixe)."], low: ["Baixo em hidratos", 0.18, "Cerca de 18 % de hidratos: pouco pão, arroz e massa. Mais difícil de manter e pode baixar o rendimento no treino."] };
+function dietNote() { const v = document.querySelector('input[name="sDiet"]:checked')?.value || "bal"; const n = $("#sDietNote"); if (n) n.textContent = DIETS[v][2]; }
+document.querySelectorAll('input[name="sDiet"]').forEach((r) => r.addEventListener("change", dietNote));
 function fillProfile() {
   const el = $("#profSum"); if (!el) return;
   if (!P.sex) { el.textContent = "Ainda sem dados."; return; }
   const days = (P.days || []).slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => WD[d]).join(", ");
   el.innerHTML = `${P.sex === "m" ? "Homem" : "Mulher"}, ${P.age} anos, ${String(P.weight).replace(".", ",")} kg, ${P.height} cm<br>` +
     (P.train && P.train !== "none" ? `Treino: ${esc(TRAIN_TYPES[P.train]?.[0] || "")}, ${P.dur} min${days ? " · " + days : ""}<br>` : "Sem treino<br>") +
-    `Objetivo: ${GOAL_NAMES[P.objective] || "—"}`;
+    `Objetivo: ${GOAL_NAMES[P.objective] || "—"} · ${DIETS[P.diet]?.[0] || DIETS.bal[0]}`;
 }
 // training: MET of each kind of session; the extra calories go only to the days with training
 const TRAIN_TYPES = { none: ["Não treino", 0], forca: ["Musculação / força", 5], cardio: ["Corrida / cardio", 8], misto: ["CrossFit / treino misto", 7], desporto: ["Desporto", 7.5], caminhada: ["Caminhada / bicicleta leve", 3.5] };
@@ -2819,6 +2831,11 @@ const dayGoal = (k) => burnGoal(k) || S.goal + (isTrainDay(k) ? trainKcal(P) : 0
 // protein by body weight (more when losing fat, to keep muscle), fat 25 %, carbs the rest
 const GKG = { lose: 2.0, keep: 1.6, gain: 1.8 };
 function macroTargets(goal) {
+  const cShare = DIETS[P.diet]?.[1];
+  if (P.weight && cShare) {
+    const p = P.weight * (GKG[P.objective] || 1.6), c = goal * cShare / 4;
+    return { p, c, f: Math.max(goal * 0.2 / 9, (goal - p * 4 - c * 4) / 9) };
+  }
   if (!P.weight) { const sp = { lose: [0.3, 0.4, 0.3], gain: [0.25, 0.5, 0.25] }[P.objective] || [0.2, 0.5, 0.3]; return { p: goal * sp[0] / 4, c: goal * sp[1] / 4, f: goal * sp[2] / 9 }; }
   const p = P.weight * (GKG[P.objective] || 1.6), f = goal * 0.25 / 9;
   return { p, f, c: Math.max(0, (goal - p * 4 - f * 9) / 4) };
@@ -2951,6 +2968,7 @@ function needProfile(then, force) {
   if (P.height) $("#sHeight").value = P.height;
   if (P.act) $("#sAct").value = String(P.act);
   if (P.objective) document.querySelector(`input[name="sGoal"][value="${P.objective}"]`).checked = true;
+  document.querySelector(`input[name="sDiet"][value="${DIETS[P.diet] ? P.diet : "bal"}"]`).checked = true; dietNote();
   el.hidden = false; document.body.style.overflow = "hidden"; el.scrollTop = 0;
 }
 $("#sTrain").onchange = (e) => { $("#sTrainMore").hidden = !e.target.value || e.target.value === "none"; };
@@ -2970,7 +2988,8 @@ $("#sGo").onclick = () => {
   if (train !== "none" && !days.length) return fail("Escolhe os dias em que treinas.");
   if (!objective) return fail("Escolhe o teu objetivo.");
   err.hidden = true;
-  Object.assign(P, { sex, age: r0(age), weight: r1(weight), height: r0(height), act, objective, train, days: train === "none" ? [] : days, dur, manualGoal: false });
+  const diet = document.querySelector('input[name="sDiet"]:checked')?.value || "bal";
+  Object.assign(P, { sex, age: r0(age), weight: r1(weight), height: r0(height), act, objective, train, days: train === "none" ? [] : days, dur, diet, manualGoal: false });
   addWeight(P.weight, false);
   lsSet("ddp.profile", P);
   const g = calcGoals(P);
@@ -3431,6 +3450,9 @@ function buildIdea(meal, n) {
   let kcal = Math.min(Math.max(left * (MEAL_SHARE[meal] / shares), usual * 0.6), usual * 1.3);
   if (left < kcal) kcal = Math.max(150, left);
   const pWant = Math.min(Math.max(leftP * (MEAL_SHARE[meal] / shares), 15), meal === "Lanche" ? 25 : 45);
+  // carbs: this meal's part of the carbs still missing today
+  const cT = macroTargets(goal).c, cDone = sum(S.meals.filter((m) => m.day === k).flatMap((m) => m.items || []), "c");
+  const cWant = Math.max(10, Math.min(cT * MEAL_SHARE[meal] * 1.3, Math.max(0, cT - cDone) * (MEAL_SHARE[meal] / shares)));
   const list = IDEAS[meal] || IDEAS.Almoço, tpl = list[((n % list.length) + list.length) % list.length];
   const food = (name) => findFood(name);
   // protein item first (to hit protein), then fixed items, then the carb item fills the calories
@@ -3439,9 +3461,20 @@ function buildIdea(meal, n) {
   if (pi) { const f = food(pi[0]); const g = Math.min(f.g * 1.6, Math.max(f.g * 0.6, (pWant / Math.max(f.p, 1)) * 100)); items.push(fromFood(f, round(g, f.g <= 40 ? 5 : 10))); }
   for (const [name, g] of tpl.items) if (typeof g === "number") items.push(fromFood(food(name), g));
   if (ci) {
-    const f = food(ci[0]), have = sum(items, "kcal");
-    const g = Math.min(f.g * 2, Math.max(f.g * 0.4, ((kcal - have) / Math.max(f.kcal, 1)) * 100));
+    const f = food(ci[0]), have = sum(items, "kcal"), haveC = sum(items, "c");
+    const byKcal = ((kcal - have) / Math.max(f.kcal, 1)) * 100, byCarb = (Math.max(0, cWant - haveC) / Math.max(f.c, 1)) * 100;
+    const g = Math.min(f.g * 1.5, Math.max(f.g * 0.3, Math.min(byKcal, byCarb)));
     items.push(fromFood(f, round(g, f.g <= 60 ? 5 : 10)));
+  }
+  // calories still missing: olive oil at lunch and dinner, nuts at the other meals (not more rice or bread)
+  const gap = kcal - sum(items, "kcal");
+  if (gap >= 60) {
+    const main = meal === "Almoço" || meal === "Jantar", fat = food(main ? "Azeite" : "Nozes");
+    if (fat) {
+      const i = items.findIndex((x) => x.name === fat.name), cur = i >= 0 ? items[i].g : 0, cap = main ? 15 : 25;
+      const add = Math.min(cap - cur, (gap / Math.max(fat.kcal, 1)) * 100);
+      if (add >= 5) { const it = fromFood(fat, round(cur + add, 5)); if (i >= 0) items[i] = it; else items.push(it); }
+    }
   }
   return { meal, title: tpl.t, items, kcal: sum(items, "kcal"), p: sum(items, "p"), c: sum(items, "c"), f: sum(items, "f"), target: r0(kcal), left: r0(left), leftP: r0(leftP) };
 }
@@ -3500,11 +3533,8 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Meta inteligente: no cartão do peso, a app compara o que comeste com a evolução do teu peso nas últimas 3 semanas, calcula o teu gasto real e propõe a meta certa.",
-  "Repetir rápido: «↻ Igual a ontem» em cada refeição vazia e «Repetir o dia de ontem» quando o dia está vazio.",
-  "Água: copos com um toque, meta pelo teu peso e uma missão nova.",
-  "Resumo da semana: calorias, proteína, dias na meta, peso e treinos, com dicas. Chega também como notificação ao domingo às 20:00.",
-  "Código de barras ao vivo: na câmara, aponta para a embalagem e a app reconhece o produto sem tirar foto."
+  "Estilo de alimentação: em «Os teus dados» escolhes Equilibrado, Menos hidratos ou Baixo em hidratos. As metas de hidratos e gordura ajustam-se.",
+  "«Não sei o que comer» corrigido: as sugestões já não enchem o prato de arroz, massa ou batata. Os hidratos seguem a tua meta e as calorias que faltam vêm de azeite ou frutos secos."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
