@@ -1720,7 +1720,7 @@ function superSearch(qq, store) {
     for (const w of words) if (!wordMatch(k, w)) { ok = false; break; }
     if (ok) hits.push(i);
   }
-  const rank = (i) => (K[i].startsWith(q) ? 0 : 1) * 2 + (L[i][2] ? 0 : 1);
+  const rank = (i) => (L[i][9] ? 0 : 4) + (K[i].startsWith(q) ? 0 : 2) + (L[i][2] ? 0 : 1); // with photo first
   return hits.sort((a, b) => rank(a) - rank(b) || L[a][0].length - L[b][0].length).slice(0, 40)
     .map((i) => { const [name, brand, st, g, kcal, p, c, f, code, tok] = L[i]; const full = (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70); return { name: full, cat: SPORT_BRANDS.has(st) ? "suplementos" : "outros", g, kcal, p, c, f, src: "off", st, img: offImg(code || "", tok || "") }; });
 }
@@ -1728,10 +1728,10 @@ function superBlock(d, qq, added) {
   if (qq.length < 2) return "";
   loadSuper();
   if (SUPER.state !== "ready") return SUPER.state === "loading" ? `<p class="note" style="margin:0">A carregar os produtos de supermercado…</p>` : "";
-  const hits = d.supHits = superSearch(qq, d.store || "");
+  const found = superSearch(qq, d.store || ""), hits = d.supHits = found.slice(0, d.supMore ? 40 : 10);
   const chips = `<div class="store-chips">${[["", "Todos"], ...Object.entries(STORE_NAMES)].map(([k, n]) => `<button type="button" data-store="${k}" aria-pressed="${(d.store || "") === k}">${n}</button>`).join("")}</div>`;
   return `<span class="picker-label">Produtos de supermercado</span>${chips}` + (hits.length
-    ? `<div class="grid">${hits.map((p, i) => `<button class="food brand ${p.img ? "has-img" : ""} ${added.has(p.name) ? "added" : ""}" data-sup="${i}">${thumb(p.img)}<b>${esc(p.name)}</b><span>${p.st ? esc(STORE_NAMES[p.st]) + " · " : ""}${p.g} g · ${r0(p.kcal * p.g / 100)} kcal</span></button>`).join("")}</div>`
+    ? `<div class="grid">${hits.map((p, i) => `<button class="food brand ${p.img ? "has-img" : ""} ${added.has(p.name) ? "added" : ""}" data-sup="${i}">${thumb(p.img)}<b>${esc(p.name)}</b><span>${p.st ? esc(STORE_NAMES[p.st]) + " · " : ""}${p.g} g · ${r0(p.kcal * p.g / 100)} kcal</span></button>`).join("")}</div>${found.length > hits.length ? `<button class="more" id="dSupMore" type="button">Mostrar mais marcas</button>` : ""}`
     : `<p class="note" style="margin:0">Nenhum produto ${d.store ? "do " + STORE_NAMES[d.store] : "de supermercado"} com «${esc(qq)}».</p>`);
 }
 function renderPicker() {
@@ -1741,20 +1741,22 @@ function renderPicker() {
   const tabs = [...(rec.length ? [["recentes", "Recentes", ""]] : []), ...(S.dishes.length ? [["meus", "Os meus pratos", ""]] : []), ...Object.keys(CATS).map((c) => [c, TAB_NAMES[c], CATS[c]])];
   const qq = d.q.trim(), nq = norm(qq);
   const allHits = d.tab === "meus" && !qq ? [] : foodsForTab(d), added = new Set(d.items.map((i) => i.name));
-  const limit = d.more ? 600 : 60, foods = allHits.slice(0, limit);
+  const limit = d.more ? 600 : qq ? 12 : 60, foods = allHits.slice(0, limit);
   const off = d.off && d.off.q === qq ? d.off : null;
   const dishes = S.dishes.map((x, i) => ({ ...x, i })).filter((x) => qq ? norm(x.name).includes(nq) : d.tab === "meus");
   const tabsEl = box.querySelector(".tabs"), keepScroll = tabsEl ? tabsEl.scrollLeft : 0;
   box.innerHTML = `
     ${qq ? "" : `<div class="tabs" role="tablist">${tabs.map(([k, n, col]) => `<button class="tab" role="tab" data-tab="${esc(k)}" aria-selected="${k === d.tab}">${col ? `<i style="background:${col}"></i>` : ""}${esc(n)}</button>`).join("")}</div>`}
+    ${superBlock(d, qq, added)}
+    ${qq && (dishes.length || foods.length) ? `<span class="picker-label">Alimentos genéricos (tabela oficial)</span>` : ""}
     <div class="grid">${dishes.map((x) => `<button class="food dish" data-dish="${x.i}"><b>${esc(x.name)}</b><span>${x.items.length} alimentos · ${r0(sum(x.items, "kcal"))} kcal</span></button>`).join("")}${foods.map((f) => `<button class="food ${f.img ? "has-img" : ""} ${added.has(f.name) ? "added" : ""}" data-food="${esc(f.name)}">${thumb(f.img)}<b>${esc(f.name)}</b><span>${f.g} g · ${r0(f.kcal * f.g / 100)} kcal</span></button>`).join("")}</div>
     ${allHits.length > foods.length ? `<button class="more" id="dMore" type="button">Mostrar mais (${allHits.length - foods.length})</button>` : ""}
     ${qq && !foods.length && !dishes.length ? `<p class="note" style="margin:0">Não encontrei «${esc(qq)}» na lista. Procura nos produtos de marca ou cria-o.</p>` : ""}
-    ${superBlock(d, qq, added)}
     ${qq.length >= 3 ? `<div class="off">${offBlock(qq, off, added)}</div>` : ""}
     ${qq ? `<button class="create" id="dCreate">+ Criar «${esc(qq)}»</button>` : ""}
     <p class="src">${INSA_FOODS.length + BASE_FOODS.length} alimentos${window.OFF_PT ? " e " + window.OFF_PT.length + " produtos de supermercado" : ""}. ${INSA_SOURCE} Produtos de supermercado: Open Food Facts (openfoodfacts.org), licença ODbL; fotos dos produtos sob CC BY-SA.</p>`;
-  box.querySelectorAll("[data-store]").forEach((b) => b.onclick = () => { d.store = b.dataset.store; renderPicker(); });
+  box.querySelectorAll("[data-store]").forEach((b) => b.onclick = () => { d.store = b.dataset.store; d.supMore = false; renderPicker(); });
+  const sm = box.querySelector("#dSupMore"); if (sm) sm.onclick = () => { d.supMore = true; renderPicker(); };
   box.querySelectorAll("[data-sup]").forEach((b) => b.onclick = () => {
     const p = d.supHits?.[+b.dataset.sup]; if (!p) return;
     const idx = d.items.findIndex((i) => i.name === p.name);
@@ -1871,7 +1873,7 @@ function renderDraft() {
   q("#dCam") && (q("#dCam").onclick = () => { warmAI(); takePhoto("CAMERA"); });
   q("#dGal") && (q("#dGal").onclick = () => { warmAI(); takePhoto("PHOTOS"); });
   
-  q("#dSearch").oninput = (e) => { d.q = e.target.value; d.more = false; renderPicker(); };
+  q("#dSearch").oninput = (e) => { d.q = e.target.value; d.more = false; d.supMore = false; renderPicker(); };
   renderPicker();
   q("#dKeep") && (q("#dKeep").onchange = (e) => { d.keep = e.target.checked; });
   q("#dCancel").onclick = () => { S.draft = null; renderDraft(); };
@@ -2336,7 +2338,7 @@ $("#helpWelcome").onclick = () => showWelcome();
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Fotos dos produtos: na pesquisa e no prato aparece a fotografia da embalagem (cerca de 15 000 produtos). As fotos precisam de internet."
+  "Pesquisa: as marcas (Mercadona, Pingo Doce, Continente, Lidl, Prozis…) com foto aparecem agora em primeiro lugar; os alimentos genéricos ficam por baixo."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
