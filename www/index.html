@@ -392,6 +392,14 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
 .ai-box { border-radius: 16px; }
 .ai-go { margin-top: 4px; align-self: stretch; display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 2px; background: var(--card); border: 1px solid var(--accent); }
 .ai-go small { font-family: var(--f-body); font-size: 12.5px; font-weight: 400; color: var(--muted); }
+.plan-meal { border-top: 1px solid var(--line); padding: 12px 0; display: flex; flex-direction: column; gap: 6px; }
+.plan-meal:first-child { border-top: 0; }
+.plan-meal .h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.plan-meal .h span { font-family: var(--f-num); font-size: 13px; color: var(--muted); white-space: nowrap; }
+.plan-meal ul { margin: 0; padding-left: 18px; font-size: 14px; }
+.plan-meal .btn { align-self: flex-start; padding: 8px 14px; font-size: 14px; }
+.plan-tot { font-family: var(--f-num); font-size: 13.5px; background: var(--soft); border-radius: 12px; padding: 10px 12px; margin-top: 12px; }
+.plan-tips { margin: 10px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--muted); }
 .key-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .key-row input { flex: 1 1 200px; min-width: 0; }
 </style>
@@ -482,6 +490,25 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
     </div>
     <p class="note">Os registos ficam guardados só neste telemóvel. Desinstalar a app apaga-os.</p>
     <p class="note">Valores nutricionais: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P. - INSA. v 7.1 - 2026 (portfir.insa.min-saude.pt). Produtos de marca: Open Food Facts (openfoodfacts.org), base de dados aberta (ODbL).</p>
+  </details>
+
+  <details class="settings" id="planDetails">
+    <summary>O meu plano de dieta</summary>
+    <p class="note" style="margin:10px 0 0">A IA cria um dia de refeições à tua medida, com os teus dados e a tua meta de calorias. Precisa de internet e da chave em «IA Gemini».</p>
+    <div class="help-actions"><button class="btn btn-accent" id="planGo" type="button">Criar plano</button></div>
+    <p class="note" id="planNote" hidden></p>
+    <div id="planOut"></div>
+  </details>
+
+  <details class="settings" id="aiDetails">
+    <summary>IA Gemini</summary>
+    <p class="note" style="margin:10px 0 0">Com a IA Gemini da Google, a app identifica cada alimento da foto, estima os gramas e cria o plano de dieta. Cria uma chave gratuita em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, copia-a e cola-a aqui.</p>
+    <div class="key-row">
+      <input type="password" id="aiKey" class="field" placeholder="Cola aqui a chave" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Chave da IA Gemini">
+      <button class="btn btn-accent" id="aiSave" type="button">Guardar</button>
+    </div>
+    <p class="note" id="aiState"></p>
+    <p class="note">A chave fica só neste telemóvel. As fotos e os teus dados (sexo, idade, peso, altura, objetivo) são enviados à Google para análise e, na versão gratuita, a Google pode usá-los para melhorar os seus serviços. Sem chave ou sem internet, a app usa o reconhecimento do telemóvel.</p>
   </details>
 
   <details class="settings" id="recDetails">
@@ -1287,7 +1314,7 @@ async function recognize(d, canvas) {
   done({ status: found.length ? "found" : "none", found, alts: alts.filter((n) => !found.some((f) => f.name === n)), parts: found.some((f) => f.part), guess, noFood: !!clip && !found.length });
 }
 // ---------- online AI (Google Gemini, the user's own free key) ----------
-const aiKey = () => ""; // recognition runs only on the phone (no online API)
+const aiKey = () => String(lsGet("ddp.aiKey", "") || "").trim();
 const AI_PROMPT = "És um nutricionista português. Olha para a fotografia e identifica CADA alimento que está no prato em separado " +
   "(por exemplo: arroz branco, feijão, grelos, entrecosto, chouriço, batata frita, salada). Para cada um, estima o peso em gramas tal como está no prato " +
   "e os valores nutricionais por 100 g (kcal, proteína, hidratos de carbono e gordura) desse alimento cozinhado como aparece. " +
@@ -1306,11 +1333,15 @@ const AI_SCHEMA = {
   },
   required: ["dish", "items", "healthScore"]
 };
-async function cloudRecognize(canvas, key) {
+function cloudRecognize(canvas, key) {
   const data = canvas.toDataURL("image/jpeg", 0.82).split(",")[1];
+  return geminiJSON([{ inline_data: { mime_type: "image/jpeg", data } }, { text: AI_PROMPT }], AI_SCHEMA, key, 0.2);
+}
+// one question to Gemini, answered as JSON in the given shape
+async function geminiJSON(parts, schema, key, temperature) {
   const body = JSON.stringify({
-    contents: [{ parts: [{ inline_data: { mime_type: "image/jpeg", data } }, { text: AI_PROMPT }] }],
-    generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: AI_SCHEMA }
+    contents: [{ parts }],
+    generationConfig: { temperature, responseMimeType: "application/json", responseSchema: schema }
   });
   for (const model of ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"]) {
     const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 45000);
@@ -1318,7 +1349,8 @@ async function cloudRecognize(canvas, key) {
     try {
       res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
         { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body, signal: ctl.signal });
-    } finally { clearTimeout(t); }
+    } catch (e) { throw Object.assign(new Error("rede"), { status: 0 }); }
+    finally { clearTimeout(t); }
     if (res.status === 404) continue;
     const j = await res.json().catch(() => ({}));
     if (!res.ok) throw Object.assign(new Error(j.error?.message || String(res.status)), { status: res.status });
@@ -1365,7 +1397,7 @@ async function recognizeAny(d, canvas) {
       d.cloudNote = "A IA não encontrou comida nesta foto.";
     } catch (e) {
       if (S.draft !== d) return;
-      d.cloudNote = e.status === 400 || e.status === 401 || e.status === 403 ? "A chave da IA não foi aceite (vê «Reconhecimento com IA», em baixo na app). Usei o reconhecimento do telemóvel."
+      d.cloudNote = e.status === 400 || e.status === 401 || e.status === 403 ? "A chave da IA não foi aceite (vê «IA Gemini», em baixo na app). Usei o reconhecimento do telemóvel."
         : e.status === 429 ? "Chegaste ao limite gratuito da IA por agora. Usei o reconhecimento do telemóvel."
         : "Não consegui falar com a IA (sem internet?). Usei o reconhecimento do telemóvel.";
     }
@@ -1385,7 +1417,7 @@ function healthScore(items) {
 }
 function aiBanner(d) {
   const ai = d.ai; if (!ai) return "";
-  if (ai.status === "running") return `<div class="ai-box"><span class="ai-dot"></span><span>${ai.deep ? "A ver cada alimento do prato… (pode demorar uns segundos)" : "A reconhecer o alimento na foto…"}</span></div>`;
+  if (ai.status === "running") return `<div class="ai-box"><span class="ai-dot"></span><span>${ai.cloud ? "A IA está a ver cada alimento do prato…" : ai.deep ? "A ver cada alimento do prato… (pode demorar uns segundos)" : "A reconhecer o alimento na foto…"}</span></div>`;
   if (ai.status === "dl") return `<div class="ai-box"><span class="ai-dot"></span><span>A descarregar o reconhecimento de alimentos: ${Math.round((ai.p || 0) * 100)}%. Só acontece uma vez.</span></div>`;
   if (ai.status === "cloud") return `<div class="ai-box ok-box"><b>Encontrei ${ai.names.length} ${ai.names.length === 1 ? "alimento" : "alimentos"}</b><span>${esc(ai.names.join(", "))}. Os gramas são uma estimativa da IA: confirma-os na lista.</span></div>`;
   const note = d.cloudNote ? `<span class="muted" style="font-size:13px">${esc(d.cloudNote)}</span>` : "";
@@ -1876,6 +1908,80 @@ async function renderRec(p) {
   st.textContent = ok ? "Ativo: a app vê cada alimento do prato." : "Ainda não descarregado.";
   btn.hidden = ok;
 }
+function renderAIState() {
+  const k = aiKey();
+  $("#aiState").textContent = k ? `IA ligada (chave …${k.slice(-4)}). Para a desligar, guarda com o campo vazio.` : "IA desligada: a app usa só o reconhecimento do telemóvel.";
+  $("#aiKey").value = "";
+  $("#aiKey").placeholder = k ? "Para mudar, cola outra chave" : "Cola aqui a chave";
+}
+$("#aiSave").onclick = () => {
+  const v = $("#aiKey").value.trim();
+  if (!v) { lsSet("ddp.aiKey", ""); renderAIState(); toast("IA desligada"); return; }
+  if (v.length < 20 || v.length > 200 || /\s/.test(v)) { toast("Esta chave não parece certa. Copia-a outra vez do site."); return; }
+  lsSet("ddp.aiKey", v); renderAIState(); toast("IA ligada. Tira uma foto a um prato para experimentar.");
+};
+renderAIState();
+// ---------- diet plan (Gemini) ----------
+const PLAN_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    meals: { type: "ARRAY", items: { type: "OBJECT", properties: {
+      meal: { type: "STRING", enum: MEALS }, time: { type: "STRING" }, title: { type: "STRING" },
+      items: { type: "ARRAY", items: { type: "OBJECT", properties: {
+        name: { type: "STRING" }, grams: { type: "NUMBER" }, kcal100: { type: "NUMBER" },
+        protein100: { type: "NUMBER" }, carbs100: { type: "NUMBER" }, fat100: { type: "NUMBER" }
+      }, required: ["name", "grams", "kcal100", "protein100", "carbs100", "fat100"] } }
+    }, required: ["meal", "time", "title", "items"] } },
+    tips: { type: "ARRAY", items: { type: "STRING" } }
+  },
+  required: ["meals", "tips"]
+};
+let plan = lsGet("ddp.plan", null);
+function renderPlan() {
+  const out = $("#planOut");
+  if (!plan?.meals?.length) { out.innerHTML = ""; return; }
+  const tot = (k) => r0(plan.meals.reduce((a, m) => a + sum(m.items, k), 0));
+  out.innerHTML = plan.meals.map((m, i) => `<div class="plan-meal"><div class="h"><b>${esc(m.meal)} · ${esc(m.title)}</b><span>${esc(m.time)} · ${r0(sum(m.items, "kcal"))} kcal</span></div>
+    <ul>${m.items.map((it) => `<li>${esc(it.name)}, ${r0(it.g)} g</li>`).join("")}</ul>
+    <button class="btn btn-plain" type="button" data-planlog="${i}">Registar esta refeição</button></div>`).join("") +
+    `<div class="plan-tot">Total do plano: ${tot("kcal")} kcal · P ${tot("p")} g · H ${tot("c")} g · G ${tot("f")} g (meta ${plan.goal} kcal)</div>` +
+    (plan.tips?.length ? `<ul class="plan-tips">${plan.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "") +
+    `<p class="note">Plano criado por IA em ${esc(plan.date)}. É uma sugestão geral: se tens alguma doença ou alergia, fala com um nutricionista.</p>`;
+  out.querySelectorAll("[data-planlog]").forEach((b) => b.onclick = () => {
+    const m = plan.meals[+b.dataset.planlog]; if (!m) return;
+    newDraft({ meal: m.meal, title: m.title, items: m.items.map((i) => ({ ...i })) });
+  });
+}
+$("#planGo").onclick = async () => {
+  const note = $("#planNote"), btn = $("#planGo"), say = (t) => { note.hidden = !t; note.textContent = t || ""; };
+  const key = aiKey();
+  if (!key) { say("Primeiro cola a chave em «IA Gemini», logo aqui em baixo."); $("#aiDetails").open = true; return; }
+  if (!profileDone()) { needProfile(); return; }
+  const split = { lose: [0.3, 0.4, 0.3], gain: [0.25, 0.5, 0.25] }[P.objective] || [0.2, 0.5, 0.3];
+  const prompt = `És um nutricionista português. Cria um plano alimentar para UM dia para esta pessoa: sexo ${P.sex === "m" ? "masculino" : "feminino"}, ${P.age} anos, ${P.weight} kg, ${P.height} cm, objetivo: ${GOAL_NAMES[P.objective]}. ` +
+    `O total do dia deve ficar muito perto de ${S.goal} kcal, com cerca de ${r0(S.goal * split[0] / 4)} g de proteína, ${r0(S.goal * split[1] / 4)} g de hidratos e ${r0(S.goal * split[2] / 9)} g de gordura. ` +
+    "Usa 4 ou 5 refeições (Pequeno-almoço, Almoço, Lanche, Jantar e, se fizer falta, Snack), com alimentos comuns em Portugal, simples de preparar e baratos. " +
+    "Para cada alimento indica o peso em gramas e os valores por 100 g (kcal, proteína, hidratos, gordura). Nomes curtos em português de Portugal. " +
+    "Dá a cada refeição uma hora (HH:MM) e um título curto. No fim, dá 2 ou 3 dicas curtas e práticas. Não recomendes medicamentos.";
+  btn.disabled = true; say("A IA está a criar o teu plano… (uns segundos)");
+  try {
+    const r = await geminiJSON([{ text: prompt }], PLAN_SCHEMA, key, 0.7);
+    const meals = (r.meals || []).filter((m) => MEALS.includes(m.meal) && m.items?.length).map((m) => ({
+      meal: m.meal, time: String(m.time || "").slice(0, 5), title: String(m.title || m.meal).slice(0, 60),
+      items: m.items.filter((x) => x?.name && Number(x.grams) > 0).slice(0, 10).map(aiItem)
+    })).filter((m) => m.items.length);
+    if (!meals.length) throw new Error("vazio");
+    plan = { meals, tips: (r.tips || []).map((t) => String(t).slice(0, 200)).slice(0, 4), goal: S.goal, date: new Date().toLocaleDateString("pt-PT") };
+    lsSet("ddp.plan", plan); renderPlan(); say("");
+    btn.textContent = "Criar outro plano";
+  } catch (e) {
+    say(e.status === 400 || e.status === 401 || e.status === 403 ? "A chave da IA não foi aceite. Confirma-a em «IA Gemini»."
+      : e.status === 429 ? "Chegaste ao limite gratuito da IA por agora. Tenta daqui a uns minutos."
+      : e.status === 0 ? "Sem internet. O plano precisa de ligação." : "A IA não conseguiu criar o plano. Tenta outra vez.");
+  }
+  btn.disabled = false;
+};
+renderPlan(); if (plan) $("#planGo").textContent = "Criar outro plano";
 $("#recDl").onclick = () => downloadClip(null);
 renderRec();
 // ---------- first-run profile (required) ----------
@@ -1996,6 +2102,8 @@ const TOUR = [
   { sel: "header", title: "Escolher o dia", text: "Toca no calendário, no canto de cima à direita, ou no nome do dia para abrir o mês e escolher qualquer dia. As setas avançam ou recuam um dia. Os dias com registos têm um ponto verde, ou amarelo se passaste a meta." },
   { sel: ".week", title: "Últimos 7 dias", text: "O gráfico mostra as calorias de cada dia. A linha tracejada é a tua meta e as barras amarelas são os dias acima dela. Toca num dia para o abrir." },
   { sel: "#goalDetails", title: "A tua meta", text: "A tua meta foi calculada com os dados que preencheste no início (sexo, idade, peso, altura, atividade e objetivo). Em «Meta diária» podes mudar esses dados, por exemplo quando o teu peso mudar, ou escrever tu as calorias." },
+  { sel: "#planDetails", title: "Plano de dieta", text: "Em «O meu plano de dieta», a IA cria um dia de refeições à tua medida, com os teus dados e a tua meta. Cada refeição tem o botão «Registar esta refeição»." },
+  { sel: "#aiDetails", title: "IA Gemini", text: "Para a app identificar cada alimento da foto com a IA da Google e criar o plano de dieta, cola aqui uma chave gratuita da Google. Sem chave, a app usa o reconhecimento do telemóvel." },
   { sel: "#recDetails", title: "Reconhecer cada alimento", text: "Para a app ver cada alimento de um prato misturado (arroz, feijão, grelos, entrecosto…), toca aqui em «Descarregar» uma vez (cerca de 64 MB, de preferência em Wi-Fi). Depois funciona sem internet." },
   { sel: "#updDetails", title: "Atualizações", text: "Quando houver uma versão nova, aparece uma barra verde no topo da app. Toca em «Descarregar», abre o ficheiro e instala. Os teus registos mantêm-se." },
   { title: "Os teus dados", text: "Tudo fica guardado só neste telemóvel e a app funciona sem internet. Atenção: se desinstalares a app, os registos são apagados. Está pronto, bom apetite!" }
