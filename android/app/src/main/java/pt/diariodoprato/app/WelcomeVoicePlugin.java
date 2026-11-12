@@ -25,13 +25,15 @@ public class WelcomeVoicePlugin extends Plugin {
     @PluginMethod
     public void play(PluginCall call) {
         stopInternal(true);
+        // only the app's own sounds: the welcome voice (default) or the opening sound
+        String file = "intro.mp3".equals(call.getString("file")) ? "intro.mp3" : "welcome.mp3";
         try {
             MediaPlayer mp = new MediaPlayer();
             mp.setAudioAttributes(new AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .setContentType("intro.mp3".equals(file) ? AudioAttributes.CONTENT_TYPE_SONIFICATION : AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build());
-            try (AssetFileDescriptor afd = getContext().getAssets().openFd("public/welcome.mp3")) {
+            try (AssetFileDescriptor afd = getContext().getAssets().openFd("public/" + file)) {
                 mp.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
             }
             mp.setOnCompletionListener(m -> finish(false));

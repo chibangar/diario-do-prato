@@ -557,6 +557,35 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
 .idea .i-tot b { display: block; font-family: var(--f-num); font-size: 16px; color: var(--ink); }
 .idea .i-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .idea .i-acts .btn { flex: 1 1 140px; }
+/* opening animation (about 2.6 s, tap to skip) */
+.intro { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(120% 80% at 50% 40%, #155A43 0%, #0F3D2E 55%, #08251B 100%); }
+.intro.out { animation: introOut .55s cubic-bezier(.6, 0, .4, 1) forwards; }
+@keyframes introOut { to { opacity: 0; transform: scale(1.12); filter: blur(6px); visibility: hidden; } }
+.intro .stage { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.intro svg.mark { width: 170px; height: 170px; overflow: visible; }
+.intro .corner { fill: none; stroke: #fff; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw .55s cubic-bezier(.3, .9, .3, 1) forwards; }
+.intro .c2 { animation-delay: .08s; } .intro .c3 { animation-delay: .16s; } .intro .c4 { animation-delay: .24s; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.intro .lens { transform-origin: 54px 54px; transform: scale(0); animation: pop .7s cubic-bezier(.2, 1.7, .4, 1) .35s forwards; }
+.intro .core { transform-origin: 54px 54px; transform: scale(0); animation: pop .6s cubic-bezier(.2, 1.9, .4, 1) .55s forwards; }
+.intro .leaf { transform-origin: 54px 54px; transform: scale(0) rotate(-90deg); animation: leaf .7s cubic-bezier(.2, 1.6, .4, 1) .8s forwards; }
+@keyframes pop { to { transform: scale(1); } }
+@keyframes leaf { to { transform: scale(1) rotate(0); } }
+.intro .scanline { opacity: 0; animation: scan 1s cubic-bezier(.45, 0, .55, 1) 1.05s forwards; }
+@keyframes scan { 0% { opacity: 0; transform: translateY(-34px); } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(34px); } }
+.intro .halo { transform-origin: 54px 54px; opacity: 0; animation: halo 1.2s ease-out 1.05s forwards; }
+@keyframes halo { 0% { opacity: .9; transform: scale(.6); } 100% { opacity: 0; transform: scale(1.9); } }
+.intro .word { font-family: var(--f-display); font-weight: 800; font-size: 40px; letter-spacing: -0.02em; color: #fff; display: flex; }
+.intro .word span { display: inline-block; opacity: 0; transform: translateY(18px) scale(.9); animation: letter .5s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+.intro .word span.l { color: #F2B705; }
+@keyframes letter { to { opacity: 1; transform: none; } }
+.intro .tag { color: rgba(255,255,255,.75); font-size: 14px; letter-spacing: .14em; text-transform: uppercase; opacity: 0; animation: fadeup .6s ease-out 1.75s forwards; }
+@keyframes fadeup { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.intro .dots { position: absolute; inset: 0; pointer-events: none; }
+.intro .dots i { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--c); opacity: 0; animation: fly 1.4s cubic-bezier(.1, .7, .3, 1) var(--d) forwards; }
+@keyframes fly { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(.3); } }
+@media (prefers-reduced-motion: reduce) { .intro * { animation-duration: .01s !important; animation-delay: 0s !important; } }
 .key-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .key-row input { flex: 1 1 200px; min-width: 0; }
 </style>
@@ -677,6 +706,8 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
       <button type="button" role="radio" data-theme-set="dark">Escuro</button>
     </div>
     <p class="note">«Automático» segue o modo claro ou escuro do telemóvel.</p>
+    <label class="sw" style="border-top:1px solid var(--line)"><span>Animação ao abrir a app<small>O logótipo animado, cerca de 2,5 segundos</small></span><input type="checkbox" id="introOn"></label>
+    <label class="sw"><span>Som da animação</span><input type="checkbox" id="introSnd"></label>
   </details>
 
   <details class="settings" id="planDetails">
@@ -856,6 +887,25 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
 
 <div class="cal-back" id="ideaSheet" role="dialog" aria-modal="true" aria-labelledby="ideaTitle" hidden>
   <div class="cal idea" id="ideaBox"></div>
+</div>
+
+<div class="intro" id="intro" hidden aria-hidden="true">
+  <div class="dots" id="introDots"></div>
+  <div class="stage">
+    <svg class="mark" viewBox="0 0 108 108">
+      <circle class="halo" cx="54" cy="54" r="30" fill="none" stroke="#F2B705" stroke-width="3"/>
+      <path class="corner c1" d="M24,40v-10a6,6 0 0 1 6,-6h10"/>
+      <path class="corner c2" d="M68,24h10a6,6 0 0 1 6,6v10"/>
+      <path class="corner c3" d="M84,68v10a6,6 0 0 1 -6,6h-10"/>
+      <path class="corner c4" d="M40,84h-10a6,6 0 0 1 -6,-6v-10"/>
+      <circle class="lens" cx="54" cy="54" r="21" fill="#fff"/>
+      <circle class="core" cx="54" cy="54" r="15" fill="#F2B705"/>
+      <path class="leaf" fill="#0F3D2E" d="M46.5,61.5c0,-9.5 6.5,-15.5 15.5,-15.5c0,9.5 -6.5,15.5 -15.5,15.5z"/>
+      <rect class="scanline" x="28" y="53" width="52" height="2.5" rx="1.25" fill="#F2B705"/>
+    </svg>
+    <div class="word" id="introWord"></div>
+    <div class="tag">Fotografa. Conta. Evolui.</div>
+  </div>
 </div>
 
 <div class="tour" id="tour" hidden>
@@ -2810,10 +2860,37 @@ $("#ideaBtn").onclick = () => {
   renderIdea(); $("#ideaSheet").hidden = false;
 };
 $("#ideaSheet").addEventListener("click", (e) => { if (e.target === $("#ideaSheet")) closeIdea(); });
+// ---------- opening animation ----------
+const introOn = () => lsGet("ddp.intro", true) !== false, introSound = () => lsGet("ddp.introSound", true) !== false;
+function playIntro(then) {
+  const el = $("#intro");
+  if (!introOn()) { then(); return; }
+  $("#introWord").innerHTML = [..."NutriLente"].map((ch, i) => `<span class="${i >= 5 ? "l" : ""}" style="animation-delay:${1.25 + i * 0.045}s">${ch}</span>`).join("");
+  const cols = ["#F2B705", "#FFE58A", "#7FD3A2", "#ffffff", "#E9A93A"];
+  $("#introDots").innerHTML = Array.from({ length: 28 }, (_, i) => {
+    const a = (Math.PI * 2 * i) / 28, d = 120 + Math.random() * 140;
+    return `<i style="left:50%;top:40%;--c:${cols[i % cols.length]};--x:${Math.cos(a) * d}px;--y:${Math.sin(a) * d}px;--d:${1.05 + Math.random() * 0.2}s"></i>`;
+  }).join("");
+  el.hidden = false;
+  let done = false;
+  const finish = () => {
+    if (done) return; done = true;
+    el.classList.add("out");
+    setTimeout(() => { el.hidden = true; el.classList.remove("out"); then(); }, 520);
+  };
+  if (introSound()) setTimeout(() => {
+    const C = window.Capacitor;
+    if (C?.isNativePlatform?.() && typeof C.nativePromise === "function") C.nativePromise("WelcomeVoice", "play", { file: "intro.mp3" }).catch(() => {});
+    else { try { const a = new Audio("intro.mp3"); a.volume = 0.8; a.play().catch(() => {}); } catch { /* no sound */ } }
+  }, 150);
+  setTimeout(() => haptic("MEDIUM"), 1100);
+  setTimeout(finish, 2700);
+  el.onclick = finish;
+}
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "«Não sei o que comer»: um botão na página principal sugere uma refeição à medida das calorias e da proteína que te faltam hoje. Podes pedir outra ideia ou pô-la logo no prato."
+  "Abertura nova: ao abrir a app aparece o logótipo animado com som. Podes desligar a animação ou só o som em «Aparência»."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
@@ -2978,6 +3055,9 @@ function renderTheme() {
 $("#themeSeg").onclick = (e) => {
   const b = e.target.closest("[data-theme-set]"); if (!b) return;
   document.documentElement.dataset.theme = b.dataset.themeSet; lsSet("ddp.theme", b.dataset.themeSet); renderTheme();
+$("#introOn").checked = lsGet("ddp.intro", true) !== false; $("#introSnd").checked = lsGet("ddp.introSound", true) !== false;
+$("#introOn").onchange = (e) => lsSet("ddp.intro", e.target.checked);
+$("#introSnd").onchange = (e) => lsSet("ddp.introSound", e.target.checked);
 };
 renderTheme();
 $("#helpTour").onclick = () => startTour();
@@ -3196,8 +3276,11 @@ window.Capacitor?.Plugins?.App?.addListener?.("resume", () => checkUpdate(false)
 render();
 renderNotif(); setTimeout(() => scheduleNotifs(), 4000);
 checkUpdate(false);
-if (!lsGet("ddp.seenWelcomeVoice", false)) { lsSet("ddp.newsBuild", APP_BUILD); showWelcome(); }
-else { needProfile(); if (lsGet("ddp.newsBuild", 0) !== APP_BUILD) showNews(); }
+// opening animation with sound, then the usual start (welcome the first time, else profile / news)
+playIntro(() => {
+  if (!lsGet("ddp.seenWelcomeVoice", false)) { lsSet("ddp.newsBuild", APP_BUILD); showWelcome(); }
+  else { needProfile(); if (lsGet("ddp.newsBuild", 0) !== APP_BUILD) showNews(); }
+});
 })();
 </script>
 <script type="module">
