@@ -19,7 +19,7 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
 /**
  * Reads the printed text in a photo (product names and brands on packaging) with Google ML Kit,
- * on the phone and without internet. read({ image: base64 JPEG }) resolves { text, lines: [{ text, h }] }.
+ * on the phone and without internet. read({ image: base64 JPEG }) resolves { text, lines: [{ text, x, y, w, h }] }.
  */
 @CapacitorPlugin(name = "TextReader")
 public class TextReaderPlugin extends Plugin {
@@ -55,6 +55,9 @@ public class TextReaderPlugin extends Plugin {
                         o.put("text", line.getText());
                         Rect box = line.getBoundingBox();
                         o.put("h", box != null ? box.height() : 0);
+                        o.put("x", box != null ? box.left : 0);
+                        o.put("y", box != null ? box.top : 0);
+                        o.put("w", box != null ? box.width() : 0);
                         lines.put(o);
                     }
                 }
