@@ -1143,10 +1143,14 @@ function clipFoods(res) {
       per.set(n, o);
     });
   });
-  const cands = [...per].map(([name, o]) => ({ name, ...o, food: findFood(name) }))
+  const all = [...per].map(([name, o]) => ({ name, ...o, food: findFood(name) })).filter((c) => c.food).sort((a, b) => b.sum - a.sum);
+  clipFoods.rank = all;
+  // share of the photo that looks like a table, an empty plate, a hand…
+  clipFoods.notFood = res.regions.reduce((a, p) => { let v = 0; for (let i = 0; i < p.length; i++) if (!L[i]?.[1]) v += p[i]; return a + v; }, 0) / res.regions.length;
+  const cands = all
     // vegetables on the side (greens, salad) often cover only a corner of the plate: they need less
-    .filter((c) => c.food && (c.food.cat === "legumes e salada" && !/^Sopa/.test(c.name) ? c.wins >= 1 && c.max >= 0.2 && c.sum >= 0.3
-      : ((c.wins >= 1 && c.max >= 0.3) || c.max >= 0.4) && c.sum >= 0.35)).sort((a, b) => b.sum - a.sum);
+    .filter((c) => (c.food.cat === "legumes e salada" && !/^Sopa/.test(c.name) ? c.wins >= 1 && c.max >= 0.2 && c.sum >= 0.3
+      : ((c.wins >= 1 && c.max >= 0.3) || c.max >= 0.4) && c.sum >= 0.35));
   if (!cands.length) return [];
   // a whole dish (francesinha, cozido, bacalhau à Brás…) already includes its sides
   const whole = (f) => f.cat === "pratos" && !/^(Arroz|Sopa|Caldo|Canja)/.test(f.name);
@@ -1178,6 +1182,14 @@ async function recognize(d, canvas) {
   // the food-by-food model, when it has been downloaded
   let clip = null;
   try {
+    for (let i = 0; i < 30 && !window.FoodClip; i++) await wait(100);
+    if (window.FoodClip && !(await window.FoodClip.ready()) && navigator.onLine !== false) {
+      // first photo: fetch the food-by-food model by itself (once), showing the progress
+      let last = -1;
+      const show = (p) => { if (S.draft === d && p - last >= 0.02) { last = p; d.ai = { status: "dl", p }; renderDraft(); } };
+      show(0);
+      try { await window.FoodClip.download(show); renderRec(); } catch { if (S.draft === d) d.cloudNote = "Não consegui descarregar o reconhecimento de alimentos (sem internet?). Volto a tentar na próxima foto."; }
+    }
     if (window.FoodClip && await window.FoodClip.ready()) {
       if (S.draft === d) { d.ai = { status: "running", deep: true }; renderDraft(); }
       clip = await window.FoodClip.analyze(canvas);
@@ -1235,6 +1247,7 @@ async function recognize(d, canvas) {
     if (found.some((f) => f.name === "Arroz de feijão")) for (let i = found.length - 1; i >= 0; i--) if (found[i].name === "Arroz branco cozido") found.splice(i, 1);
   }
   // with the food-by-food model: its list wins, unless the whole photo is clearly one known dish (francesinha, cozido…)
+  clipFoods.rank = null;
   if (clip) {
     const whole = found.length && !found[0].part && findFood(found[0].name)?.cat === "pratos" && found[0].score >= 0.75;
     const cf = whole ? [] : clipFoods(clip);
@@ -1244,6 +1257,14 @@ async function recognize(d, canvas) {
       for (const c of cf) found.push({ name: c.name, score: Math.min(c.max, 0.99), n: counts.get(c.name) || count.get(c.name) || 1, part: cf.length > 1 });
       if (found.some((f) => f.name === "Arroz de feijão")) for (let i = found.length - 1; i >= 0; i--) if (found[i].name === "Arroz branco cozido") found.splice(i, 1);
     }
+  }
+  let guess = false;
+  if (clip && clipFoods.rank) {
+    const rank = clipFoods.rank;
+    // nothing passed the strict rules: still give the most likely food instead of nothing
+    if (!found.length && rank[0] && rank[0].max >= 0.12 && clipFoods.notFood < 0.5) { found.push({ name: rank[0].name, score: Math.min(rank[0].max, 0.99), n: 1 }); guess = true; }
+    const more = rank.filter((c) => c.sum >= 0.12 && !found.some((f) => f.name === c.name)).slice(0, 5).map((c) => c.name);
+    alts.length = 0; if (found.length || clipFoods.notFood < 0.5) alts.push(...more);
   }
   if (found.some((f) => f.part)) {
     // starch first, then meat or fish, then the rest: "Arroz branco com carne de porco grelhada, legumes salteados e chouriço"
@@ -1263,7 +1284,7 @@ async function recognize(d, canvas) {
     d.items.push({ ...fromFood(food, food.g * qty), auto: true });
   }
   if (found.length && !d.title.trim()) d.title = found.map((f) => (f.n > 1 && COUNTABLE.has(f.name) ? `${f.n}× ` : "") + f.name).join(", ");
-  done({ status: found.length ? "found" : "none", found, alts: alts.filter((n) => !found.some((f) => f.name === n)), parts: found.some((f) => f.part) });
+  done({ status: found.length ? "found" : "none", found, alts: alts.filter((n) => !found.some((f) => f.name === n)), parts: found.some((f) => f.part), guess, noFood: !!clip && !found.length });
 }
 // ---------- online AI (Google Gemini, the user's own free key) ----------
 const aiKey = () => ""; // recognition runs only on the phone (no online API)
@@ -1372,8 +1393,9 @@ function aiBanner(d) {
   if (ai.status === "error") return `<div class="ai-box muted-box">Não consegui analisar a foto neste telemóvel. Escolhe os alimentos na lista.</div>`;
   const alts = ai.alts?.length ? `<div class="ai-alts"><span>${ai.status === "found" ? "Não é isto? Talvez:" : "Talvez seja:"}</span>${ai.alts.map((n) => `<button class="chip-btn" data-alt="${esc(n)}">${esc(n)}</button>`).join("")}</div>` : "";
   if (ai.status === "found" && ai.parts) return `<div class="ai-box ok-box">${note}<b>Encontrei ${ai.found.length} alimentos no prato</b><span>${esc(ai.found.map((f) => f.name).join(", "))}. Confirma se está certo, acerta os gramas e acrescenta o que faltar.</span>${alts}${goAI}</div>`;
+  if (ai.status === "found" && ai.guess) return `<div class="ai-box ok-box">${note}<b>Parece ser: ${esc(ai.found[0].name)}</b><span>Não tenho a certeza. Já está no prato: se não for isto, tira-o no «×» e toca numa sugestão ou procura na lista.</span>${alts.replace("Não é isto? Talvez:", "Ou talvez:")}</div>`;
   if (ai.status === "found") return `<div class="ai-box ok-box">${note}<b>Reconhecido: ${ai.found.map((f) => esc((f.n > 1 && COUNTABLE.has(f.name) ? f.n + "× " : "") + f.name) + ` <small>${Math.round(f.score * 100)}%</small>`).join(", ")}</b><span>Já está no prato. Confirma a quantidade em baixo.</span>${alts}${goAI}</div>`;
-  return `<div class="ai-box muted-box">${note}<span>Não reconheci nenhum alimento com certeza. Escolhe na lista em baixo.</span>${alts}${goAI}</div>`;
+  return `<div class="ai-box muted-box">${note}<span>${ai.noFood ? "Não vi comida nesta foto. Aproxima a câmara do prato, com boa luz, e tenta outra vez. Ou escolhe na lista em baixo." : "Não reconheci nenhum alimento com certeza. Escolhe na lista em baixo."}</span>${alts}${goAI}</div>`;
 }
 async function onFile(file) {
   if (!file) return;
@@ -1580,7 +1602,7 @@ function renderDraft() {
   q("#dSave").onclick = saveDraft;
   el.querySelectorAll("[data-alt]").forEach((b) => b.onclick = () => {
     const name = b.dataset.alt, idx = d.items.findIndex((i) => i.name === name);
-    if (idx >= 0) d.items.splice(idx, 1); else { const f = byName(name); if (f) d.items.push(fromFood(f)); }
+    if (idx >= 0) d.items.splice(idx, 1); else { const f = findFood(name); if (f) d.items.push(fromFood(f)); }
     renderDraft();
   });
   el.querySelectorAll(".item input").forEach((inp) => {
