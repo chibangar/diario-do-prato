@@ -468,6 +468,74 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
 .w-form { display: flex; gap: 8px; margin-top: 4px; }
 .w-form input { flex: 1; min-width: 0; }
 .prof-sum { background: var(--soft); border-radius: 12px; padding: 10px 12px; font-size: 14px; line-height: 1.5; }
+/* missions */
+.mcard .m-top { display: flex; align-items: center; gap: 12px; }
+.lvl { width: 54px; height: 54px; border-radius: 16px; flex: none; display: grid; place-items: center; color: #1B1600; font-weight: 800; font-family: var(--f-num);
+  background: conic-gradient(from 210deg, var(--hi), #FFE58A, var(--carb), var(--hi)); box-shadow: 0 6px 18px color-mix(in srgb, var(--hi) 40%, transparent); }
+.lvl small { display: block; font-size: 9px; letter-spacing: .08em; font-family: var(--f-body); text-align: center; line-height: 1; }
+.lvl b { font-size: 20px; line-height: 1; }
+.m-top .t { flex: 1; min-width: 0; }
+.m-top .t b { display: block; font-size: 17px; }
+.m-top .t span { font-size: 12.5px; color: var(--muted); }
+.streak { font-weight: 800; font-family: var(--f-num); font-size: 15px; white-space: nowrap; }
+.xpbar { height: 8px; border-radius: 999px; background: var(--soft); overflow: hidden; margin: 12px 0 10px; }
+.xpbar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--hi)); transition: width .9s cubic-bezier(.2, .9, .2, 1); }
+.m-tabs { display: flex; gap: 6px; margin-bottom: 6px; }
+.m-tabs button { border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 13.5px; }
+.m-tabs button[aria-selected="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.mission { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.mission:first-of-type { border-top: 0; }
+.mission .ic { width: 34px; height: 34px; border-radius: 10px; background: var(--soft); display: grid; place-items: center; font-size: 17px; }
+.mission.done .ic { background: color-mix(in srgb, var(--accent) 22%, var(--card)); }
+.mission b { font-size: 14.5px; display: block; }
+.mission .pb { height: 5px; border-radius: 999px; background: var(--soft); margin-top: 6px; overflow: hidden; }
+.mission .pb i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .8s cubic-bezier(.2, .9, .2, 1); }
+.mission .xp { font-family: var(--f-num); font-size: 12.5px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.mission.done .xp { color: var(--accent); }
+.mission .act { border: 0; background: var(--ink); color: var(--card); border-radius: 999px; padding: 7px 12px; font-weight: 700; font-size: 12.5px; }
+/* switches in the settings */
+.sw { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14.5px; }
+.sw:first-of-type { border-top: 0; }
+.sw small { display: block; color: var(--muted); font-size: 12px; }
+.sw input { appearance: none; -webkit-appearance: none; width: 48px; height: 28px; border-radius: 999px; background: var(--line); position: relative; flex: none; transition: background .25s; cursor: pointer; }
+.sw input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.25); transition: transform .35s cubic-bezier(.3, 1.6, .5, 1); }
+.sw input:checked { background: var(--accent); }
+.sw input:checked::after { transform: translateX(20px); }
+
+/* ===== motion: liquid press, light trail, spring release, particle bursts ===== */
+button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overflow: hidden; -webkit-user-select: none; user-select: none; transition: transform .45s cubic-bezier(.2, 1.8, .4, 1), box-shadow .3s; will-change: transform; }
+.pressing { transform: scale(.93) !important; transition-duration: .12s !important; }
+.lq { position: absolute; left: var(--x); top: var(--y); width: var(--d); height: var(--d); margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2); border-radius: 50%; pointer-events: none; mix-blend-mode: soft-light;
+  background: radial-gradient(circle, rgba(255,255,255,.85) 0 18%, color-mix(in srgb, var(--hi) 70%, transparent) 38%, color-mix(in srgb, var(--accent) 45%, transparent) 60%, transparent 72%);
+  animation: lq .75s cubic-bezier(.15, .8, .25, 1) forwards; }
+.lq::after { content: ""; position: absolute; inset: 22%; border-radius: 50%; border: 2px solid rgba(255,255,255,.75); animation: lqring .75s cubic-bezier(.15, .8, .25, 1) forwards; }
+@keyframes lq { from { transform: scale(.05); opacity: 1; filter: blur(0); } 70% { opacity: .9; } to { transform: scale(1); opacity: 0; filter: blur(2px); } }
+@keyframes lqring { from { transform: scale(.2); opacity: 1; } to { transform: scale(1.35); opacity: 0; } }
+.shine::before { content: ""; position: absolute; inset: -40% auto -40% -60%; width: 45%; transform: skewX(-20deg); pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); animation: shine .7s ease-out forwards; }
+@keyframes shine { to { left: 130%; } }
+.add-btn.spin { animation: addspin .6s cubic-bezier(.3, 1.6, .4, 1); }
+@keyframes addspin { from { transform: rotate(0) scale(.85); } to { transform: rotate(180deg) scale(1); } }
+.spark { position: fixed; left: 0; top: 0; width: var(--s); height: var(--s); border-radius: var(--r); background: var(--c); pointer-events: none; z-index: 2000;
+  animation: spark var(--t) cubic-bezier(.1, .7, .3, 1) forwards; }
+@keyframes spark { 0% { transform: translate(var(--x0), var(--y0)) scale(1) rotate(0); opacity: 1; } 100% { transform: translate(var(--x1), var(--y1)) scale(.2) rotate(var(--rot)); opacity: 0; } }
+.scan { overflow: visible !important; isolation: isolate; }
+.scan::before { content: ""; position: absolute; inset: -5px; border-radius: 50%; z-index: -1; padding: 4px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  background: conic-gradient(from 0deg, var(--accent), var(--hi), var(--prot), var(--fat), var(--accent)); animation: aura 3.2s linear infinite; filter: blur(.5px); }
+.scan::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; z-index: -2; box-shadow: 0 0 0 0 color-mix(in srgb, var(--hi) 55%, transparent); animation: breathe 2.4s ease-in-out infinite; }
+@keyframes aura { to { transform: rotate(360deg); } }
+@keyframes breathe { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--hi) 45%, transparent); } 50% { box-shadow: 0 0 0 12px transparent; } }
+.wrap > section, .mgroup { animation: rise .7s cubic-bezier(.2, .9, .2, 1) both; }
+.wrap > section:nth-of-type(2) { animation-delay: .05s; } .wrap > section:nth-of-type(3) { animation-delay: .1s; } .wrap > section:nth-of-type(4) { animation-delay: .15s; }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.mission.just { animation: justdone 1s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes justdone { 0% { transform: scale(.96); background: color-mix(in srgb, var(--hi) 30%, transparent); } 100% { transform: none; background: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  .lq, .spark, .shine::before { display: none; }
+  .scan::before, .scan::after, .wrap > section, .mgroup, .mission.just, .add-btn.spin { animation: none; }
+  button, .food, .tab { transition: none; }
+}
 .key-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .key-row input { flex: 1 1 200px; min-width: 0; }
 </style>
@@ -507,6 +575,13 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
     <div class="ring" id="ring"></div>
     <div class="mbars" id="macros"></div>
     <div class="sum-foot"><span>Meta <button class="goal-link" id="kcalGoal" type="button"></button></span><span>Comido <b id="kcalTotal">0</b></span><span id="kcalLeft"></span></div>
+  </section>
+
+  <section class="card mcard" id="missions">
+    <div class="m-top"><div class="lvl" id="mLvl"><div><small>NÍVEL</small><b>1</b></div></div><div class="t"><b id="mTitle">Missões</b><span id="mXp"></span></div><span class="streak" id="mStreak"></span></div>
+    <div class="xpbar"><i id="mXpBar" style="width:0%"></i></div>
+    <div class="m-tabs" role="tablist"><button type="button" role="tab" data-mtab="d" aria-selected="true">Hoje</button><button type="button" role="tab" data-mtab="w" aria-selected="false">Esta semana</button></div>
+    <div id="mList"></div>
   </section>
 
   <section>
@@ -560,6 +635,17 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
     <p class="note">Valores nutricionais: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P. - INSA. v 7.1 - 2026 (portfir.insa.min-saude.pt). Produtos de marca: Open Food Facts (openfoodfacts.org), base de dados aberta (ODbL).</p>
   </details>
 
+  <details class="settings" id="notifDetails">
+    <summary>Notificações</summary>
+    <div style="margin-top:8px">
+      <label class="sw">Notificações<input type="checkbox" id="nOn"></label>
+      <label class="sw"><span>Lembrar as refeições<small>9:00, 13:00 e 20:30, só se ainda não registaste</small></span><input type="checkbox" id="nMeals"></label>
+      <label class="sw"><span>Lembrar a pesagem<small>Segunda às 8:30, se ainda não te pesaste na semana</small></span><input type="checkbox" id="nWeigh"></label>
+      <label class="sw"><span>Missões do dia<small>21:30, se ainda faltarem missões</small></span><input type="checkbox" id="nMissions"></label>
+    </div>
+    <p class="note" id="nState"></p>
+  </details>
+
   <details class="settings" id="themeDetails">
     <summary>Aparência</summary>
     <div class="theme-seg" id="themeSeg" role="radiogroup" aria-label="Tema da app">
@@ -609,6 +695,7 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
       <button class="btn btn-plain" id="updCheck">Procurar atualização</button>
     </div>
     <p class="note" id="updNote">A app procura versões novas sempre que é aberta com internet.</p>
+    <label class="sw" style="border-top:1px solid var(--line)"><span>Atualizar automaticamente<small>Descarrega sozinha e abre o instalador. O Android pede sempre um toque em «Atualizar» por segurança.</small></span><input type="checkbox" id="autoUpd"></label>
   </details>
 </div>
 
@@ -1095,7 +1182,7 @@ const sum = (items, k) => items.reduce((a, it) => a + num(it[k]), 0);
 const norm = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const guessMeal = () => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h < 11 ? MEALS[0] : h < 15.5 ? MEALS[1] : h < 18.5 ? MEALS[2] : h < 22.5 ? MEALS[3] : MEALS[4]; };
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
-const SYNC_KEYS = new Set(["ddp.meals", "ddp.custom", "ddp.dishes", "ddp.goal", "ddp.profile", "ddp.plan", "ddp.weights", "ddp.trainDays"]);
+const SYNC_KEYS = new Set(["ddp.meals", "ddp.custom", "ddp.dishes", "ddp.goal", "ddp.profile", "ddp.plan", "ddp.weights", "ddp.trainDays", "ddp.trainDone", "ddp.missions"]);
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); if (SYNC_KEYS.has(k)) setTimeout(() => cloudPush(), 0); return true; } catch { return false; } };
 function fromFood(f, grams) {
   const g = grams ?? f.g, k = g / 100;
@@ -1959,7 +2046,9 @@ function saveDraft() {
     S.meals = [meal, ...S.meals];
     if (!saveMeals()) { S.meals = S.meals.filter((m) => m !== meal); toast("Memória cheia: apaga refeições antigas."); return; }
   }
+  burst($("#dSave"));
   S.draft = null; renderDraft(); render(); toast(old ? "Alterações guardadas" : "Refeição guardada");
+  scheduleNotifs();
   cloudPush?.();
   requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
 }
@@ -2054,6 +2143,7 @@ function render() {
   });
   renderWeek();
   if (typeof renderWeight === "function") try { renderWeight(); } catch { /* first paint */ }
+  if (typeof renderMissions === "function") try { renderMissions(); } catch { /* first paint */ }
   renderDishes();
   if (document.activeElement !== $("#goalIn")) $("#goalIn").value = S.goal;
 }
@@ -2340,7 +2430,7 @@ $("#sGo").onclick = () => {
   lsSet("ddp.profile", P);
   const g = calcGoals(P);
   S.goal = g[objective]; lsSet("ddp.goal", S.goal);
-  fillProfile(); render(); renderCalc();
+  fillProfile(); render(); renderCalc(); scheduleNotifs();
   $("#setup").hidden = true; document.body.style.overflow = "";
   toast(g.train ? `Meta: ${S.goal} kcal sem treino e ${S.goal + g.train} kcal nos dias de treino. Proteína: ${r0(macroTargets(S.goal).p)} g por dia.`
     : `A tua meta: ${S.goal} kcal por dia para ${GOAL_NAMES[objective]}. Proteína: ${r0(macroTargets(S.goal).p)} g por dia.`);
@@ -2397,6 +2487,47 @@ function hideWelcome() { stopVoice(); W.el.hidden = true; document.body.style.ov
 $("#wTour").onclick = () => { hideWelcome(); needProfile(() => startTour()); };
 $("#wSkip").onclick = () => { hideWelcome(); needProfile(() => toast("O tutorial está sempre em Ajuda, no fundo da app.")); };
 $("#helpWelcome").onclick = () => showWelcome();
+// ---------- haptics + motion ----------
+function haptic(style = "LIGHT") {
+  const C = window.Capacitor;
+  if (C?.isNativePlatform?.() && typeof C.nativePromise === "function") C.nativePromise("Haptics", "impact", { style }).catch(() => {});
+  else try { navigator.vibrate?.(style === "HEAVY" ? 30 : 8); } catch { /* not supported */ }
+}
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const PRESSABLE = "button, .food, .tab, .chip-btn, .goal-opt, label.sw";
+document.addEventListener("pointerdown", (e) => {
+  const el = e.target.closest(PRESSABLE); if (!el || el.disabled) return;
+  el.classList.add("pressing"); haptic();
+  if (REDUCED || el.matches("label.sw")) return;
+  const r = el.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.4;
+  const lq = document.createElement("span"); lq.className = "lq";
+  lq.style.cssText = `--x:${e.clientX - r.left}px;--y:${e.clientY - r.top}px;--d:${d}px`;
+  el.append(lq); setTimeout(() => lq.remove(), 800);
+}, { passive: true });
+const release = (e) => {
+  document.querySelectorAll(".pressing").forEach((el) => {
+    el.classList.remove("pressing");
+    if (REDUCED) return;
+    el.classList.remove("shine"); void el.offsetWidth; el.classList.add("shine"); setTimeout(() => el.classList.remove("shine"), 750);
+    if (el.classList.contains("add-btn")) { el.classList.remove("spin"); void el.offsetWidth; el.classList.add("spin"); }
+  });
+};
+["pointerup", "pointercancel", "pointerleave"].forEach((t) => document.addEventListener(t, release, { passive: true }));
+// celebration: particles fly out of an element (or the centre of the screen)
+function burst(el, n = 26) {
+  if (REDUCED) return;
+  const r = el?.getBoundingClientRect?.() || { left: innerWidth / 2, top: innerHeight / 2, width: 0, height: 0 };
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const cols = ["var(--hi)", "var(--accent)", "var(--prot)", "var(--fat)", "var(--carb)", "#fff"];
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement("i"), a = (Math.PI * 2 * i) / n + Math.random() * 0.5, dist = 60 + Math.random() * 110, sz = 5 + Math.random() * 7;
+    p.className = "spark";
+    p.style.cssText = `--s:${sz}px;--r:${Math.random() > 0.5 ? "50%" : "2px"};--c:${cols[i % cols.length]};--t:${650 + Math.random() * 500}ms;--rot:${Math.random() * 720 - 360}deg;` +
+      `--x0:${cx}px;--y0:${cy}px;--x1:${cx + Math.cos(a) * dist}px;--y1:${cy + Math.sin(a) * dist + 40}px`;
+    document.body.append(p); setTimeout(() => p.remove(), 1300);
+  }
+  haptic("MEDIUM");
+}
 // ---------- weight log ----------
 const weights = () => lsGet("ddp.weights", []);
 function addWeight(kg, recalc = true) {
@@ -2425,18 +2556,150 @@ $("#wSave").onclick = () => {
   const before = S.goal;
   addWeight(kg); $("#wIn").value = "";
   render(); renderCalc(); fillProfile();
+  burst($("#wSave"));
   toast(S.goal !== before ? `Peso registado. Nova meta: ${S.goal} kcal (sem treino).` : "Peso registado.");
+  scheduleNotifs();
 };
 $("#trainBtn").onclick = () => {
   const o = trainOverride(); o[S.day] = !isTrainDay(S.day); lsSet("ddp.trainDays", o); render();
 };
+// ---------- missions, XP, levels, streak ----------
+const LEVELS = [[0, "Iniciante"], [100, "Em forma"], [250, "Focado"], [500, "Consistente"], [900, "Atleta"], [1500, "Máquina"], [2500, "Elite"], [4000, "Lenda"]];
+const weekStart = (k) => { const d = dateOf(k); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return keyOf(d); };
+function dayStats(k) {
+  const items = S.meals.filter((m) => m.day === k).flatMap((m) => m.items || []);
+  const goal = dayGoal(k);
+  return { meals: S.meals.filter((m) => m.day === k).length, kcal: sum(items, "kcal"), p: sum(items, "p"), goal, pT: macroTargets(goal).p };
+}
+const inGoal = (st) => st.kcal >= st.goal * 0.85 && st.kcal <= st.goal * 1.05;
+const trainDone = () => lsGet("ddp.trainDone", {});
+function streakDays() {
+  let k = todayKey(), n = 0;
+  if (!S.meals.some((m) => m.day === k)) k = shiftKey(k, -1);
+  while (S.meals.some((m) => m.day === k) && n < 999) { n++; k = shiftKey(k, -1); }
+  return n;
+}
+function missionList() {
+  const t = todayKey(), st = dayStats(t), td = trainDone(), ws = weekStart(t);
+  const week = Array.from({ length: 7 }, (_, i) => shiftKey(ws, i)).filter((k) => k <= t);
+  const daily = [
+    { id: "meals3", ic: "🍽️", t: "Regista 3 refeições", p: Math.min(1, st.meals / 3), lbl: `${Math.min(st.meals, 3)}/3`, xp: 10 },
+    { id: "prot", ic: "💪", t: `Chega aos ${r0(st.pT)} g de proteína`, p: Math.min(1, st.p / (st.pT * 0.9 || 1)), lbl: `${r0(st.p)} g`, xp: 15 },
+    { id: "kcal", ic: "🎯", t: "Fica dentro da meta de calorias", p: st.kcal > st.goal * 1.05 ? 0 : Math.min(1, st.kcal / (st.goal * 0.85 || 1)), lbl: st.kcal > st.goal * 1.05 ? "passaste" : `${r0(st.kcal)} kcal`, xp: 15, end: true }
+  ];
+  if (isTrainDay(t)) daily.push({ id: "train", ic: "🏋️", t: "Faz o treino de hoje", p: td[t] ? 1 : 0, lbl: "", xp: 20, act: td[t] ? "" : "Já treinei" });
+  const nIn = week.filter((k) => inGoal(dayStats(k))).length, nProt = week.filter((k) => { const x = dayStats(k); return x.p >= x.pT * 0.9; }).length;
+  const nTrain = week.filter((k) => td[k]).length, want = (P.days || []).length;
+  const weighed = lsGet("ddp.weights", []).some((w) => w.d >= ws && w.d <= t);
+  const weekly = [
+    { id: "weigh", ic: "⚖️", t: "Pesa-te esta semana", p: weighed ? 1 : 0, lbl: "", xp: 30 },
+    { id: "kcal5", ic: "📅", t: "Cumpre a meta em 5 dias", p: Math.min(1, nIn / 5), lbl: `${Math.min(nIn, 5)}/5`, xp: 50 },
+    { id: "prot5", ic: "🥩", t: "Atinge a proteína em 5 dias", p: Math.min(1, nProt / 5), lbl: `${Math.min(nProt, 5)}/5`, xp: 50 }
+  ];
+  if (want) weekly.push({ id: "trainN", ic: "🔥", t: `Treina ${want} ${want === 1 ? "vez" : "vezes"}`, p: Math.min(1, nTrain / want), lbl: `${Math.min(nTrain, want)}/${want}`, xp: 60 });
+  const st7 = streakDays();
+  weekly.push({ id: "streak7", ic: "⚡", t: "Regista 7 dias seguidos", p: Math.min(1, st7 / 7), lbl: `${Math.min(st7, 7)}/7`, xp: 70 });
+  return { daily: daily.map((m) => ({ ...m, key: `d:${t}:${m.id}` })), weekly: weekly.map((m) => ({ ...m, key: `w:${ws}:${m.id}` })) };
+}
+const MS = { tab: "d", just: new Set() };
+function xpTotal() { return Object.values(lsGet("ddp.missions", {})).reduce((a, v) => a + (Number(v) || 0), 0); }
+function renderMissions() {
+  const { daily, weekly } = missionList(), won = lsGet("ddp.missions", {});
+  // award: "kcal" only counts once the day is over (or late in the evening), the rest as soon as done
+  const late = new Date().getHours() >= 21;
+  const fresh = [];
+  for (const m of [...daily, ...weekly]) {
+    const done = m.p >= 1 && (!m.end || late);
+    if (done && !(m.key in won)) { won[m.key] = m.xp; fresh.push(m); }
+  }
+  if (fresh.length) { lsSet("ddp.missions", won); fresh.forEach((m) => MS.just.add(m.key)); }
+  const xp = xpTotal(); let li = 0; LEVELS.forEach(([min], i) => { if (xp >= min) li = i; });
+  const [cur, name] = LEVELS[li], next = LEVELS[li + 1]?.[0];
+  $("#mLvl").innerHTML = `<div><small>NÍVEL</small><b>${li + 1}</b></div>`;
+  $("#mTitle").textContent = `Missões · ${name}`;
+  $("#mXp").textContent = next ? `${xp} XP · faltam ${next - xp} para o nível ${li + 2}` : `${xp} XP · nível máximo`;
+  $("#mXpBar").style.width = (next ? ((xp - cur) / (next - cur)) * 100 : 100) + "%";
+  const sd = streakDays(); $("#mStreak").textContent = sd ? `🔥 ${sd}` : ""; $("#mStreak").title = `${sd} dias seguidos a registar`;
+  document.querySelectorAll("[data-mtab]").forEach((b) => b.setAttribute("aria-selected", b.dataset.mtab === MS.tab));
+  const list = MS.tab === "d" ? daily : weekly;
+  $("#mList").innerHTML = list.map((m) => { const done = m.key in won;
+    return `<div class="mission ${done ? "done" : ""} ${MS.just.has(m.key) ? "just" : ""}" data-mkey="${m.key}"><span class="ic">${done ? "✅" : m.ic}</span><div><b>${esc(m.t)}</b>${done ? "" : `<div class="pb"><i style="width:${r0(m.p * 100)}%"></i></div>`}</div>${m.act ? `<button class="act" type="button" data-mact="${m.id}">${m.act}</button>` : `<span class="xp">${done ? "+" : ""}${m.xp} XP${m.lbl && !done ? " · " + esc(m.lbl) : ""}</span>`}</div>`; }).join("");
+  if (fresh.length) {
+    const el = document.querySelector(`[data-mkey="${fresh[0].key}"]`) || $("#missions");
+    setTimeout(() => burst(el, 34), 120);
+    toast(fresh.length === 1 ? `Missão cumprida: ${fresh[0].t} · +${fresh[0].xp} XP` : `${fresh.length} missões cumpridas · +${fresh.reduce((a, m) => a + m.xp, 0)} XP`);
+    setTimeout(() => MS.just.clear(), 1200);
+  }
+}
+document.addEventListener("click", (e) => {
+  const tb = e.target.closest("[data-mtab]"); if (tb) { MS.tab = tb.dataset.mtab; renderMissions(); return; }
+  const a = e.target.closest("[data-mact]");
+  if (a && a.dataset.mact === "train") { const o = trainDone(); o[todayKey()] = true; lsSet("ddp.trainDone", o); renderMissions(); scheduleNotifs(); }
+});
+// ---------- notifications (local, scheduled on the phone) ----------
+const NOTIF_DEF = { on: true, meals: true, weigh: true, missions: true };
+const notifCfg = () => ({ ...NOTIF_DEF, ...lsGet("ddp.notif", {}) });
+const LN = (m, o = {}) => { const C = window.Capacitor; if (!C?.isNativePlatform?.() || typeof C.nativePromise !== "function") return Promise.reject(new Error("no-native")); return C.nativePromise("LocalNotifications", m, o); };
+const at = (k, hh, mm) => { const d = dateOf(k); d.setHours(hh, mm, 0, 0); return d; };
+let notifTimer = null;
+function scheduleNotifs() { clearTimeout(notifTimer); notifTimer = setTimeout(() => doSchedule().catch(() => {}), 1500); }
+async function doSchedule() {
+  const cfg = notifCfg(), ids = []; for (let i = 1000; i < 1300; i++) ids.push({ id: i });
+  try { await LN("cancel", { notifications: ids }); } catch (e) { if (String(e.message) === "no-native") { renderNotif("As notificações funcionam na app instalada no telemóvel."); return; } }
+  if (!cfg.on || !profileDone()) { renderNotif(); return; }
+  let perm = (await LN("checkPermissions"))?.display;
+  if (perm !== "granted") perm = (await LN("requestPermissions"))?.display;
+  if (perm !== "granted") { renderNotif("O Android não deu autorização. Ativa as notificações da NutriLente nas Definições do telemóvel."); return; }
+  const now = Date.now(), list = [], t = todayKey();
+  const SLOTS = [["Pequeno-almoço", 9, 0, "☕ Bom dia! Já registaste o pequeno-almoço?"], ["Almoço", 13, 0, "🍽️ Hora do almoço: tira uma foto ao prato."], ["Jantar", 20, 30, "🍲 Não te esqueças de registar o jantar."]];
+  for (let d = 0; d < 7; d++) {
+    const k = shiftKey(t, d);
+    if (cfg.meals) SLOTS.forEach(([meal, hh, mm, body], i) => {
+      const when = at(k, hh, mm); if (when.getTime() <= now) return;
+      if (S.meals.some((m) => m.day === k && m.meal === meal)) return;
+      list.push({ id: 1000 + d * 10 + i, title: "NutriLente", body, schedule: { at: when.toISOString(), allowWhileIdle: true } });
+    });
+    if (cfg.missions) {
+      const when = at(k, 21, 30);
+      if (when.getTime() > now) {
+        const left = d === 0 ? missionList().daily.filter((m) => !(m.key in lsGet("ddp.missions", {})) && m.p < 1).length : 3;
+        if (left) list.push({ id: 1200 + d, title: "Missões de hoje", body: d === 0 ? `Faltam ${left} ${left === 1 ? "missão" : "missões"}. Ainda vais a tempo! 🔥` : "Vê as tuas missões e mantém a série 🔥", schedule: { at: when.toISOString(), allowWhileIdle: true } });
+      }
+    }
+  }
+  if (cfg.weigh) {
+    const ws = weekStart(t);
+    for (let w = 0; w < 4; w++) {
+      const k = shiftKey(ws, 7 * w), when = at(k, 8, 30);
+      if (when.getTime() <= now) continue;
+      if (w === 0 && lsGet("ddp.weights", []).some((x) => x.d >= ws)) continue;
+      list.push({ id: 1100 + w, title: "Hora da pesagem ⚖️", body: "Pesa-te em jejum e regista na NutriLente. A meta ajusta-se sozinha.", schedule: { at: when.toISOString(), allowWhileIdle: true } });
+    }
+  }
+  if (list.length) await LN("schedule", { notifications: list.map((n) => ({ ...n, smallIcon: "ic_stat_nutrilente", iconColor: "#2E6A45" })) });
+  renderNotif(`Ligadas: ${list.length} lembretes marcados para os próximos dias.`);
+}
+function renderNotif(msg) {
+  const cfg = notifCfg();
+  $("#nOn").checked = cfg.on; $("#nMeals").checked = cfg.meals; $("#nWeigh").checked = cfg.weigh; $("#nMissions").checked = cfg.missions;
+  ["nMeals", "nWeigh", "nMissions"].forEach((id) => { $("#" + id).disabled = !cfg.on; $("#" + id).closest(".sw").style.opacity = cfg.on ? 1 : 0.45; });
+  $("#nState").textContent = msg || (cfg.on ? "" : "Desligadas: a app não te envia lembretes.");
+}
+["nOn", "nMeals", "nWeigh", "nMissions"].forEach((id) => $("#" + id).addEventListener("change", () => {
+  lsSet("ddp.notif", { on: $("#nOn").checked, meals: $("#nMeals").checked, weigh: $("#nWeigh").checked, missions: $("#nMissions").checked });
+  renderNotif(); scheduleNotifs();
+}));
+// ---------- automatic updates ----------
+const autoUpd = () => lsGet("ddp.autoUpd", true) !== false;
+$("#autoUpd").checked = autoUpd();
+$("#autoUpd").onchange = (e) => { lsSet("ddp.autoUpd", e.target.checked); toast(e.target.checked ? "Atualizações automáticas ligadas." : "Atualizações automáticas desligadas."); };
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Treino no perfil: escolhe o tipo de treino, os dias e a duração. A meta sobe nos dias de treino.",
-  "Proteína pelo teu peso: a meta de proteína passa a ser calculada por quilo (mais quando queres perder gordura).",
-  "Peso: regista o peso, vê o gráfico, e a meta ajusta-se sozinha.",
-  "Por isto, a app pede outra vez os teus dados, já preenchidos: só falta escolher o treino."
+  "Missões de fitness: todos os dias e todas as semanas, com XP, níveis e série de dias seguidos 🔥.",
+  "Notificações: lembretes das refeições, da pesagem e das missões. Podes desligá-las em «Notificações».",
+  "Atualizações automáticas: a app descarrega sozinha e abre o instalador (o Android pede só um toque).",
+  "Botões novos: efeito líquido, brilho, partículas e vibração ao tocar."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
@@ -2527,7 +2790,7 @@ function renderSync(msg) {
 function backupData() {
   const slim = (m) => { const { thumb, ...rest } = m; return rest; };
   let meals = [...S.meals].sort((a, b) => b.ts - a.ts).map(slim);
-  const pack = () => JSON.stringify({ v: 1, updated: Date.now(), meals, custom: S.custom, dishes: S.dishes, goal: S.goal, profile: P, plan: lsGet("ddp.plan", null), deleted: lsGet("ddp.deleted", []), weights: lsGet("ddp.weights", []), trainDays: lsGet("ddp.trainDays", {}) });
+  const pack = () => JSON.stringify({ v: 1, updated: Date.now(), meals, custom: S.custom, dishes: S.dishes, goal: S.goal, profile: P, plan: lsGet("ddp.plan", null), deleted: lsGet("ddp.deleted", []), weights: lsGet("ddp.weights", []), trainDays: lsGet("ddp.trainDays", {}), trainDone: lsGet("ddp.trainDone", {}), missions: lsGet("ddp.missions", {}) });
   let out = pack();
   while (out.length > 900000 && meals.length > 50) { meals = meals.slice(0, Math.floor(meals.length * 0.8)); out = pack(); } // one document holds about 1 MB
   return out;
@@ -2558,6 +2821,7 @@ function mergeCloud(c) {
   if (!profileDone() && c.profile?.sex) { Object.assign(P, c.profile); if (c.goal) S.goal = c.goal; }
   const wl = new Map([...(c.weights || []), ...lsGet("ddp.weights", [])].filter((w) => w?.d && w.kg).map((w) => [w.d, w]));
   try { localStorage.setItem("ddp.weights", JSON.stringify([...wl.values()].sort((a, b) => (a.d < b.d ? -1 : 1)).slice(-400))); } catch { /* full */ }
+  try { localStorage.setItem("ddp.trainDone", JSON.stringify({ ...(c.trainDone || {}), ...lsGet("ddp.trainDone", {}) })); localStorage.setItem("ddp.missions", JSON.stringify({ ...(c.missions || {}), ...lsGet("ddp.missions", {}) })); } catch { /* full */ }
   try { localStorage.setItem("ddp.trainDays", JSON.stringify({ ...(c.trainDays || {}), ...lsGet("ddp.trainDays", {}) })); } catch { /* full */ }
   if (!lsGet("ddp.plan", null) && c.plan) { plan = c.plan; localStorage.setItem("ddp.plan", JSON.stringify(plan)); }
   // write without scheduling another push for each key
@@ -2630,6 +2894,7 @@ const TOUR = [
   { sel: "#summary", title: "O teu dia", text: "O anel mostra quantas calorias ainda podes comer hoje. As cores são os hidratos, a proteína e a gordura que já comeste, e as barras ao lado mostram quanto falta de cada um para a tua meta." },
   { sel: "#trainBtn", title: "Dia de treino", text: "Nos dias em que treinas, a meta sobe com as calorias do treino. A app sabe os teus dias de treino, mas podes tocar aqui para mudar o dia de hoje." },
   { sel: "#weightCard", title: "O teu peso", text: "Regista o peso uma vez por semana. O gráfico mostra a evolução e a meta de calorias e de proteína ajusta-se sozinha ao teu peso." },
+  { sel: "#missions", title: "Missões", text: "Todos os dias e todas as semanas tens missões de fitness: proteína, calorias, treino, pesagem e dias seguidos. Cada missão dá XP e sobes de nível. A chama mostra quantos dias seguidos registaste." },
   { sel: "#meals", title: "As tuas refeições", text: "O dia está dividido em pequeno-almoço, almoço, lanche, jantar, snack e suplementação. O «+» adiciona comida a essa refeição. «Repetir» volta a registar a mesma coisa. Para apagar, toca em «Apagar» e depois em «Confirmar»." },
   { sel: "header", title: "Escolher o dia", text: "Toca no calendário, no canto de cima à direita, ou no nome do dia para abrir o mês e escolher qualquer dia. As setas avançam ou recuam um dia. Os dias com registos têm um ponto verde, ou amarelo se passaste a meta." },
   { sel: ".week", title: "Últimos 7 dias", text: "O gráfico mostra as calorias de cada dia. A linha tracejada é a tua meta e as barras amarelas são os dias acima dela. Toca num dia para o abrir." },
@@ -2637,6 +2902,7 @@ const TOUR = [
   { sel: "#planDetails", title: "Plano de dieta", text: "Em «O meu plano de dieta», a IA cria um dia de refeições à tua medida, com os teus dados e a tua meta. Cada refeição tem o botão «Registar esta refeição»." },
   { sel: "#aiDetails", title: "IA Gemini", text: "Para a app identificar cada alimento da foto com a IA da Google e criar o plano de dieta, cola aqui uma chave gratuita da Google. Sem chave, a app usa o reconhecimento do telemóvel." },
   { sel: "#recDetails", title: "Reconhecer cada alimento", text: "Para a app ver cada alimento de um prato misturado (arroz, feijão, grelos, entrecosto…), toca aqui em «Descarregar» uma vez (cerca de 64 MB, de preferência em Wi-Fi). Depois funciona sem internet." },
+  { sel: "#notifDetails", title: "Notificações", text: "A app lembra-te das refeições, da pesagem e das missões. Aqui podes desligar tudo ou só alguns lembretes." },
   { sel: "#updDetails", title: "Atualizações", text: "Quando houver uma versão nova, aparece uma barra verde no topo da app. Toca em «Descarregar», abre o ficheiro e instala. Os teus registos mantêm-se." },
   { title: "Os teus dados", text: "Tudo fica guardado só neste telemóvel e a app funciona sem internet. Atenção: se desinstalares a app, os registos são apagados. Está pronto, bom apetite!" }
 ];
@@ -2740,6 +3006,7 @@ async function checkUpdate(manual) {
       $("#updateBar").hidden = false;
       note.textContent = `Verificado às ${hhmm}: há uma versão nova, a 1.0.${build}. Usa a barra verde no topo.`;
       if (manual) window.scrollTo({ top: 0, behavior: "smooth" });
+      else if (autoUpd() && !U.busy && !U.downloaded && !U.waitingPermission && !document.hidden && window.Capacitor?.isNativePlatform?.()) setTimeout(() => startUpdate(true), 1500);
     } else {
       $("#updateBar").hidden = true;
       note.textContent = `Verificado às ${hhmm}: já tens a versão mais recente.`;
@@ -2766,7 +3033,7 @@ function setUpd(text, { btn = null, pct = null, alt = false } = {}) {
 }
 function openInBrowser() { if (/^https:\/\//.test(U.url)) window.location.href = U.url; }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-async function startUpdate() {
+async function startUpdate(auto) {
   if (U.busy || !U.url) return;
   if (U.downloaded) { // installer was closed: open it again
     try { await updater("install"); return; } catch { U.downloaded = false; }
@@ -2774,6 +3041,7 @@ async function startUpdate() {
   let allowed;
   try { allowed = (await updater("canInstall")).allowed; }
   catch (e) { openInBrowser(); return; } // older app shell without the updater: use the browser
+  if (!allowed && auto) return; // the first time, the Android permission is asked only when the person taps the button
   if (!allowed) {
     U.waitingPermission = true;
     setUpd("Falta uma autorização do Android. No ecrã que vai abrir, ativa «Permitir desta origem» e depois volta à app.", { btn: "Já permiti, continuar" });
@@ -2806,11 +3074,12 @@ async function afterResume() {
   try { if ((await updater("canInstall")).allowed) startUpdate(); } catch { /* ignore */ }
 }
 
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); afterResume(); checkUpdate(false); } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); afterResume(); checkUpdate(false); scheduleNotifs(); } });
 window.addEventListener("online", () => checkUpdate(false));
 window.Capacitor?.Plugins?.App?.addListener?.("resume", () => checkUpdate(false));
 
 render();
+renderNotif(); setTimeout(() => scheduleNotifs(), 4000);
 checkUpdate(false);
 if (!lsGet("ddp.seenWelcomeVoice", false)) { lsSet("ddp.newsBuild", APP_BUILD); showWelcome(); }
 else { needProfile(); if (lsGet("ddp.newsBuild", 0) !== APP_BUILD) showNews(); }

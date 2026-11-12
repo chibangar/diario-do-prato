@@ -2,5 +2,13 @@
   "appId": "pt.diariodoprato.app",
   "appName": "NutriLente",
   "webDir": "www",
-  "android": { "backgroundColor": "#F5F7F2" }
+  "android": {
+    "backgroundColor": "#F5F7F2"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_nutrilente",
+      "iconColor": "#2E6A45"
+    }
+  }
 }
