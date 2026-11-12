@@ -1613,7 +1613,8 @@ async function searchOFF(d, qq) {
   if (S.draft === d && d.q.trim() === qq) renderPicker();
 }
 // ---------- supermarket products, offline (Open Food Facts, products sold in Portugal) ----------
-const STORE_NAMES = { PD: "Pingo Doce", CO: "Continente", ME: "Mercadona", LI: "Lidl", AU: "Auchan", AL: "Aldi", DI: "Minipreço", IN: "Intermarché" };
+const STORE_NAMES = { PD: "Pingo Doce", CO: "Continente", ME: "Mercadona", LI: "Lidl", AU: "Auchan", AL: "Aldi", DI: "Minipreço", IN: "Intermarché", PZ: "Prozis", MP: "MyProtein", ZU: "Zumub", EU: "EU Nutrition" };
+const SPORT_BRANDS = new Set(["PZ", "MP", "ZU", "EU"]);
 const SUPER = { state: "idle", keys: null };
 function loadSuper() {
   if (SUPER.state !== "idle") return;
@@ -1634,7 +1635,7 @@ function superSearch(qq, store) {
   }
   const rank = (i) => (K[i].startsWith(q) ? 0 : 1) * 2 + (L[i][2] ? 0 : 1);
   return hits.sort((a, b) => rank(a) - rank(b) || L[a][0].length - L[b][0].length).slice(0, 40)
-    .map((i) => { const [name, brand, st, g, kcal, p, c, f] = L[i]; const full = (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70); return { name: full, cat: "outros", g, kcal, p, c, f, src: "off", st }; });
+    .map((i) => { const [name, brand, st, g, kcal, p, c, f] = L[i]; const full = (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70); return { name: full, cat: SPORT_BRANDS.has(st) ? "suplementos" : "outros", g, kcal, p, c, f, src: "off", st }; });
 }
 function superBlock(d, qq, added) {
   if (qq.length < 2) return "";
@@ -2217,6 +2218,7 @@ $("#helpWelcome").onclick = () => showWelcome();
 // ---------- what's new (shown once after each update) ----------
 // Rewrite this list in every release: it is what the person reads right after updating.
 const NEWS = [
+  "Marcas de nutrição desportiva: Prozis, MyProtein, Zumub e EU Nutrition na pesquisa, com filtro por marca (cerca de 3500 produtos).",
   "Produtos de supermercado sem internet: cerca de 9000 produtos vendidos em Portugal (Pingo Doce, Continente, Mercadona, Lidl, Auchan, Aldi, Minipreço, Intermarché e outras marcas). Escreve o nome na pesquisa e filtra pelo supermercado.",
   "A minha conta: podes entrar com a tua conta Google (opcional). O botão está no topo, ao lado do calendário.",
   "Suplementação: há uma nova secção no dia, depois do Snack, com creatina, proteína, vitaminas e outros suplementos prontos a registar.",
