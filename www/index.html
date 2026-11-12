@@ -1767,11 +1767,18 @@ function clipFoods(res) {
   const first = cands[0], kinds = new Map([[CLIP_KIND(first.food), 1]]), out = [first];
   for (const c of cands.slice(1)) {
     const k = CLIP_KIND(c.food), have = kinds.get(k) || 0;
-    const ok = whole(first.food) ? c.max >= 0.6 && c.wins >= 1
+    // two whole dishes on one plate, or two kinds of potato, are look-alikes of the same food
+    const ok = whole(c.food) && whole(first.food) ? false
+      : k === "batata" && have ? false
+      : whole(first.food) ? c.max >= 0.6 && c.wins >= 2
+      // another whole dish next to separate foods is usually a look-alike (feijoada, tripas, bacalhau à Brás…)
+      : whole(c.food) ? c.max >= 0.6 && c.wins >= 2
+      // a dessert or a drink next to a meal: only when it is clearly there
+      : ["doces", "bebidas", "laticínios"].includes(c.food.cat) && c.food.cat !== first.food.cat && c.max < 0.7 ? false
       : ["doces", "bebidas", "laticínios"].includes(c.food.cat) && c.max < 0.45 ? false
       : have ? (c.wins >= 2 && c.max >= 0.45) || c.max >= 0.7
       : c.food.cat === "legumes e salada" ? true
-      : (c.max >= 0.35 && c.sum >= 0.45) || c.wins >= 2;
+      : (c.max >= 0.35 && (c.sum >= 0.45 || c.wins >= 1)) || c.wins >= 2;
     if (ok) { out.push(c); kinds.set(k, have + 1); }
   }
   // soup comes in a bowl, not next to meat or fish on a plate: swap it for the best rice, pasta or potato
@@ -3768,9 +3775,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Reconhecimento de pratos muito mais certeiro: a app passa a usar um modelo maior e mais preciso. Por exemplo, frango assado com arroz e batatas já não é confundido com feijoada.",
-  "Na primeira foto, a app descarrega o novo modelo uma vez (cerca de 100 MB, de preferência em Wi-Fi). O modelo antigo é apagado para libertar espaço.",
-  "Garrafas e copos no fundo da foto já não são acrescentados à refeição."
+  "Reconhecimento testado com mais de 100 fotos de pratos (cozido, francesinha, sardinhas, bacalhau, polvo, bifana, pizza, sushi, fruta…) e afinado com o que falhava.",
+  "Menos alimentos a mais: por exemplo, ovo com batata frita já não aparece também como bacalhau à Brás, e não junta dois pratos inteiros na mesma foto.",
+  "Reconhece também salada de fruta, e o arroz e as batatas no mesmo prato contam os dois."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
