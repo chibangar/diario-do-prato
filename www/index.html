@@ -437,6 +437,10 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
 .avatar-btn { overflow: hidden; }
 .avatar-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .head-btns { display: flex; gap: 8px; }
+.store-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; }
+.store-chips::-webkit-scrollbar { display: none; }
+.store-chips button { flex: none; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+.store-chips button[aria-pressed="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
 .key-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .key-row input { flex: 1 1 200px; min-width: 0; }
 </style>
@@ -1565,7 +1569,7 @@ function foodsForTab(d) {
 // ---------- brand products: Open Food Facts (online) ----------
 const OFF_API = "https://search.openfoodfacts.org/search";
 function offBlock(qq, off, added) {
-  if (!off) return `<button class="off-btn" id="dOff" type="button">Procurar «${esc(qq)}» nos produtos de marca<small>Iogurtes, bolachas, cereais, bebidas… dos supermercados portugueses. Precisa de internet.</small></button>`;
+  if (!off) return `<button class="off-btn" id="dOff" type="button">Procurar mais «${esc(qq)}» na internet<small>Se o produto não estiver na lista de cima. Precisa de internet.</small></button>`;
   if (off.status === "loading") return `<div class="ai-box"><span class="ai-dot"></span><span>A procurar nos produtos de marca…</span></div>`;
   if (off.status === "error") return `<button class="off-btn" id="dOff" type="button">Não consegui ligar à internet. Tentar outra vez<small>A pesquisa de produtos de marca precisa de internet.</small></button>`;
   if (!off.items.length) return `<p class="note" style="margin:0">Nenhum produto de marca encontrado para «${esc(qq)}».</p>`;
@@ -1608,6 +1612,40 @@ async function searchOFF(d, qq) {
   }
   if (S.draft === d && d.q.trim() === qq) renderPicker();
 }
+// ---------- supermarket products, offline (Open Food Facts, products sold in Portugal) ----------
+const STORE_NAMES = { PD: "Pingo Doce", CO: "Continente", ME: "Mercadona", LI: "Lidl", AU: "Auchan", AL: "Aldi", DI: "Minipreço", IN: "Intermarché" };
+const SUPER = { state: "idle", keys: null };
+function loadSuper() {
+  if (SUPER.state !== "idle") return;
+  SUPER.state = "loading";
+  const sc = document.createElement("script"); sc.src = "data/off-pt.js";
+  sc.onload = () => { SUPER.state = "ready"; SUPER.keys = window.OFF_PT.map((r) => norm(r[0] + " " + r[1])); if (S.draft) renderPicker(); };
+  sc.onerror = () => { SUPER.state = "error"; };
+  document.head.append(sc);
+}
+function superSearch(qq, store) {
+  const words = norm(qq).split(/[\s,]+/).filter(Boolean), L = window.OFF_PT, K = SUPER.keys, hits = [];
+  const q = norm(qq);
+  for (let i = 0; i < L.length; i++) {
+    if (store && L[i][2] !== store) continue;
+    const k = K[i]; let ok = true;
+    for (const w of words) if (!k.includes(w)) { ok = false; break; }
+    if (ok) hits.push(i);
+  }
+  const rank = (i) => (K[i].startsWith(q) ? 0 : 1) * 2 + (L[i][2] ? 0 : 1);
+  return hits.sort((a, b) => rank(a) - rank(b) || L[a][0].length - L[b][0].length).slice(0, 40)
+    .map((i) => { const [name, brand, st, g, kcal, p, c, f] = L[i]; const full = (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70); return { name: full, cat: "outros", g, kcal, p, c, f, src: "off", st }; });
+}
+function superBlock(d, qq, added) {
+  if (qq.length < 2) return "";
+  loadSuper();
+  if (SUPER.state !== "ready") return SUPER.state === "loading" ? `<p class="note" style="margin:0">A carregar os produtos de supermercado…</p>` : "";
+  const hits = d.supHits = superSearch(qq, d.store || "");
+  const chips = `<div class="store-chips">${[["", "Todos"], ...Object.entries(STORE_NAMES)].map(([k, n]) => `<button type="button" data-store="${k}" aria-pressed="${(d.store || "") === k}">${n}</button>`).join("")}</div>`;
+  return `<span class="picker-label">Produtos de supermercado</span>${chips}` + (hits.length
+    ? `<div class="grid">${hits.map((p, i) => `<button class="food brand ${added.has(p.name) ? "added" : ""}" data-sup="${i}"><b>${esc(p.name)}</b><span>${p.st ? esc(STORE_NAMES[p.st]) + " · " : ""}${p.g} g · ${r0(p.kcal * p.g / 100)} kcal</span></button>`).join("")}</div>`
+    : `<p class="note" style="margin:0">Nenhum produto ${d.store ? "do " + STORE_NAMES[d.store] : "de supermercado"} com «${esc(qq)}».</p>`);
+}
 function renderPicker() {
   const d = S.draft, box = $("#dResults"); if (!d || !box) return;
   const rec = recentFoods();
@@ -1624,9 +1662,22 @@ function renderPicker() {
     <div class="grid">${dishes.map((x) => `<button class="food dish" data-dish="${x.i}"><b>${esc(x.name)}</b><span>${x.items.length} alimentos · ${r0(sum(x.items, "kcal"))} kcal</span></button>`).join("")}${foods.map((f) => `<button class="food ${added.has(f.name) ? "added" : ""}" data-food="${esc(f.name)}"><b>${esc(f.name)}</b><span>${f.g} g · ${r0(f.kcal * f.g / 100)} kcal</span></button>`).join("")}</div>
     ${allHits.length > foods.length ? `<button class="more" id="dMore" type="button">Mostrar mais (${allHits.length - foods.length})</button>` : ""}
     ${qq && !foods.length && !dishes.length ? `<p class="note" style="margin:0">Não encontrei «${esc(qq)}» na lista. Procura nos produtos de marca ou cria-o.</p>` : ""}
+    ${superBlock(d, qq, added)}
     ${qq.length >= 3 ? `<div class="off">${offBlock(qq, off, added)}</div>` : ""}
     ${qq ? `<button class="create" id="dCreate">+ Criar «${esc(qq)}»</button>` : ""}
-    <p class="src">${INSA_FOODS.length + BASE_FOODS.length} alimentos. ${INSA_SOURCE}${off?.items?.length ? " Produtos de marca: Open Food Facts (openfoodfacts.org)." : ""}</p>`;
+    <p class="src">${INSA_FOODS.length + BASE_FOODS.length} alimentos${window.OFF_PT ? " e " + window.OFF_PT.length + " produtos de supermercado" : ""}. ${INSA_SOURCE} Produtos de supermercado: Open Food Facts (openfoodfacts.org), licença ODbL.</p>`;
+  box.querySelectorAll("[data-store]").forEach((b) => b.onclick = () => { d.store = b.dataset.store; renderPicker(); });
+  box.querySelectorAll("[data-sup]").forEach((b) => b.onclick = () => {
+    const p = d.supHits?.[+b.dataset.sup]; if (!p) return;
+    const idx = d.items.findIndex((i) => i.name === p.name);
+    if (idx >= 0) d.items.splice(idx, 1);
+    else {
+      const { st, ...food } = p;
+      d.items.push(fromFood(food));
+      if (!S.custom.some((x) => x.name === food.name)) { S.custom.unshift(food); lsSet("ddp.custom", S.custom.slice(0, 200)); }
+    }
+    const y = $("#draft").scrollTop; renderDraft(); $("#draft").scrollTop = y;
+  });
   const mb = box.querySelector("#dMore"); if (mb) mb.onclick = () => { d.more = true; renderPicker(); };
   const ob = box.querySelector("#dOff"); if (ob) ob.onclick = () => searchOFF(d, qq);
   box.querySelectorAll("[data-off]").forEach((b) => b.onclick = () => {
@@ -2166,6 +2217,7 @@ $("#helpWelcome").onclick = () => showWelcome();
 // ---------- what's new (shown once after each update) ----------
 // Rewrite this list in every release: it is what the person reads right after updating.
 const NEWS = [
+  "Produtos de supermercado sem internet: cerca de 9000 produtos vendidos em Portugal (Pingo Doce, Continente, Mercadona, Lidl, Auchan, Aldi, Minipreço, Intermarché e outras marcas). Escreve o nome na pesquisa e filtra pelo supermercado.",
   "A minha conta: podes entrar com a tua conta Google (opcional). O botão está no topo, ao lado do calendário.",
   "Suplementação: há uma nova secção no dia, depois do Snack, com creatina, proteína, vitaminas e outros suplementos prontos a registar.",
   "Nome novo: a app passa a chamar-se NutriLente, com um ícone novo. Os teus registos continuam todos cá.",
@@ -2250,7 +2302,7 @@ const TOUR = [
   { sel: "#manBtn", title: "Também dá sem foto", text: "«Pesquisar» abre a lista de alimentos para escolheres à mão. Também podes tocar no «+» de cada refeição." },
   { sel: "#dResults .tabs", demo: true, title: "Escolhe a categoria", text: "Os alimentos estão organizados por separadores: Pratos, Pão, Queijo e lácteos, Carne e fiambre, Arroz e massa, Fruta e outros. Desliza para o lado para veres todos. «Recentes» mostra o que comes mais vezes." },
   { sel: "#dResults .grid", demo: true, title: "Toca no que está no prato", text: "Toca num alimento para o pôr no prato: fica com o contorno verde. Toca outra vez para o tirar. Cada alimento entra com uma porção normal, que podes acertar a seguir." },
-  { sel: "#dSearch", demo: true, title: "Procura pelo nome", text: "Escreve parte do nome, por exemplo «entrecosto» ou «arroz feijão». A lista tem mais de 1500 alimentos da tabela oficial portuguesa (INSA). Para produtos de supermercado, toca em «Procurar nos produtos de marca» (precisa de internet). Se mesmo assim não existir, toca em «+ Criar» e escreve as calorias." },
+  { sel: "#dSearch", demo: true, title: "Procura pelo nome", text: "Escreve parte do nome, por exemplo «entrecosto» ou «arroz feijão». A lista tem mais de 1500 alimentos da tabela oficial portuguesa (INSA). Por baixo aparecem os produtos de supermercado (Pingo Doce, Continente, Mercadona, Lidl…), que podes filtrar por loja. Se mesmo assim não existir, toca em «+ Criar» e escreve as calorias." },
   { sel: "#draft .items", demo: true, title: "Acerta as quantidades", text: "Aqui ficam os alimentos do prato. Se mudares os gramas, as calorias atualizam-se sozinhas. Também podes escrever as calorias diretamente. O «×» tira o alimento." },
   { sel: "#dMeal", demo: true, title: "Que refeição é", text: "A app escolhe a refeição pela hora (pequeno-almoço, almoço, lanche, jantar ou snack), mas podes tocar noutra. Por baixo vês as calorias, os hidratos, a proteína, a gordura e a pontuação de saúde do prato." },
   { sel: "#draft .keep", demo: true, title: "Guarda os teus pratos", text: "Se comes isto muitas vezes, marca esta opção. O prato fica em «Os meus pratos» e da próxima vez adicionas tudo com um só toque." },
