@@ -214,16 +214,30 @@ select, .field { border: 1px solid var(--line); background: var(--paper); border
 .scanx .flash.go { animation: flash .35s ease-out; }
 @keyframes flash { 0% { opacity: .85; } 100% { opacity: 0; } }
 .scanx .msg { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; text-align: center; padding: 24px; font-size: 15px; }
-/* calories burned today (watch / step counter) */
-.burn { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
-.burn-btn { width: 100%; display: flex; align-items: center; gap: 10px; border: 1px dashed var(--line); background: var(--paper); color: var(--ink); border-radius: 14px; padding: 10px 12px; text-align: left; }
-.burn-btn .em { font-size: 20px; }
-.burn-btn span { flex: 1; display: flex; flex-direction: column; font-size: 14px; font-weight: 700; }
-.burn-btn small { font-weight: 500; color: var(--muted); font-size: 12px; }
-.burn-btn.on { border-style: solid; border-color: #E9A93A; background: color-mix(in srgb, #F2B705 12%, var(--paper)); }
-.burn-ed { display: flex; flex-direction: column; gap: 8px; }
-.burn-ed .row { display: flex; gap: 8px; }
-.burn-ed input { flex: 1; min-width: 0; }
+/* calories burned today: one full-width row under the ring and the bars */
+.burn { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 14px; min-width: 0; }
+.burn-row { width: 100%; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; border: 1px dashed var(--line); background: var(--paper); color: var(--ink); border-radius: 16px; padding: 10px 12px; text-align: left; }
+.burn-row.on { border-style: solid; border-color: color-mix(in srgb, #E9A93A 70%, var(--line)); background: color-mix(in srgb, #F2B705 10%, var(--paper)); }
+.burn-ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: color-mix(in srgb, #F2B705 18%, var(--card)); }
+.burn-tx { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.burn-tx b { font-size: 15px; font-weight: 800; line-height: 1.25; }
+.burn-tx small { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.burn-tx small em { font-style: normal; color: var(--ink); font-weight: 700; }
+.burn-go { border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 700; background: var(--ink); color: var(--card); white-space: nowrap; }
+.burn-row.on .burn-go { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.burn-ed { display: flex; flex-direction: column; gap: 10px; }
+.burn-ed label { font-size: 14px; font-weight: 700; }
+.burn-ed label small { display: block; font-weight: 500; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.burn-in { position: relative; }
+.burn-in input { width: 100%; padding-right: 48px; font-size: 20px; font-weight: 700; }
+.burn-in span { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
+.burn-quick { display: flex; gap: 6px; flex-wrap: wrap; }
+.burn-quick button { flex: 1 1 0; min-width: 60px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 7px 0; font-size: 13px; font-weight: 600; }
+.burn-prev { border-radius: 12px; background: var(--soft); padding: 10px 12px; font-size: 13.5px; line-height: 1.4; }
+.burn-prev b { font-family: var(--f-num); }
+.burn-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.burn-acts.three { grid-template-columns: 1fr 1fr 1.3fr; }
+.burn-acts .btn { padding: 12px 8px; }
 /* dishes in settings: add to a meal of the open day */
 .dish-row { flex-wrap: wrap; }
 .dish-row .acts { display: flex; gap: 6px; }
@@ -2831,7 +2845,8 @@ function burnGoal(k) {
 const BURN_MAX = 800;
 const burnAssumed = () => (profileDone() && P.act > 1.15 ? Math.round(calcGoals(P).bmr * (P.act - 1.15)) : 0);
 const burnCredit = (b) => Math.min(BURN_MAX, Math.round(Math.max(0, b - burnAssumed()) * 0.5 / 10) * 10);
-const dayGoal = (k) => burnGoal(k) || S.goal + (isTrainDay(k) ? trainKcal(P) : 0);
+// with calories burned, the higher of the two: the training extra or the burned calories (never lower)
+const dayGoal = (k) => Math.max(S.goal + (isTrainDay(k) ? trainKcal(P) : 0), burnGoal(k));
 // protein by body weight (more when losing fat, to keep muscle), fat 25 %, carbs the rest
 const GKG = { lose: 2.0, keep: 1.6, gain: 1.8 };
 // Days with more calories (training, calories burned): the usual split for the usual goal, and the extra
@@ -3139,23 +3154,37 @@ $("#wSave").onclick = () => {
 let burnEdit = false;
 function renderBurn() {
   const box = $("#burnBox"); if (!box) return;
-  const b = burnedOf(S.day), today = S.day === todayKey();
+  const b = burnedOf(S.day), today = S.day === todayKey(), base = S.goal + (isTrainDay(S.day) ? trainKcal(P) : 0);
   if (burnEdit) {
-    box.innerHTML = `<div class="burn-ed"><label for="burnIn" style="font-size:13px;font-weight:600">Calorias que gastaste ${today ? "hoje" : "neste dia"} (vê no relógio ou na app de passos)</label>
-      <div class="row"><input class="field num" id="burnIn" type="number" inputmode="numeric" min="0" max="8000" step="10" placeholder="ex.: 1000" value="${b || ""}"><button class="btn btn-accent" id="burnOk" type="button">Recalcular</button></div>
-      <div class="row">${b ? '<button class="btn btn-plain" id="burnClr" type="button">Tirar</button>' : ""}<button class="btn btn-plain" id="burnNo" type="button">Cancelar</button></div>
-      <p class="note" style="margin:0">A tua meta já conta a atividade normal do teu dia${burnAssumed() ? ` (cerca de ${burnAssumed()} kcal)` : ""}. A app desconta essa parte e soma metade do resto, no máximo +800 kcal, porque os relógios e as apps de passos costumam exagerar. Assim manténs o défice. Substitui o extra de «Dia de treino».</p></div>`;
-    const inp = $("#burnIn"); setTimeout(() => inp.focus(), 30);
-    const save = (v) => { const o = lsGet("ddp.burned", {}); if (v > 0) o[S.day] = Math.round(v); else delete o[S.day]; lsSet("ddp.burned", o); burnEdit = false; render(); renderMissions?.(); if (v > 0) toast(`Meta do dia: ${dayGoal(S.day)} kcal`); };
-    $("#burnOk").onclick = () => { const v = num(inp.value); if (!(v > 0) || v > 8000) { toast("Escreve as calorias gastas (ex.: 1000)."); return; } save(v); };
+    const assumed = burnAssumed();
+    box.innerHTML = `<div class="burn-ed">
+      <label for="burnIn">Calorias que gastaste ${today ? "hoje" : "neste dia"}<small>Vê o número no relógio ou na app de passos do telemóvel.</small></label>
+      <div class="burn-in"><input class="field num" id="burnIn" type="number" inputmode="numeric" min="0" max="8000" step="10" placeholder="ex.: 1000" value="${b || ""}" aria-describedby="burnPrev"><span>kcal</span></div>
+      <div class="burn-quick" role="group" aria-label="Valores rápidos">${[300, 500, 800, 1000].map((v) => `<button type="button" data-bq="${v}">${v}</button>`).join("")}</div>
+      <div class="burn-prev" id="burnPrev" aria-live="polite"></div>
+      <div class="burn-acts ${b ? "three" : ""}"><button class="btn btn-plain" id="burnNo" type="button">Cancelar</button>${b ? '<button class="btn btn-plain" id="burnClr" type="button">Tirar</button>' : ""}<button class="btn btn-accent" id="burnOk" type="button">Guardar</button></div>
+      <p class="note" style="margin:0">A tua meta já conta a atividade normal do teu dia${assumed ? ` (cerca de ${assumed} kcal)` : ""}. A app desconta essa parte e soma metade do resto, no máximo +${BURN_MAX} kcal, porque os relógios e as apps de passos costumam exagerar. Assim manténs o défice.</p></div>`;
+    const inp = $("#burnIn");
+    const preview = () => {
+      const v = num(inp.value), c = v > 0 && v <= 8000 ? Math.max(0, S.goal + burnCredit(v) - base) : 0;
+      $("#burnPrev").innerHTML = !(v > 0) ? `Meta do dia: <b>${base} kcal</b>`
+        : v > 8000 ? "Escreve um valor até 8000 kcal."
+        : c ? `Meta do dia: <b>${base} → ${base + c} kcal</b> (+${c})` : `Meta do dia fica em <b>${base} kcal</b>: essa atividade já está contada${base > S.goal ? " (com o treino)" : ""}.`;
+    };
+    inp.oninput = preview; preview();
+    setTimeout(() => inp.focus(), 30);
+    box.querySelectorAll("[data-bq]").forEach((q) => q.onclick = () => { inp.value = q.dataset.bq; preview(); });
+    const save = (v) => { const o = lsGet("ddp.burned", {}); if (v > 0) o[S.day] = Math.round(v); else delete o[S.day]; lsSet("ddp.burned", o); burnEdit = false; render(); renderMissions?.(); toast(v > 0 ? `Meta do dia: ${dayGoal(S.day)} kcal` : "Calorias gastas tiradas"); };
+    $("#burnOk").onclick = () => { const v = num(inp.value); if (!(v > 0) || v > 8000) { toast("Escreve as calorias gastas (ex.: 1000)."); inp.focus(); return; } save(v); };
     inp.onkeydown = (e) => { if (e.key === "Enter") $("#burnOk").click(); };
     $("#burnClr") && ($("#burnClr").onclick = () => save(0));
     $("#burnNo").onclick = () => { burnEdit = false; renderBurn(); };
     return;
   }
+  const c = b ? Math.max(0, dayGoal(S.day) - base) : 0;
   box.innerHTML = b
-    ? `<button class="burn-btn on" id="burnBtn" type="button"><span class="em" aria-hidden="true">🔥</span><span>Gastaste ${b} kcal<small>${burnCredit(b) ? `+${burnCredit(b)} kcal na meta` : "Já estava contado na tua meta"} · meta do dia: ${dayGoal(S.day)} kcal · toca para mudar</small></span></button>`
-    : `<button class="burn-btn" id="burnBtn" type="button"><span class="em" aria-hidden="true">🔥</span><span>Calorias gastas ${today ? "hoje" : "neste dia"}<small>Escreve o que o relógio marca e a meta ajusta-se</small></span><span style="flex:0;font-size:20px">+</span></button>`;
+    ? `<button class="burn-row on" id="burnBtn" type="button"><span class="burn-ic" aria-hidden="true">🔥</span><span class="burn-tx"><b>Gastaste ${b} kcal</b><small>${c ? `+${c} kcal na meta · meta do dia <em>${dayGoal(S.day)} kcal</em>` : `Já estava contado na tua meta · <em>${dayGoal(S.day)} kcal</em>`}</small></span><span class="burn-go">Mudar</span></button>`
+    : `<button class="burn-row" id="burnBtn" type="button"><span class="burn-ic" aria-hidden="true">🔥</span><span class="burn-tx"><b>Calorias gastas ${today ? "hoje" : "neste dia"}</b><small>Do relógio ou da app de passos</small></span><span class="burn-go">+ Juntar</span></button>`;
   $("#burnBtn").onclick = () => { burnEdit = true; renderBurn(); };
 }
 $("#trainBtn").onclick = () => {
@@ -3545,9 +3574,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Calorias gastas corrigido: a tua meta já conta a atividade normal do teu dia. A app desconta essa parte e soma metade do resto (no máximo +800 kcal), porque os relógios e as apps de passos costumam exagerar. Assim manténs o défice e os hidratos não disparam.",
-  "Estilo de alimentação: em «Os teus dados» escolhes Equilibrado, Menos hidratos ou Baixo em hidratos.",
-  "«Não sei o que comer» já não enche o prato de arroz, massa ou batata."
+  "Campo «Calorias gastas» arrumado: ocupa a largura toda do cartão, tem valores rápidos (300, 500, 800, 1000) e mostra a meta nova antes de guardares.",
+  "As calorias gastas nunca baixam a meta: num dia de treino fica o maior dos dois valores.",
+  "Calorias gastas: a app desconta a atividade que a meta já conta e soma metade do resto (no máximo +800 kcal), para manteres o défice."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
