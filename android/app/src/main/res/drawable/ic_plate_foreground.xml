@@ -1,13 +1,12 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <!-- plate -->
-    <path android:fillColor="#F2B705" android:pathData="M54,54m-22,0a22,22 0,1 1,44 0a22,22 0,1 1,-44 0"/>
-    <path android:fillColor="#F5F7F2" android:pathData="M54,54m-15,0a15,15 0,1 1,30 0a15,15 0,1 1,-30 0"/>
-    <!-- fork (left) -->
-    <path android:fillColor="#F5F7F2" android:pathData="M23,33h1.6v9h1.6v-9h1.6v9h1.6v-9h1.6v11c0,2 -1.2,3.2 -2.8,3.6v27.4h-3.2v-27.4c-1.6,-0.4 -2.8,-1.6 -2.8,-3.6z"/>
-    <!-- knife (right) -->
-    <path android:fillColor="#F5F7F2" android:pathData="M83,33c3,2 4.5,7 4.5,14v6h-2.2v22h-3.2v-42z"/>
-    <!-- small leaf on the plate -->
-    <path android:fillColor="#2E6A45" android:pathData="M47,60c0,-8 6,-13 14,-13c0,8 -6,13 -14,13z"/>
+    <!-- scan frame (camera viewfinder corners) -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="3.6" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M32,41v-5a4,4 0,0 1,4 -4h5M67,32h5a4,4 0,0 1,4 4v5M76,67v5a4,4 0,0 1,-4 4h-5M41,76h-5a4,4 0,0 1,-4 -4v-5"/>
+    <!-- lens -->
+    <path android:fillColor="#FFFFFF" android:pathData="M54,54m-16,0a16,16 0,1 1,32 0a16,16 0,1 1,-32 0"/>
+    <path android:fillColor="#F2B705" android:pathData="M54,54m-11.5,0a11.5,11.5 0,1 1,23 0a11.5,11.5 0,1 1,-23 0"/>
+    <!-- leaf -->
+    <path android:fillColor="#0F3D2E" android:pathData="M48.5,59.5c0,-7 5,-11.5 11.5,-11.5c0,7 -5,11.5 -11.5,11.5z"/>
 </vector>

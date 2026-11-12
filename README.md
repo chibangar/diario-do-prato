@@ -1,4 +1,4 @@
-# Diário do Prato
+# NutriLente
 
 App Android para registar o que comes: tiras uma foto ao prato e tocas nos alimentos
 (pão branco ou integral, queijo, fiambre, arroz, massa…). Mostra as calorias do dia,
@@ -8,7 +8,7 @@ os registos ficam só no telemóvel.
 ## Instalar
 
 1. Abre a página de [Releases](../../releases/latest) no telemóvel.
-2. Descarrega o ficheiro `DiarioDoPrato-x.y.z.apk` e abre-o.
+2. Descarrega o ficheiro `NutriLente-x.y.z.apk` e abre-o.
 3. Se o Android pedir, permite instalar apps desta origem.
 
 ## Atualizações
