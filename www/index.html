@@ -3,7 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
+<script>
+// theme before first paint: "auto" follows the phone, "light" / "dark" are the user's choice
+try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("ddp.theme") || '"auto"'); } catch (e) { document.documentElement.dataset.theme = "auto"; }
+</script>
 <title>Diário do Prato</title>
 <style>
 /* Layout: one mobile column; a nutrition-facts label anchors the day, meals stack below like a diary. */
@@ -15,6 +19,21 @@
   --f-body: Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
   --f-num: "Roboto Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
+:root[data-theme="dark"] {
+  --paper: #0F1311; --card: #1A201C; --ink: #EDF1EC; --muted: #9AA59D; --line: #2A332D;
+  --accent: #6FBF8E; --accent-ink: #0E1A12; --hi: #F5C842; --prot: #E8836E; --carb: #EDB54E;
+  --fat: #62A8DC; --danger: #F07A6E; --soft: #232B26; --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] {
+  --paper: #0F1311; --card: #1A201C; --ink: #EDF1EC; --muted: #9AA59D; --line: #2A332D;
+  --accent: #6FBF8E; --accent-ink: #0E1A12; --hi: #F5C842; --prot: #E8836E; --carb: #EDB54E;
+  --fat: #62A8DC; --danger: #F07A6E; --soft: #232B26; --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+  }
+}
+:root[data-theme="light"] { color-scheme: light; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html { background: var(--paper); }
 body {
@@ -400,6 +419,14 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
 .plan-meal .btn { align-self: flex-start; padding: 8px 14px; font-size: 14px; }
 .plan-tot { font-family: var(--f-num); font-size: 13.5px; background: var(--soft); border-radius: 12px; padding: 10px 12px; margin-top: 12px; }
 .plan-tips { margin: 10px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--muted); }
+.theme-seg { display: flex; gap: 6px; margin-top: 12px; }
+.theme-seg button { flex: 1; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 10px; padding: 10px 6px; font-weight: 600; }
+.theme-seg button[aria-checked="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.news h2 { font-size: 21px; font-weight: 800; }
+.news ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
+.news .ver { color: var(--muted); font-size: 13px; margin: 0; }
+.confirm-row { display: flex; gap: 8px; margin-top: 12px; }
+.confirm-row .btn { flex: 1; border: 1.5px dashed var(--line); background: transparent; color: var(--ink); }
 .key-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .key-row input { flex: 1 1 200px; min-width: 0; }
 </style>
@@ -454,6 +481,7 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
     <div class="help-actions">
       <button class="btn btn-accent" id="helpTour">Ver tutorial</button>
       <button class="btn btn-plain" id="helpWelcome">Ver boas-vindas</button>
+      <button class="btn btn-plain" id="helpNews">Ver novidades</button>
     </div>
   </details>
 
@@ -490,6 +518,16 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
     </div>
     <p class="note">Os registos ficam guardados só neste telemóvel. Desinstalar a app apaga-os.</p>
     <p class="note">Valores nutricionais: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P. - INSA. v 7.1 - 2026 (portfir.insa.min-saude.pt). Produtos de marca: Open Food Facts (openfoodfacts.org), base de dados aberta (ODbL).</p>
+  </details>
+
+  <details class="settings" id="themeDetails">
+    <summary>Aparência</summary>
+    <div class="theme-seg" id="themeSeg" role="radiogroup" aria-label="Tema da app">
+      <button type="button" role="radio" data-theme-set="auto">Automático</button>
+      <button type="button" role="radio" data-theme-set="light">Claro</button>
+      <button type="button" role="radio" data-theme-set="dark">Escuro</button>
+    </div>
+    <p class="note">«Automático» segue o modo claro ou escuro do telemóvel.</p>
   </details>
 
   <details class="settings" id="planDetails">
@@ -629,6 +667,15 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
       <button class="btn btn-plain" id="calToday" type="button">Ir para hoje</button>
       <button class="btn btn-accent" id="calClose" type="button">Fechar</button>
     </div>
+  </div>
+</div>
+
+<div class="cal-back" id="newsSheet" role="dialog" aria-modal="true" aria-labelledby="newsTitle" hidden>
+  <div class="cal news">
+    <h2 id="newsTitle">Novidades desta versão</h2>
+    <p class="ver" id="newsVer"></p>
+    <ul id="newsList"></ul>
+    <div class="cal-foot"><button class="btn btn-accent" id="newsOk" type="button">Entendi</button></div>
   </div>
 </div>
 
@@ -1596,7 +1643,8 @@ function renderDraft() {
       ${score ? `<div class="health"><span class="ic" aria-hidden="true">💚</span><div class="h"><div class="h-top"><span style="font-family:var(--f-body)">Pontuação de saúde</span><span>${score}/10</span></div><div class="h-bar"><i style="width:${score * 10}%"></i></div><small>${d.ai?.status === "cloud" && d.ai.score ? "Avaliação da IA" : "Estimativa pela proteína, gordura e legumes do prato"}</small></div></div>` : ""}
 
       ${d.items.length ? `<div>
-        <h3 class="list-title" style="margin-bottom:8px">Alimentos no prato</h3>
+        <h3 class="list-title" style="margin-bottom:${d.preview ? 2 : 8}px">${d.preview ? "Confirma os alimentos" : "Alimentos no prato"}</h3>
+        ${d.preview ? `<p class="note" style="margin:0 0 8px">Vê se está tudo certo. Tira o que estiver errado no «×» e acerta os gramas.</p>` : ""}
         <div class="items-head"><span>Alimento</span><span>Peso</span><span>Energia</span><span></span></div>
         <div class="items">${d.items.map((it, i) => `
           <div class="item" data-i="${i}">
@@ -1605,9 +1653,10 @@ function renderDraft() {
             <div class="unit"><input type="number" inputmode="numeric" min="0" value="${r0(it.g)}" data-k="g" aria-label="Gramas de ${esc(it.name)}"><span>g</span></div>
             <div class="unit"><input type="number" inputmode="numeric" min="0" value="${r0(it.kcal)}" data-k="kcal" aria-label="Calorias de ${esc(it.name)}"><span>kcal</span></div>
             <button class="x" data-rm="${i}" aria-label="Remover ${esc(it.name)}">×</button>
-          </div>`).join("")}</div></div>` : ""}
+          </div>`).join("")}</div>
+        <div class="confirm-row"><button class="btn" id="dMore2" type="button">+ Adicionar mais alimentos</button></div></div>` : ""}
 
-      <div class="picker">
+      <div class="picker" id="dPicker">
         <h3 class="list-title">${d.items.length ? "Acrescentar alimentos" : "Toca no que vais comer"}</h3>
         <div class="search"><input class="field" id="dSearch" type="search" placeholder="Procurar alimento…" value="${esc(d.q)}" aria-label="Procurar alimento"></div>
         <div id="dResults" style="display:flex;flex-direction:column;gap:10px"></div>
@@ -1616,13 +1665,14 @@ function renderDraft() {
     </div>
     <div class="sheet-actions draft-actions">
       <button class="btn btn-plain" id="dCancel">Cancelar</button>
-      <button class="btn btn-accent" id="dSave" ${d.items.length ? "" : "disabled"}>Guardar · ${r0(tot)} kcal</button>
+      <button class="btn btn-accent" id="dSave" ${d.items.length ? "" : "disabled"}>${d.preview ? "Confirmar e guardar" : "Guardar"} · ${r0(tot)} kcal</button>
     </div>`;
   const q = (s) => el.querySelector(s);
   q("#dTitle").oninput = (e) => { d.title = e.target.value; };
   el.querySelectorAll("[data-meal]").forEach((b) => b.onclick = () => { d.meal = b.dataset.meal; el.querySelectorAll("[data-meal]").forEach((x) => x.setAttribute("aria-checked", x === b)); });
   const segOn = q("[data-meal][aria-checked=\"true\"]"); if (segOn) q("#dMeal").scrollLeft = Math.max(0, segOn.offsetLeft - 24);
   q("#dClose").onclick = () => { S.draft = null; renderDraft(); };
+  q("#dMore2") && (q("#dMore2").onclick = () => { q("#dPicker").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => q("#dSearch")?.focus({ preventScroll: true }), 350); });
   q("[data-clipdl]") && (q("[data-clipdl]").onclick = () => downloadClip(d));
   q("#dCam") && (q("#dCam").onclick = () => { warmAI(); takePhoto("CAMERA"); });
   q("#dGal") && (q("#dGal").onclick = () => { warmAI(); takePhoto("PHOTOS"); });
@@ -2072,6 +2122,31 @@ function hideWelcome() { stopVoice(); W.el.hidden = true; document.body.style.ov
 $("#wTour").onclick = () => { hideWelcome(); needProfile(() => startTour()); };
 $("#wSkip").onclick = () => { hideWelcome(); needProfile(() => toast("O tutorial está sempre em Ajuda, no fundo da app.")); };
 $("#helpWelcome").onclick = () => showWelcome();
+// ---------- what's new (shown once after each update) ----------
+// Rewrite this list in every release: it is what the person reads right after updating.
+const NEWS = [
+  "Modo escuro: em «Aparência», escolhe Automático, Claro ou Escuro.",
+  "Depois da foto, a app pede para confirmares os alimentos. Podes tirar os errados, acertar os gramas e tocar em «Adicionar mais alimentos».",
+  "Novidades: sempre que a app for atualizada, este aviso mostra o que mudou.",
+  "IA Gemini (opcional): com uma chave gratuita da Google, a app identifica cada alimento da foto e cria um plano de dieta."
+];
+function showNews() {
+  $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
+  $("#newsList").innerHTML = NEWS.map((t) => `<li>${esc(t)}</li>`).join("");
+  $("#newsSheet").hidden = false; $("#newsOk").focus();
+}
+$("#newsOk").onclick = () => { $("#newsSheet").hidden = true; lsSet("ddp.newsBuild", APP_BUILD); };
+$("#helpNews").onclick = showNews;
+// ---------- theme ----------
+function renderTheme() {
+  const t = document.documentElement.dataset.theme || "auto";
+  document.querySelectorAll("[data-theme-set]").forEach((b) => b.setAttribute("aria-checked", b.dataset.themeSet === t));
+}
+$("#themeSeg").onclick = (e) => {
+  const b = e.target.closest("[data-theme-set]"); if (!b) return;
+  document.documentElement.dataset.theme = b.dataset.themeSet; lsSet("ddp.theme", b.dataset.themeSet); renderTheme();
+};
+renderTheme();
 $("#helpTour").onclick = () => startTour();
 
 // ---------- tutorial ----------
@@ -2280,8 +2355,8 @@ window.Capacitor?.Plugins?.App?.addListener?.("resume", () => checkUpdate(false)
 
 render();
 checkUpdate(false);
-if (!lsGet("ddp.seenWelcomeVoice", false)) showWelcome();
-else needProfile();
+if (!lsGet("ddp.seenWelcomeVoice", false)) { lsSet("ddp.newsBuild", APP_BUILD); showWelcome(); }
+else { needProfile(); if (lsGet("ddp.newsBuild", 0) !== APP_BUILD) showNews(); }
 })();
 </script>
 <script type="module">
