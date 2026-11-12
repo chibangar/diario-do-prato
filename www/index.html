@@ -451,6 +451,23 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
 .code-row { display: flex; gap: 8px; padding: 0 16px 16px; max-width: 560px; width: 100%; align-self: center; }
 .code-row input { flex: 1; min-width: 0; background: var(--card); }
 .code-row .btn { background: var(--card); box-shadow: var(--shadow); }
+.day-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.day-chips label { flex: 1 1 0; min-width: 40px; position: relative; }
+.day-chips input { position: absolute; opacity: 0; pointer-events: none; }
+.day-chips span { display: block; text-align: center; border: 1px solid var(--line); background: var(--paper); border-radius: 10px; padding: 10px 0; font-weight: 600; font-size: 13.5px; cursor: pointer; }
+.day-chips input:checked + span { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.train-btn { border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.train-btn[aria-pressed="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.sum-head .r { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.wcard .w-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.wcard .w-top h2 { font-size: 19px; font-weight: 800; }
+.wcard .w-big { font-family: var(--f-num); font-size: 30px; font-weight: 600; }
+.wcard .w-diff { font-size: 13px; color: var(--muted); }
+.wcard svg { width: 100%; height: auto; display: block; margin: 8px 0; }
+.wcard svg text { fill: var(--muted); font-size: 10px; font-family: var(--f-body); }
+.w-form { display: flex; gap: 8px; margin-top: 4px; }
+.w-form input { flex: 1; min-width: 0; }
+.prof-sum { background: var(--soft); border-radius: 12px; padding: 10px 12px; font-size: 14px; line-height: 1.5; }
 .key-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .key-row input { flex: 1 1 200px; min-width: 0; }
 </style>
@@ -486,7 +503,7 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
   </section>
 
   <section class="card summary" id="summary" aria-labelledby="labelTitle">
-    <div class="sum-head"><h2 id="labelTitle">Calorias</h2><small id="labelDate"></small></div>
+    <div class="sum-head"><h2 id="labelTitle">Calorias</h2><div class="r"><small id="labelDate"></small><button class="train-btn" id="trainBtn" type="button" aria-pressed="false">Dia de descanso</button></div></div>
     <div class="ring" id="ring"></div>
     <div class="mbars" id="macros"></div>
     <div class="sum-foot"><span>Meta <button class="goal-link" id="kcalGoal" type="button"></button></span><span>Comido <b id="kcalTotal">0</b></span><span id="kcalLeft"></span></div>
@@ -495,6 +512,14 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
   <section>
     <div class="sec-head"><h2>Refeições</h2><span class="muted" id="mealCount"></span></div>
     <div class="meals" id="meals"></div>
+  </section>
+
+  <section class="card wcard" id="weightCard">
+    <div class="w-top"><h2>Peso</h2><span class="w-diff" id="wDiff"></span></div>
+    <div class="w-big" id="wNow">—</div>
+    <div id="wChart"></div>
+    <div class="w-form"><input type="number" id="wIn" class="field num" min="30" max="300" step="0.1" inputmode="decimal" placeholder="Peso de hoje (kg)" aria-label="Peso de hoje em kg"><button class="btn btn-accent" id="wSave" type="button">Registar</button></div>
+    <p class="note" style="margin:8px 0 0">Pesa-te de manhã, em jejum, uma vez por semana. A meta ajusta-se ao teu peso.</p>
   </section>
 
   <section class="week">
@@ -526,27 +551,9 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
       <button class="btn btn-plain" id="goalSave">Guardar meta</button>
     </div>
     <div class="calc" id="calc">
-      <h3>Calcular a minha meta</h3>
-      <p class="note">Preenche os teus dados. A app calcula o metabolismo basal (o que o corpo gasta em repouso), o gasto do dia com a tua atividade e quantas calorias deves comer para perder peso, manter ou ganhar massa.</p>
-      <div class="seg" role="radiogroup" aria-label="Sexo">
-        <label><input type="radio" name="cSex" value="m"><span>Homem</span></label>
-        <label><input type="radio" name="cSex" value="f"><span>Mulher</span></label>
-      </div>
-      <div class="calc-grid">
-        <label class="f">Idade<input type="number" id="cAge" class="field num" min="14" max="100" inputmode="numeric" placeholder="anos"></label>
-        <label class="f">Peso (kg)<input type="number" id="cWeight" class="field num" min="30" max="300" step="0.1" inputmode="decimal" placeholder="kg"></label>
-        <label class="f">Altura (cm)<input type="number" id="cHeight" class="field num" min="120" max="230" inputmode="numeric" placeholder="cm"></label>
-      </div>
-      <label class="f">Atividade física
-        <select id="cAct" class="field">
-          <option value="1.2">Sedentária: pouco ou nenhum exercício</option>
-          <option value="1.375">Ligeira: exercício 1 a 3 dias por semana</option>
-          <option value="1.55" selected>Moderada: exercício 3 a 5 dias por semana</option>
-          <option value="1.725">Intensa: exercício 6 a 7 dias por semana</option>
-          <option value="1.9">Muito intensa: treino 2 vezes por dia ou trabalho físico</option>
-        </select>
-      </label>
-      <button class="btn btn-accent" id="cCalc" type="button">Calcular</button>
+      <h3>Os meus dados</h3>
+      <div class="prof-sum" id="profSum"></div>
+      <button class="btn btn-accent" id="cEdit" type="button">Alterar os meus dados</button>
       <div id="cOut" aria-live="polite"></div>
     </div>
     <p class="note">Os registos ficam guardados só neste telemóvel. Desinstalar a app apaga-os.</p>
@@ -627,7 +634,7 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
   <div class="setup-inner">
     <div>
       <h1 id="setupTitle">Os teus dados</h1>
-      <p class="lead">Com estes dados a app calcula o teu metabolismo basal e quantas calorias deves comer por dia. Ficam guardados só neste telemóvel e podes mudá-los em «Meta diária».</p>
+      <p class="lead">Com estes dados a app calcula o teu metabolismo basal, quantas calorias deves comer nos dias de treino e de descanso, e a proteína para o teu peso. Podes mudá-los em «Meta diária».</p>
     </div>
     <div class="calc">
       <div class="q"><span>Sexo</span>
@@ -641,16 +648,40 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
         <label class="f">Peso (kg)<input type="number" id="sWeight" class="field num" min="30" max="300" step="0.1" inputmode="decimal" placeholder="kg"></label>
         <label class="f">Altura (cm)<input type="number" id="sHeight" class="field num" min="120" max="230" inputmode="numeric" placeholder="cm"></label>
       </div>
-      <label class="f">Atividade física
+      <label class="f">Atividade no dia a dia (sem contar o treino)
         <select id="sAct" class="field">
           <option value="">Escolhe…</option>
-          <option value="1.2">Sedentária: pouco ou nenhum exercício</option>
-          <option value="1.375">Ligeira: exercício 1 a 3 dias por semana</option>
-          <option value="1.55">Moderada: exercício 3 a 5 dias por semana</option>
-          <option value="1.725">Intensa: exercício 6 a 7 dias por semana</option>
-          <option value="1.9">Muito intensa: treino 2 vezes por dia ou trabalho físico</option>
+          <option value="1.2">Sentado quase todo o dia (escritório, estudo)</option>
+          <option value="1.375">De pé ou a andar parte do dia</option>
+          <option value="1.55">Trabalho físico (armazém, restauração, obras)</option>
+          <option value="1.725">Trabalho físico pesado o dia todo</option>
         </select>
       </label>
+      <label class="f">Tipo de treino
+        <select id="sTrain" class="field">
+          <option value="">Escolhe…</option>
+          <option value="none">Não treino</option>
+          <option value="forca">Musculação / força</option>
+          <option value="cardio">Corrida / cardio</option>
+          <option value="misto">CrossFit / treino misto</option>
+          <option value="desporto">Desporto (futebol, rugby, ténis…)</option>
+          <option value="caminhada">Caminhada / bicicleta leve</option>
+        </select>
+      </label>
+      <div class="q" id="sTrainMore"><span>Em que dias treinas?</span>
+        <div class="day-chips" id="sDays">
+          <label><input type="checkbox" value="1"><span>Seg</span></label><label><input type="checkbox" value="2"><span>Ter</span></label>
+          <label><input type="checkbox" value="3"><span>Qua</span></label><label><input type="checkbox" value="4"><span>Qui</span></label>
+          <label><input type="checkbox" value="5"><span>Sex</span></label><label><input type="checkbox" value="6"><span>Sáb</span></label>
+          <label><input type="checkbox" value="0"><span>Dom</span></label>
+        </div>
+        <label class="f" style="margin-top:6px">Duração de cada treino
+          <select id="sDur" class="field">
+            <option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60" selected>1 hora</option>
+            <option value="75">1 hora e 15</option><option value="90">1 hora e meia</option><option value="120">2 horas</option>
+          </select>
+        </label>
+      </div>
       <div class="q"><span>O teu objetivo</span>
         <div class="seg" role="radiogroup" aria-label="Objetivo">
           <label><input type="radio" name="sGoal" value="lose"><span>Perder peso</span></label>
@@ -660,6 +691,7 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
       </div>
       <p class="err" id="sErr" role="alert" hidden></p>
       <button class="btn btn-primary" id="sGo" type="button">Calcular a minha meta</button>
+      <button class="btn btn-plain" id="sCancel" type="button" hidden>Cancelar</button>
     </div>
   </div>
 </div>
@@ -1063,7 +1095,7 @@ const sum = (items, k) => items.reduce((a, it) => a + num(it[k]), 0);
 const norm = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const guessMeal = () => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h < 11 ? MEALS[0] : h < 15.5 ? MEALS[1] : h < 18.5 ? MEALS[2] : h < 22.5 ? MEALS[3] : MEALS[4]; };
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
-const SYNC_KEYS = new Set(["ddp.meals", "ddp.custom", "ddp.dishes", "ddp.goal", "ddp.profile", "ddp.plan"]);
+const SYNC_KEYS = new Set(["ddp.meals", "ddp.custom", "ddp.dishes", "ddp.goal", "ddp.profile", "ddp.plan", "ddp.weights", "ddp.trainDays"]);
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); if (SYNC_KEYS.has(k)) setTimeout(() => cloudPush(), 0); return true; } catch { return false; } };
 function fromFood(f, grams) {
   const g = grams ?? f.g, k = g / 100;
@@ -1964,14 +1996,17 @@ function render() {
 
   const meals = S.meals.filter((m) => m.day === S.day).sort((a, b) => a.ts - b.ts);
   const items = meals.flatMap((m) => m.items || []);
-  const kcal = sum(items, "kcal"), goal = S.goal;
+  const kcal = sum(items, "kcal"), goal = dayGoal(S.day), training = isTrainDay(S.day);
+  const tb = $("#trainBtn");
+  tb.hidden = !P.train || P.train === "none";
+  tb.setAttribute("aria-pressed", training);
+  tb.textContent = training ? `🏋️ Dia de treino +${trainKcal(P)} kcal` : "Dia de descanso";
   $("#kcalTotal").textContent = `${r0(kcal)} kcal`;
   $("#kcalLeft").textContent = kcal <= goal ? `Faltam ${r0(goal - kcal)} kcal` : `${r0(kcal - goal)} kcal acima`;
   $("#kcalGoal").textContent = `${goal} kcal`;
   if (!CAL.el.hidden) renderCal();
   // macro split by objective: losing weight keeps protein higher
-  const split = { lose: [0.3, 0.4, 0.3], gain: [0.25, 0.5, 0.25] }[P.objective] || [0.2, 0.5, 0.3];
-  const targets = { p: goal * split[0] / 4, c: goal * split[1] / 4, f: goal * split[2] / 9 };
+  const targets = macroTargets(goal);
   const M = [["c", "Hidratos", "var(--carb)", 4], ["p", "Proteína", "var(--prot)", 4], ["f", "Gordura", "var(--fat)", 9]];
   $("#macros").innerHTML = M.map(([k, n, col]) => {
     const g = sum(items, k), pc = Math.min(100, g / targets[k] * 100);
@@ -2018,6 +2053,7 @@ function render() {
     };
   });
   renderWeek();
+  if (typeof renderWeight === "function") try { renderWeight(); } catch { /* first paint */ }
   renderDishes();
   if (document.activeElement !== $("#goalIn")) $("#goalIn").value = S.goal;
 }
@@ -2116,45 +2152,60 @@ CAL.el.addEventListener("click", (e) => { if (e.target === CAL.el) closeCal(); }
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !CAL.el.hidden) closeCal(); });
 // ---------- calorie calculator (Mifflin-St Jeor) ----------
 const P = lsGet("ddp.profile", {});
+const GOAL_NAMES = { lose: "perder peso", keep: "manter o peso", gain: "ganhar massa" };
 function fillProfile() {
-  if (P.sex) document.querySelector(`input[name="cSex"][value="${P.sex}"]`).checked = true;
-  if (P.age) $("#cAge").value = P.age;
-  if (P.weight) $("#cWeight").value = P.weight;
-  if (P.height) $("#cHeight").value = P.height;
-  if (P.act) $("#cAct").value = String(P.act);
+  const el = $("#profSum"); if (!el) return;
+  if (!P.sex) { el.textContent = "Ainda sem dados."; return; }
+  const days = (P.days || []).slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => WD[d]).join(", ");
+  el.innerHTML = `${P.sex === "m" ? "Homem" : "Mulher"}, ${P.age} anos, ${String(P.weight).replace(".", ",")} kg, ${P.height} cm<br>` +
+    (P.train && P.train !== "none" ? `Treino: ${esc(TRAIN_TYPES[P.train]?.[0] || "")}, ${P.dur} min${days ? " · " + days : ""}<br>` : "Sem treino<br>") +
+    `Objetivo: ${GOAL_NAMES[P.objective] || "—"}`;
 }
+// training: MET of each kind of session; the extra calories go only to the days with training
+const TRAIN_TYPES = { none: ["Não treino", 0], forca: ["Musculação / força", 5], cardio: ["Corrida / cardio", 8], misto: ["CrossFit / treino misto", 7], desporto: ["Desporto", 7.5], caminhada: ["Caminhada / bicicleta leve", 3.5] };
+const WD_FULL = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+function trainKcal(p) {
+  const met = TRAIN_TYPES[p.train]?.[1] || 0;
+  return met && p.weight && p.dur ? Math.round(((met - 1) * p.weight * (p.dur / 60)) / 10) * 10 : 0;
+}
+// base goal (rest day) comes from the daily-life activity only
 function calcGoals(p) {
   const bmr = 10 * p.weight + 6.25 * p.height - 5 * p.age + (p.sex === "m" ? 5 : -161);
   const tdee = bmr * p.act, r10 = (n) => Math.round(n / 10) * 10;
   const floor = p.sex === "m" ? 1500 : 1200;
-  return { bmr: r10(bmr), tdee: r10(tdee), lose: r10(Math.max(tdee - 500, bmr, floor)), keep: r10(tdee), gain: r10(tdee + 300) };
+  return { bmr: r10(bmr), tdee: r10(tdee), lose: r10(Math.max(tdee - 500, bmr, floor)), keep: r10(tdee), gain: r10(tdee + 300), train: trainKcal(p) };
+}
+const trainOverride = () => lsGet("ddp.trainDays", {});
+function isTrainDay(k) {
+  const o = trainOverride(); if (k in o) return !!o[k];
+  return !!(P.train && P.train !== "none" && (P.days || []).includes(dateOf(k).getDay()));
+}
+const dayGoal = (k) => S.goal + (isTrainDay(k) ? trainKcal(P) : 0);
+// protein by body weight (more when losing fat, to keep muscle), fat 25 %, carbs the rest
+const GKG = { lose: 2.0, keep: 1.6, gain: 1.8 };
+function macroTargets(goal) {
+  if (!P.weight) { const sp = { lose: [0.3, 0.4, 0.3], gain: [0.25, 0.5, 0.25] }[P.objective] || [0.2, 0.5, 0.3]; return { p: goal * sp[0] / 4, c: goal * sp[1] / 4, f: goal * sp[2] / 9 }; }
+  const p = P.weight * (GKG[P.objective] || 1.6), f = goal * 0.25 / 9;
+  return { p, f, c: Math.max(0, (goal - p * 4 - f * 9) / 4) };
 }
 function renderCalc() {
   const out = $("#cOut");
   if (!P.sex || !P.age || !P.weight || !P.height || !P.act) { out.innerHTML = ""; return; }
   const g = calcGoals(P), fmt = (n) => n.toLocaleString("pt-PT");
   const opt = (k, title, sub) => `<button type="button" class="goal-opt ${S.goal === g[k] ? "on" : ""}" data-goal="${g[k]}" data-kind="${k}"><b>${title}${S.goal === g[k] ? " · a tua meta" : ""}</b><span class="kc">${fmt(g[k])} kcal</span><small>${sub}</small></button>`;
-  out.innerHTML = `<div class="bmr"><div>Metabolismo basal<b>${fmt(g.bmr)} kcal</b></div><div>Gasto diário com atividade<b>${fmt(g.tdee)} kcal</b></div></div>
+  const mt = macroTargets(S.goal);
+  out.innerHTML = `<div class="bmr"><div>Metabolismo basal<b>${fmt(g.bmr)} kcal</b></div><div>Gasto num dia sem treino<b>${fmt(g.tdee)} kcal</b></div>${g.train ? `<div>Cada treino gasta cerca de<b>${fmt(g.train)} kcal</b></div><div>Meta num dia de treino<b>${fmt(S.goal + g.train)} kcal</b></div>` : ""}<div>Proteína por dia<b>${r0(mt.p)} g</b></div></div>
     <div class="goal-opts">
-      ${opt("lose", "Perder peso", "Cerca de menos 0,5 kg por semana")}
-      ${opt("keep", "Manter o peso", "Comes o mesmo que gastas")}
-      ${opt("gain", "Ganhar massa", "Com treino de força, cerca de mais 0,25 kg por semana")}
+      ${opt("lose", "Perder peso", "Dia sem treino; cerca de menos 0,5 kg por semana")}
+      ${opt("keep", "Manter o peso", "Dia sem treino; comes o mesmo que gastas")}
+      ${opt("gain", "Ganhar massa", "Dia sem treino; cerca de mais 0,25 kg por semana")}
     </div>
     <p class="note" style="margin:8px 0 0">Toca numa opção para a usar como meta. São estimativas: se tens algum problema de saúde, fala com um nutricionista.</p>`;
 }
-$("#cCalc").onclick = () => {
-  const sex = document.querySelector('input[name="cSex"]:checked')?.value;
-  const age = num($("#cAge").value), weight = num($("#cWeight").value), height = num($("#cHeight").value), act = Number($("#cAct").value);
-  if (!sex) return toast("Escolhe Homem ou Mulher.");
-  if (age < 14 || age > 100) return toast("Escreve a idade (14 a 100 anos).");
-  if (weight < 30 || weight > 300) return toast("Escreve o peso em kg (30 a 300).");
-  if (height < 120 || height > 230) return toast("Escreve a altura em cm (120 a 230).");
-  Object.assign(P, { sex, age: r0(age), weight: r1(weight), height: r0(height), act });
-  lsSet("ddp.profile", P); renderCalc();
-};
+$("#cEdit").onclick = () => needProfile(null, true);
 $("#cOut").onclick = (e) => {
   const b = e.target.closest("[data-goal]"); if (!b) return;
-  S.goal = Number(b.dataset.goal); P.objective = b.dataset.kind; lsSet("ddp.profile", P); lsSet("ddp.goal", S.goal); render(); renderCalc();
+  S.goal = Number(b.dataset.goal); P.objective = b.dataset.kind; P.manualGoal = false; lsSet("ddp.profile", P); lsSet("ddp.goal", S.goal); render(); renderCalc();
   toast(`Meta guardada: ${S.goal.toLocaleString("pt-PT")} kcal por dia`);
 };
 $("#kcalGoal").onclick = () => {
@@ -2220,9 +2271,9 @@ $("#planGo").onclick = async () => {
   const key = aiKey();
   if (!key) { say("Primeiro cola a chave em «IA Gemini», logo aqui em baixo."); $("#aiDetails").open = true; return; }
   if (!profileDone()) { needProfile(); return; }
-  const split = { lose: [0.3, 0.4, 0.3], gain: [0.25, 0.5, 0.25] }[P.objective] || [0.2, 0.5, 0.3];
+  const mt = macroTargets(S.goal);
   const prompt = `És um nutricionista português. Cria um plano alimentar para UM dia para esta pessoa: sexo ${P.sex === "m" ? "masculino" : "feminino"}, ${P.age} anos, ${P.weight} kg, ${P.height} cm, objetivo: ${GOAL_NAMES[P.objective]}. ` +
-    `O total do dia deve ficar muito perto de ${S.goal} kcal, com cerca de ${r0(S.goal * split[0] / 4)} g de proteína, ${r0(S.goal * split[1] / 4)} g de hidratos e ${r0(S.goal * split[2] / 9)} g de gordura. ` +
+    `O total do dia deve ficar muito perto de ${S.goal} kcal, com cerca de ${r0(mt.p)} g de proteína, ${r0(mt.c)} g de hidratos e ${r0(mt.f)} g de gordura. ` +
     "Usa 4 ou 5 refeições (Pequeno-almoço, Almoço, Lanche, Jantar e, se fizer falta, Snack), com alimentos comuns em Portugal, simples de preparar e baratos. " +
     "Para cada alimento indica o peso em gramas e os valores por 100 g (kcal, proteína, hidratos, gordura). Nomes curtos em português de Portugal. " +
     "Dá a cada refeição uma hora (HH:MM) e um título curto. No fim, dá 2 ou 3 dicas curtas e práticas. Não recomendes medicamentos.";
@@ -2248,11 +2299,15 @@ renderPlan(); if (plan) $("#planGo").textContent = "Criar outro plano";
 $("#recDl").onclick = () => downloadClip(null);
 renderRec();
 // ---------- first-run profile (required) ----------
-const GOAL_NAMES = { lose: "perder peso", keep: "manter o peso", gain: "ganhar massa" };
-const profileDone = () => !!(P.sex && P.age && P.weight && P.height && P.act && P.objective);
+const profileDone = () => !!(P.sex && P.age && P.weight && P.height && P.act && P.objective && P.train);
 let afterProfile = null;
-function needProfile(then) {
-  if (profileDone()) { then?.(); return; }
+function needProfile(then, force) {
+  if (profileDone() && !force) { then?.(); return; }
+  $("#sCancel").hidden = !profileDone();
+  if (P.train) $("#sTrain").value = P.train;
+  if (P.dur) $("#sDur").value = String(P.dur);
+  document.querySelectorAll("#sDays input").forEach((c) => { c.checked = (P.days || []).includes(Number(c.value)); });
+  $("#sTrainMore").hidden = !P.train || P.train === "none";
   afterProfile = then || null;
   const el = $("#setup");
   if (P.sex) document.querySelector(`input[name="sSex"][value="${P.sex}"]`).checked = true;
@@ -2263,6 +2318,8 @@ function needProfile(then) {
   if (P.objective) document.querySelector(`input[name="sGoal"][value="${P.objective}"]`).checked = true;
   el.hidden = false; document.body.style.overflow = "hidden"; el.scrollTop = 0;
 }
+$("#sTrain").onchange = (e) => { $("#sTrainMore").hidden = !e.target.value || e.target.value === "none"; };
+$("#sCancel").onclick = () => { $("#setup").hidden = true; document.body.style.overflow = ""; };
 $("#sGo").onclick = () => {
   const err = $("#sErr"), fail = (m, focus) => { err.textContent = m; err.hidden = false; focus?.focus(); };
   const sex = document.querySelector('input[name="sSex"]:checked')?.value;
@@ -2273,15 +2330,20 @@ $("#sGo").onclick = () => {
   if (weight < 30 || weight > 300) return fail("Escreve o teu peso em kg (30 a 300).", $("#sWeight"));
   if (height < 120 || height > 230) return fail("Escreve a tua altura em cm (120 a 230).", $("#sHeight"));
   if (!act) return fail("Escolhe a tua atividade física.", $("#sAct"));
+  const train = $("#sTrain").value, days = [...document.querySelectorAll("#sDays input:checked")].map((c) => Number(c.value)), dur = Number($("#sDur").value);
+  if (!train) return fail("Escolhe o tipo de treino (ou «Não treino»).", $("#sTrain"));
+  if (train !== "none" && !days.length) return fail("Escolhe os dias em que treinas.");
   if (!objective) return fail("Escolhe o teu objetivo.");
   err.hidden = true;
-  Object.assign(P, { sex, age: r0(age), weight: r1(weight), height: r0(height), act, objective });
+  Object.assign(P, { sex, age: r0(age), weight: r1(weight), height: r0(height), act, objective, train, days: train === "none" ? [] : days, dur, manualGoal: false });
+  addWeight(P.weight, false);
   lsSet("ddp.profile", P);
   const g = calcGoals(P);
   S.goal = g[objective]; lsSet("ddp.goal", S.goal);
   fillProfile(); render(); renderCalc();
   $("#setup").hidden = true; document.body.style.overflow = "";
-  toast(`A tua meta: ${S.goal.toLocaleString("pt-PT")} kcal por dia para ${GOAL_NAMES[objective]}. Metabolismo basal: ${g.bmr.toLocaleString("pt-PT")} kcal.`);
+  toast(g.train ? `Meta: ${S.goal} kcal sem treino e ${S.goal + g.train} kcal nos dias de treino. Proteína: ${r0(macroTargets(S.goal).p)} g por dia.`
+    : `A tua meta: ${S.goal} kcal por dia para ${GOAL_NAMES[objective]}. Proteína: ${r0(macroTargets(S.goal).p)} g por dia.`);
   const then = afterProfile; afterProfile = null;
   if (then) setTimeout(then, 400);
 };
@@ -2289,7 +2351,7 @@ $("#nextDay").onclick = () => { if (S.day < todayKey()) { S.day = shiftKey(S.day
 $("#goalSave").onclick = () => {
   const g = r0($("#goalIn").value);
   if (g < 800 || g > 6000) { toast("Escolhe uma meta entre 800 e 6000 kcal."); return; }
-  S.goal = g; lsSet("ddp.goal", g); render(); renderCalc(); toast("Meta guardada");
+  S.goal = g; P.manualGoal = true; lsSet("ddp.profile", P); lsSet("ddp.goal", g); render(); renderCalc(); toast("Meta guardada");
 };
 // ---------- welcome screen ----------
 // A Portuguese voice reads the welcome message (www/welcome.mp3) as soon as the screen opens.
@@ -2335,10 +2397,46 @@ function hideWelcome() { stopVoice(); W.el.hidden = true; document.body.style.ov
 $("#wTour").onclick = () => { hideWelcome(); needProfile(() => startTour()); };
 $("#wSkip").onclick = () => { hideWelcome(); needProfile(() => toast("O tutorial está sempre em Ajuda, no fundo da app.")); };
 $("#helpWelcome").onclick = () => showWelcome();
+// ---------- weight log ----------
+const weights = () => lsGet("ddp.weights", []);
+function addWeight(kg, recalc = true) {
+  const k = todayKey(), list = weights().filter((w) => w.d !== k);
+  list.push({ d: k, kg: r1(kg) }); list.sort((a, b) => (a.d < b.d ? -1 : 1));
+  lsSet("ddp.weights", list.slice(-400));
+  P.weight = r1(kg); lsSet("ddp.profile", P);
+  if (recalc && profileDone() && !P.manualGoal) { S.goal = calcGoals(P)[P.objective]; lsSet("ddp.goal", S.goal); }
+}
+function renderWeight() {
+  const list = weights(), last = list[list.length - 1];
+  $("#wNow").textContent = last ? `${String(last.kg).replace(".", ",")} kg` : P.weight ? `${String(P.weight).replace(".", ",")} kg` : "—";
+  const first = list.find((w) => w.d >= shiftKey(todayKey(), -30)) || list[0];
+  const diff = last && first && first !== last ? r1(last.kg - first.kg) : null;
+  $("#wDiff").textContent = diff === null ? (last ? `Registado ${dayLabel(last.d).toLowerCase()}` : "") : `${diff > 0 ? "+" : ""}${String(diff).replace(".", ",")} kg desde ${dayLabel(first.d).toLowerCase()}`;
+  const pts = list.slice(-12);
+  if (pts.length < 2) { $("#wChart").innerHTML = ""; return; }
+  const W = 320, H = 90, pad = 14, lo = Math.min(...pts.map((p) => p.kg)) - 0.5, hi = Math.max(...pts.map((p) => p.kg)) + 0.5;
+  const x = (i) => pad + i * (W - pad * 2) / (pts.length - 1), y = (v) => pad + (hi - v) / (hi - lo) * (H - pad * 2);
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.kg).toFixed(1)}`).join(" ");
+  $("#wChart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolução do peso"><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>${pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.kg)}" r="3.5" fill="var(--accent)"/>`).join("")}<text x="${pad}" y="${H - 1}">${dateOf(pts[0].d).getDate()} ${MONTHS[dateOf(pts[0].d).getMonth()]}</text><text x="${W - pad}" y="${H - 1}" text-anchor="end">${dateOf(pts[pts.length - 1].d).getDate()} ${MONTHS[dateOf(pts[pts.length - 1].d).getMonth()]}</text></svg>`;
+}
+$("#wSave").onclick = () => {
+  const kg = num($("#wIn").value);
+  if (kg < 30 || kg > 300) { toast("Escreve o peso em kg (30 a 300)."); return; }
+  const before = S.goal;
+  addWeight(kg); $("#wIn").value = "";
+  render(); renderCalc(); fillProfile();
+  toast(S.goal !== before ? `Peso registado. Nova meta: ${S.goal} kcal (sem treino).` : "Peso registado.");
+};
+$("#trainBtn").onclick = () => {
+  const o = trainOverride(); o[S.day] = !isTrainDay(S.day); lsSet("ddp.trainDays", o); render();
+};
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Pesquisa: as marcas (Mercadona, Pingo Doce, Continente, Lidl, Prozis…) com foto aparecem agora em primeiro lugar; os alimentos genéricos ficam por baixo."
+  "Treino no perfil: escolhe o tipo de treino, os dias e a duração. A meta sobe nos dias de treino.",
+  "Proteína pelo teu peso: a meta de proteína passa a ser calculada por quilo (mais quando queres perder gordura).",
+  "Peso: regista o peso, vê o gráfico, e a meta ajusta-se sozinha.",
+  "Por isto, a app pede outra vez os teus dados, já preenchidos: só falta escolher o treino."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
@@ -2429,7 +2527,7 @@ function renderSync(msg) {
 function backupData() {
   const slim = (m) => { const { thumb, ...rest } = m; return rest; };
   let meals = [...S.meals].sort((a, b) => b.ts - a.ts).map(slim);
-  const pack = () => JSON.stringify({ v: 1, updated: Date.now(), meals, custom: S.custom, dishes: S.dishes, goal: S.goal, profile: P, plan: lsGet("ddp.plan", null), deleted: lsGet("ddp.deleted", []) });
+  const pack = () => JSON.stringify({ v: 1, updated: Date.now(), meals, custom: S.custom, dishes: S.dishes, goal: S.goal, profile: P, plan: lsGet("ddp.plan", null), deleted: lsGet("ddp.deleted", []), weights: lsGet("ddp.weights", []), trainDays: lsGet("ddp.trainDays", {}) });
   let out = pack();
   while (out.length > 900000 && meals.length > 50) { meals = meals.slice(0, Math.floor(meals.length * 0.8)); out = pack(); } // one document holds about 1 MB
   return out;
@@ -2458,6 +2556,9 @@ function mergeCloud(c) {
   const byName = (list, add) => { const n = new Set(list.map((x) => x.name)); return [...list, ...(add || []).filter((x) => x?.name && !n.has(x.name))]; };
   S.custom = byName(S.custom, c.custom).slice(0, 200); S.dishes = byName(S.dishes, c.dishes).slice(0, 100);
   if (!profileDone() && c.profile?.sex) { Object.assign(P, c.profile); if (c.goal) S.goal = c.goal; }
+  const wl = new Map([...(c.weights || []), ...lsGet("ddp.weights", [])].filter((w) => w?.d && w.kg).map((w) => [w.d, w]));
+  try { localStorage.setItem("ddp.weights", JSON.stringify([...wl.values()].sort((a, b) => (a.d < b.d ? -1 : 1)).slice(-400))); } catch { /* full */ }
+  try { localStorage.setItem("ddp.trainDays", JSON.stringify({ ...(c.trainDays || {}), ...lsGet("ddp.trainDays", {}) })); } catch { /* full */ }
   if (!lsGet("ddp.plan", null) && c.plan) { plan = c.plan; localStorage.setItem("ddp.plan", JSON.stringify(plan)); }
   // write without scheduling another push for each key
   for (const [k, v] of [["ddp.meals", S.meals], ["ddp.custom", S.custom], ["ddp.dishes", S.dishes], ["ddp.goal", S.goal], ["ddp.profile", P], ["ddp.deleted", [...gone].slice(0, 500)]]) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full */ } }
@@ -2527,10 +2628,12 @@ const TOUR = [
   { sel: "#draft .keep", demo: true, title: "Guarda os teus pratos", text: "Se comes isto muitas vezes, marca esta opção. O prato fica em «Os meus pratos» e da próxima vez adicionas tudo com um só toque." },
   { sel: "#dSave", demo: true, title: "Guarda a refeição", text: "Quando estiver tudo certo, toca em «Guardar». «Cancelar» ou o «×» em cima deitam fora sem guardar. Esta sandes é só um exemplo e não vai ser guardada." },
   { sel: "#summary", title: "O teu dia", text: "O anel mostra quantas calorias ainda podes comer hoje. As cores são os hidratos, a proteína e a gordura que já comeste, e as barras ao lado mostram quanto falta de cada um para a tua meta." },
+  { sel: "#trainBtn", title: "Dia de treino", text: "Nos dias em que treinas, a meta sobe com as calorias do treino. A app sabe os teus dias de treino, mas podes tocar aqui para mudar o dia de hoje." },
+  { sel: "#weightCard", title: "O teu peso", text: "Regista o peso uma vez por semana. O gráfico mostra a evolução e a meta de calorias e de proteína ajusta-se sozinha ao teu peso." },
   { sel: "#meals", title: "As tuas refeições", text: "O dia está dividido em pequeno-almoço, almoço, lanche, jantar, snack e suplementação. O «+» adiciona comida a essa refeição. «Repetir» volta a registar a mesma coisa. Para apagar, toca em «Apagar» e depois em «Confirmar»." },
   { sel: "header", title: "Escolher o dia", text: "Toca no calendário, no canto de cima à direita, ou no nome do dia para abrir o mês e escolher qualquer dia. As setas avançam ou recuam um dia. Os dias com registos têm um ponto verde, ou amarelo se passaste a meta." },
   { sel: ".week", title: "Últimos 7 dias", text: "O gráfico mostra as calorias de cada dia. A linha tracejada é a tua meta e as barras amarelas são os dias acima dela. Toca num dia para o abrir." },
-  { sel: "#goalDetails", title: "A tua meta", text: "A tua meta foi calculada com os dados que preencheste no início (sexo, idade, peso, altura, atividade e objetivo). Em «Meta diária» podes mudar esses dados, por exemplo quando o teu peso mudar, ou escrever tu as calorias." },
+  { sel: "#goalDetails", title: "A tua meta", text: "Em «Meta diária» vês o metabolismo basal, a meta nos dias de treino e de descanso e a proteína para o teu peso. Toca em «Alterar os meus dados» para mudar idade, peso, treino ou objetivo." },
   { sel: "#planDetails", title: "Plano de dieta", text: "Em «O meu plano de dieta», a IA cria um dia de refeições à tua medida, com os teus dados e a tua meta. Cada refeição tem o botão «Registar esta refeição»." },
   { sel: "#aiDetails", title: "IA Gemini", text: "Para a app identificar cada alimento da foto com a IA da Google e criar o plano de dieta, cola aqui uma chave gratuita da Google. Sem chave, a app usa o reconhecimento do telemóvel." },
   { sel: "#recDetails", title: "Reconhecer cada alimento", text: "Para a app ver cada alimento de um prato misturado (arroz, feijão, grelos, entrecosto…), toca aqui em «Descarregar» uma vez (cerca de 64 MB, de preferência em Wi-Fi). Depois funciona sem internet." },
