@@ -123,6 +123,13 @@ select, .field { border: 1px solid var(--line); background: var(--paper); border
 .off-btn { border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--paper)); color: var(--ink); border-radius: 10px; padding: 10px 12px; text-align: left; font-weight: 600; }
 .off-btn small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
 .food.brand { border-style: dashed; border-color: var(--accent); }
+.food.has-img { display: grid; grid-template-columns: 52px 1fr; grid-template-rows: auto 1fr; column-gap: 10px; align-items: start; }
+.food.has-img .pimg { grid-row: span 2; }
+.pimg { width: 52px; height: 52px; object-fit: contain; border-radius: 10px; background: #fff; border: 1px solid var(--line); }
+.pimg.sm { width: 36px; height: 36px; border-radius: 8px; flex: none; }
+.nm-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.nm-row input { flex: 1; min-width: 0; }
+.entry .entry-pimg { width: 46px; height: 46px; border-radius: 12px; object-fit: contain; background: #fff; border: 1px solid var(--line); }
 .food .br { font-size: 11px; color: var(--muted); font-family: var(--f-body); }
 
 .items { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
@@ -1060,7 +1067,9 @@ const SYNC_KEYS = new Set(["ddp.meals", "ddp.custom", "ddp.dishes", "ddp.goal", 
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); if (SYNC_KEYS.has(k)) setTimeout(() => cloudPush(), 0); return true; } catch { return false; } };
 function fromFood(f, grams) {
   const g = grams ?? f.g, k = g / 100;
-  return { name: f.name, detail: "", cat: f.cat, g, kcal: r0(f.kcal * k), p: r1(f.p * k), c: r1(f.c * k), f: r1(f.f * k) };
+  const it = { name: f.name, detail: "", cat: f.cat, g, kcal: r0(f.kcal * k), p: r1(f.p * k), c: r1(f.c * k), f: r1(f.f * k) };
+  if (f.img) it.img = f.img;
+  return it;
 }
 let toastT;
 function toast(msg) {
@@ -1616,7 +1625,7 @@ function offBlock(qq, off, added) {
   if (off.status === "loading") return `<div class="ai-box"><span class="ai-dot"></span><span>A procurar nos produtos de marca…</span></div>`;
   if (off.status === "error") return `<button class="off-btn" id="dOff" type="button">Não consegui ligar à internet. Tentar outra vez<small>A pesquisa de produtos de marca precisa de internet.</small></button>`;
   if (!off.items.length) return `<p class="note" style="margin:0">Nenhum produto de marca encontrado para «${esc(qq)}».</p>`;
-  return `<span class="picker-label">Produtos de marca</span><div class="grid">${off.items.map((p, i) => `<button class="food brand ${added.has(p.name) ? "added" : ""}" data-off="${i}"><b>${esc(p.name)}</b><span>${p.g} g · ${r0(p.kcal * p.g / 100)} kcal</span></button>`).join("")}</div>`;
+  return `<span class="picker-label">Produtos de marca</span><div class="grid">${off.items.map((p, i) => `<button class="food brand ${p.img ? "has-img" : ""} ${added.has(p.name) ? "added" : ""}" data-off="${i}">${thumb(p.img)}<b>${esc(p.name)}</b><span>${p.g} g · ${r0(p.kcal * p.g / 100)} kcal</span></button>`).join("")}</div>`;
 }
 async function httpJson(url) {
   // in the app the request goes through Android (the search server does not allow browser requests)
@@ -1639,12 +1648,12 @@ function offProduct(h) {
   const brand = String(h.brands || "").split(",")[0].trim();
   const full = (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70);
   const sq = Number(h.serving_quantity);
-  return { name: full, cat: "outros", g: sq > 0 && sq <= 1000 ? Math.round(sq) : 100, kcal: r0(kcal), p: r1(n.proteins_100g), c: r1(n.carbohydrates_100g), f: r1(n.fat_100g), src: "off", code: h.code || "" };
+  return { img: safeImg(h.image_front_small_url), name: full, cat: "outros", g: sq > 0 && sq <= 1000 ? Math.round(sq) : 100, kcal: r0(kcal), p: r1(n.proteins_100g), c: r1(n.carbohydrates_100g), f: r1(n.fat_100g), src: "off", code: h.code || "" };
 }
 async function searchOFF(d, qq) {
   d.off = { q: qq, status: "loading", items: [] }; renderPicker();
   const params = new URLSearchParams({ q: `${qq} countries_tags:"en:portugal"`, page_size: "24", langs: "pt",
-    fields: "code,product_name,product_name_pt,brands,nutriments,serving_quantity" });
+    fields: "code,product_name,product_name_pt,brands,nutriments,serving_quantity,image_front_small_url" });
   try {
     const j = await httpJson(`${OFF_API}?${params}`);
     const seen = new Set(), items = [];
@@ -1670,7 +1679,16 @@ function loadSuper() {
   });
   return SUPER.promise;
 }
-const superItem = ([name, brand, st, g, kcal, p, c, f]) => ({ name: (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70), cat: SPORT_BRANDS.has(st) ? "suplementos" : "outros", g, kcal, p, c, f, src: "off" });
+const OFF_IMG = "https://images.openfoodfacts.org/images/products/";
+function offImg(code, tok) {
+  if (!tok) return "";
+  if (tok[0] === "/") return OFF_IMG + tok.slice(1) + ".200.jpg";
+  const dir = code.length > 8 ? code.padStart(13, "0").replace(/^(\d{3})(\d{3})(\d{3})(\d+)$/, "$1/$2/$3/$4") : code;
+  return `${OFF_IMG}${dir}/${tok}.200.jpg`;
+}
+const safeImg = (u) => (/^https:\/\/images\.openfoodfacts\.org\//.test(String(u || "")) ? String(u) : "");
+const thumb = (u, cls = "pimg") => (safeImg(u) ? `<img class="${cls}" src="${esc(u)}" alt="" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">` : "");
+const superItem = ([name, brand, st, g, kcal, p, c, f, code, tok]) => ({ img: offImg(code || "", tok || ""), name: (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70), cat: SPORT_BRANDS.has(st) ? "suplementos" : "outros", g, kcal, p, c, f, src: "off" });
 // ---------- barcode: read it from a photo, find the product in the app's list or online ----------
 async function readBarcode(canvas) {
   if (!("BarcodeDetector" in window)) return null;
@@ -1683,7 +1701,7 @@ async function readBarcode(canvas) {
 async function productByCode(code) {
   if (await loadSuper()) { const row = window.OFF_PT.find((r) => r[8] === code); if (row) return superItem(row); }
   try {
-    const j = await httpJson(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=code,product_name,product_name_pt,brands,nutriments,serving_quantity`);
+    const j = await httpJson(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=code,product_name,product_name_pt,brands,nutriments,serving_quantity,image_front_small_url`);
     return j?.product ? offProduct(j.product) : null;
   } catch { return null; }
 }
@@ -1704,7 +1722,7 @@ function superSearch(qq, store) {
   }
   const rank = (i) => (K[i].startsWith(q) ? 0 : 1) * 2 + (L[i][2] ? 0 : 1);
   return hits.sort((a, b) => rank(a) - rank(b) || L[a][0].length - L[b][0].length).slice(0, 40)
-    .map((i) => { const [name, brand, st, g, kcal, p, c, f] = L[i]; const full = (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70); return { name: full, cat: SPORT_BRANDS.has(st) ? "suplementos" : "outros", g, kcal, p, c, f, src: "off", st }; });
+    .map((i) => { const [name, brand, st, g, kcal, p, c, f, code, tok] = L[i]; const full = (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70); return { name: full, cat: SPORT_BRANDS.has(st) ? "suplementos" : "outros", g, kcal, p, c, f, src: "off", st, img: offImg(code || "", tok || "") }; });
 }
 function superBlock(d, qq, added) {
   if (qq.length < 2) return "";
@@ -1713,7 +1731,7 @@ function superBlock(d, qq, added) {
   const hits = d.supHits = superSearch(qq, d.store || "");
   const chips = `<div class="store-chips">${[["", "Todos"], ...Object.entries(STORE_NAMES)].map(([k, n]) => `<button type="button" data-store="${k}" aria-pressed="${(d.store || "") === k}">${n}</button>`).join("")}</div>`;
   return `<span class="picker-label">Produtos de supermercado</span>${chips}` + (hits.length
-    ? `<div class="grid">${hits.map((p, i) => `<button class="food brand ${added.has(p.name) ? "added" : ""}" data-sup="${i}"><b>${esc(p.name)}</b><span>${p.st ? esc(STORE_NAMES[p.st]) + " · " : ""}${p.g} g · ${r0(p.kcal * p.g / 100)} kcal</span></button>`).join("")}</div>`
+    ? `<div class="grid">${hits.map((p, i) => `<button class="food brand ${p.img ? "has-img" : ""} ${added.has(p.name) ? "added" : ""}" data-sup="${i}">${thumb(p.img)}<b>${esc(p.name)}</b><span>${p.st ? esc(STORE_NAMES[p.st]) + " · " : ""}${p.g} g · ${r0(p.kcal * p.g / 100)} kcal</span></button>`).join("")}</div>`
     : `<p class="note" style="margin:0">Nenhum produto ${d.store ? "do " + STORE_NAMES[d.store] : "de supermercado"} com «${esc(qq)}».</p>`);
 }
 function renderPicker() {
@@ -1729,13 +1747,13 @@ function renderPicker() {
   const tabsEl = box.querySelector(".tabs"), keepScroll = tabsEl ? tabsEl.scrollLeft : 0;
   box.innerHTML = `
     ${qq ? "" : `<div class="tabs" role="tablist">${tabs.map(([k, n, col]) => `<button class="tab" role="tab" data-tab="${esc(k)}" aria-selected="${k === d.tab}">${col ? `<i style="background:${col}"></i>` : ""}${esc(n)}</button>`).join("")}</div>`}
-    <div class="grid">${dishes.map((x) => `<button class="food dish" data-dish="${x.i}"><b>${esc(x.name)}</b><span>${x.items.length} alimentos · ${r0(sum(x.items, "kcal"))} kcal</span></button>`).join("")}${foods.map((f) => `<button class="food ${added.has(f.name) ? "added" : ""}" data-food="${esc(f.name)}"><b>${esc(f.name)}</b><span>${f.g} g · ${r0(f.kcal * f.g / 100)} kcal</span></button>`).join("")}</div>
+    <div class="grid">${dishes.map((x) => `<button class="food dish" data-dish="${x.i}"><b>${esc(x.name)}</b><span>${x.items.length} alimentos · ${r0(sum(x.items, "kcal"))} kcal</span></button>`).join("")}${foods.map((f) => `<button class="food ${f.img ? "has-img" : ""} ${added.has(f.name) ? "added" : ""}" data-food="${esc(f.name)}">${thumb(f.img)}<b>${esc(f.name)}</b><span>${f.g} g · ${r0(f.kcal * f.g / 100)} kcal</span></button>`).join("")}</div>
     ${allHits.length > foods.length ? `<button class="more" id="dMore" type="button">Mostrar mais (${allHits.length - foods.length})</button>` : ""}
     ${qq && !foods.length && !dishes.length ? `<p class="note" style="margin:0">Não encontrei «${esc(qq)}» na lista. Procura nos produtos de marca ou cria-o.</p>` : ""}
     ${superBlock(d, qq, added)}
     ${qq.length >= 3 ? `<div class="off">${offBlock(qq, off, added)}</div>` : ""}
     ${qq ? `<button class="create" id="dCreate">+ Criar «${esc(qq)}»</button>` : ""}
-    <p class="src">${INSA_FOODS.length + BASE_FOODS.length} alimentos${window.OFF_PT ? " e " + window.OFF_PT.length + " produtos de supermercado" : ""}. ${INSA_SOURCE} Produtos de supermercado: Open Food Facts (openfoodfacts.org), licença ODbL.</p>`;
+    <p class="src">${INSA_FOODS.length + BASE_FOODS.length} alimentos${window.OFF_PT ? " e " + window.OFF_PT.length + " produtos de supermercado" : ""}. ${INSA_SOURCE} Produtos de supermercado: Open Food Facts (openfoodfacts.org), licença ODbL; fotos dos produtos sob CC BY-SA.</p>`;
   box.querySelectorAll("[data-store]").forEach((b) => b.onclick = () => { d.store = b.dataset.store; renderPicker(); });
   box.querySelectorAll("[data-sup]").forEach((b) => b.onclick = () => {
     const p = d.supHits?.[+b.dataset.sup]; if (!p) return;
@@ -1811,7 +1829,7 @@ function renderDraft() {
         <div class="items-head"><span>Alimento</span><span>Peso</span><span>Energia</span><span></span></div>
         <div class="items">${d.items.map((it, i) => `
           <div class="item" data-i="${i}">
-            <div class="nm"><input value="${esc(it.name)}" data-k="name" aria-label="Nome do alimento">
+            <div class="nm">${it.img ? `<div class="nm-row">${thumb(it.img, "pimg sm")}<input value="${esc(it.name)}" data-k="name" aria-label="Nome do alimento"></div>` : `<input value="${esc(it.name)}" data-k="name" aria-label="Nome do alimento">`}
               <span class="sub"><span class="cat"><i style="background:${catColor(it.cat)}"></i>${esc(TAB_NAMES[it.cat] || it.cat)}</span><span class="num">P ${r0(it.p)} · H ${r0(it.c)} · G ${r0(it.f)}</span></span></div>
             <div class="unit"><input type="number" inputmode="numeric" min="0" value="${r0(it.g)}" data-k="g" aria-label="Gramas de ${esc(it.name)}"><span>g</span></div>
             <div class="unit"><input type="number" inputmode="numeric" min="0" value="${r0(it.kcal)}" data-k="kcal" aria-label="Calorias de ${esc(it.name)}"><span>kcal</span></div>
@@ -1882,7 +1900,7 @@ function saveDraft() {
   const meal = {
     id: uid(), day: S.day, ts: day.getTime(), meal: d.meal,
     title: (d.title.trim() || d.items.map((i) => i.name).slice(0, 3).join(", ")).slice(0, 80),
-    items: d.items.map(({ name, detail, cat, g, kcal, p, c, f }) => ({ name, detail, cat, g, kcal, p, c, f })),
+    items: d.items.map(({ name, detail, cat, g, kcal, p, c, f, img }) => (img ? { name, detail, cat, g, kcal, p, c, f, img } : { name, detail, cat, g, kcal, p, c, f })),
     thumb: d.thumb || ""
   };
   // remember new foods the user created, per 100 g
@@ -2005,8 +2023,9 @@ function render() {
 function mealCard(m) {
   const items = m.items || [], kcal = sum(items, "kcal");
   const when = new Date(m.ts).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
-  return `<article class="entry ${m.thumb ? "" : "no-thumb"}">
-    ${m.thumb ? `<img src="${esc(m.thumb)}" alt="">` : ""}
+  const pimg = !m.thumb && safeImg(items.find((it) => it.img)?.img);
+  return `<article class="entry ${m.thumb || pimg ? "" : "no-thumb"}">
+    ${m.thumb ? `<img src="${esc(m.thumb)}" alt="">` : pimg ? thumb(pimg, "entry-pimg") : ""}
     <div class="mid"><h3>${esc(m.title)}</h3><p>${when} · ${esc(items.map((it) => `${it.name} ${r0(it.g)} g`).join(", "))}</p></div>
     <div class="right"><span class="kc">${r0(kcal)} kcal</span><span class="acts"><button class="del" data-edit="${esc(m.id)}">Editar</button><button class="del" data-again="${esc(m.id)}">Repetir</button><button class="del" data-del="${esc(m.id)}">Apagar</button></span></div>
   </article>`;
@@ -2317,8 +2336,7 @@ $("#helpWelcome").onclick = () => showWelcome();
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Pesquisa em várias línguas: «iogurte» também encontra «yogurt» e «yogur», «queijo» encontra «queso» e «cheese», e assim por diante.",
-  "Muito mais Mercadona: cerca de 5900 produtos Hacendado (antes eram 340)."
+  "Fotos dos produtos: na pesquisa e no prato aparece a fotografia da embalagem (cerca de 15 000 produtos). As fotos precisam de internet."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
