@@ -1567,11 +1567,42 @@ function newDraft(extra) {
   $("#draft").scrollTop = 0;
 }
 
+// Product names come in several languages: a word typed in any of them also finds the others.
+const SYN = [
+  "iogurte yogurt yoghurt yogur yaourt", "queijo cheese queso fromage", "leite milk leche lait", "pao bread pan pain",
+  "manteiga butter mantequilla beurre", "ovo ovos egg eggs huevo huevos oeuf", "frango chicken pollo poulet", "peru turkey pavo dinde",
+  "porco pork cerdo porc", "vaca beef ternera vacuno boeuf", "fiambre jamon jambon", "presunto serrano", "atum tuna atun thon",
+  "salmao salmon saumon", "pescada merluza hake", "bacalhau bacalao cod", "camarao gamba gambas shrimp prawn", "arroz rice riz",
+  "massa pasta pates", "esparguete spaghetti espagueti", "batata batatas potato potatoes patata patatas", "bolacha bolachas biscoito biscoitos cookie cookies biscuit galleta galletas",
+  "cereais cereal cereals cereales", "aveia oat oats avena avoine", "chocolate chocolat", "cacau cocoa cacao", "sumo juice zumo jus",
+  "agua water", "cafe coffee", "cha tea infusion", "acucar sugar azucar sucre", "mel honey miel", "amendoim amendoins peanut peanuts cacahuete cacahuetes",
+  "amendoa amendoas almond almonds almendra almendras amande", "noz nozes walnut walnuts nuez nueces", "proteina proteinas protein proteine",
+  "morango morangos strawberry fresa fresas fraise", "banana platano", "maca apple manzana pomme", "laranja orange naranja", "limao lemon limon citron",
+  "feijao bean beans alubia alubias judia frijol", "grao chickpea chickpeas garbanzo garbanzos", "lentilha lentilhas lentil lentils lenteja lentejas",
+  "gelado ice helado glace", "bolo cake tarta gateau bizcocho", "hamburguer burger hamburguesa", "salsicha salsichas sausage salchicha salchichas",
+  "natas cream nata", "azeite aceite olive oliva", "oleo oil", "tomate tomato", "cebola onion cebolla", "cenoura carrot zanahoria",
+  "espinafre espinafres spinach espinaca espinacas", "alface lettuce lechuga", "cogumelo cogumelos mushroom mushrooms champinon setas",
+  "milho corn maiz", "barra bar barrita", "lactose lactosa", "integral wholegrain wholemeal", "frutos fruits frutas", "fruta fruit",
+  "bebida drink", "sobremesa dessert postre", "pudim pudding flan", "natural plain", "gordo gorda full entera", "magro magra skimmed desnatada desnatado",
+  "meio semi semidesnatada", "pizza", "tosta tostada toast", "doce jam mermelada confiture", "molho sauce salsa", "pepino cucumber",
+  "uva uvas grape grapes", "pera pear", "pessego peach melocoton", "ananas pineapple pina", "coco coconut", "baunilha vanilla vainilla vanille",
+  "canela cinnamon", "caramelo caramel", "gelatina jelly", "sopa soup", "salada salad ensalada", "peito breast pechuga", "coxa leg muslo"
+].map((g) => g.split(" "));
+const synCache = new Map();
+function alts(w) {
+  if (synCache.has(w)) return synCache.get(w);
+  const out = new Set([w]);
+  if (w.length >= 3) for (const g of SYN) if (g.some((t) => t === w || (w.length >= 4 && t.startsWith(w)) || (t.length >= 4 && w.startsWith(t)))) g.forEach((t) => out.add(t));
+  const list = [...out].map((t) => t.length >= 4 || t === w ? (k) => k.includes(t) : ((re) => (k) => re.test(k))(new RegExp("(^|[^a-z])" + t + "([^a-z]|$)")));
+  synCache.set(w, list);
+  return list;
+}
+const wordMatch = (key, w) => alts(w).some((f) => f(key));
 function foodsForTab(d) {
   if (d.q.trim()) {
     const q = norm(d.q.trim()), words = q.split(/[\s,]+/).filter(Boolean);
     const rank = (f) => { const n = norm(f.name); return (n === q ? 0 : n.startsWith(q) ? 1 : n.includes(q) ? 2 : 3) * 2 + (f.src === "insa" ? 1 : 0); };
-    return allFoods().filter((f) => { const n = norm(f.name); return words.every((w) => n.includes(w)); })
+    return allFoods().filter((f) => { const n = norm(f.name); return words.every((w) => wordMatch(n, w)); })
       .map((f, i) => [f, rank(f), i]).sort((a, b) => a[1] - b[1] || a[2] - b[2]).map(([f]) => f);
   }
   if (d.tab === "recentes") return recentFoods();
@@ -1668,7 +1699,7 @@ function superSearch(qq, store) {
   for (let i = 0; i < L.length; i++) {
     if (store && L[i][2] !== store) continue;
     const k = K[i]; let ok = true;
-    for (const w of words) if (!k.includes(w)) { ok = false; break; }
+    for (const w of words) if (!wordMatch(k, w)) { ok = false; break; }
     if (ok) hits.push(i);
   }
   const rank = (i) => (K[i].startsWith(q) ? 0 : 1) * 2 + (L[i][2] ? 0 : 1);
@@ -2284,20 +2315,10 @@ $("#wTour").onclick = () => { hideWelcome(); needProfile(() => startTour()); };
 $("#wSkip").onclick = () => { hideWelcome(); needProfile(() => toast("O tutorial está sempre em Ajuda, no fundo da app.")); };
 $("#helpWelcome").onclick = () => showWelcome();
 // ---------- what's new (shown once after each update) ----------
-// Rewrite this list in every release: it is what the person reads right after updating.
+// Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Cópia na conta: se entrares com Google em «A minha conta», os teus registos ficam guardados na conta e voltam se trocares de telemóvel. Quem já tinha entrado tem de sair e entrar outra vez.",
-  "Editar: cada refeição guardada tem agora o botão «Editar», para corrigir alimentos ou gramas sem a apagar.",
-  "Código de barras: tira uma foto ao código de um produto, ou escreve os números em «Adicionar comida», e a app encontra-o.",
-  "Marcas de nutrição desportiva: Prozis, MyProtein, Zumub e EU Nutrition na pesquisa, com filtro por marca (cerca de 3500 produtos).",
-  "Produtos de supermercado sem internet: cerca de 9000 produtos vendidos em Portugal (Pingo Doce, Continente, Mercadona, Lidl, Auchan, Aldi, Minipreço, Intermarché e outras marcas). Escreve o nome na pesquisa e filtra pelo supermercado.",
-  "A minha conta: podes entrar com a tua conta Google (opcional). O botão está no topo, ao lado do calendário.",
-  "Suplementação: há uma nova secção no dia, depois do Snack, com creatina, proteína, vitaminas e outros suplementos prontos a registar.",
-  "Nome novo: a app passa a chamar-se NutriLente, com um ícone novo. Os teus registos continuam todos cá.",
-  "Modo escuro: em «Aparência», escolhe Automático, Claro ou Escuro.",
-  "Depois da foto, a app pede para confirmares os alimentos. Podes tirar os errados, acertar os gramas e tocar em «Adicionar mais alimentos».",
-  "Novidades: sempre que a app for atualizada, este aviso mostra o que mudou.",
-  "IA Gemini (opcional): com uma chave gratuita da Google, a app identifica cada alimento da foto e cria um plano de dieta."
+  "Pesquisa em várias línguas: «iogurte» também encontra «yogurt» e «yogur», «queijo» encontra «queso» e «cheese», e assim por diante.",
+  "Muito mais Mercadona: cerca de 5900 produtos Hacendado (antes eram 340)."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
