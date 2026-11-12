@@ -707,9 +707,9 @@ const CATS = {
   "pão e cereais": "var(--carb)", "arroz e massa": "#D9A21B", "batata": "#B88A2E",
   "laticínios": "#8E7CC3", "carne e charcutaria": "var(--prot)", "peixe": "var(--fat)",
   "ovos": "#D9822B", "leguminosas": "#7A8F3B", "legumes e salada": "var(--accent)",
-  "fruta": "#D4567A", "frutos secos": "#8B6B4A", "gorduras e molhos": "#B08D2C", "doces": "#C2549B", "bebidas": "#5B8BD0", "outros": "var(--muted)"
+  "fruta": "#D4567A", "frutos secos": "#8B6B4A", "gorduras e molhos": "#B08D2C", "doces": "#C2549B", "bebidas": "#5B8BD0", "suplementos": "#7B61C9", "outros": "var(--muted)"
 };
-const TAB_NAMES = { "pratos": "Pratos", "frutos secos": "Frutos secos", "pão e cereais": "Pão", "arroz e massa": "Arroz e massa", "batata": "Batata", "laticínios": "Queijo e lácteos", "carne e charcutaria": "Carne e fiambre", "peixe": "Peixe", "ovos": "Ovos", "leguminosas": "Feijão e grão", "legumes e salada": "Legumes", "fruta": "Fruta", "gorduras e molhos": "Molhos", "doces": "Doces", "bebidas": "Bebidas", "outros": "Outros" };
+const TAB_NAMES = { "suplementos": "Suplementos", "pratos": "Pratos", "frutos secos": "Frutos secos", "pão e cereais": "Pão", "arroz e massa": "Arroz e massa", "batata": "Batata", "laticínios": "Queijo e lácteos", "carne e charcutaria": "Carne e fiambre", "peixe": "Peixe", "ovos": "Ovos", "leguminosas": "Feijão e grão", "legumes e salada": "Legumes", "fruta": "Fruta", "gorduras e molhos": "Molhos", "doces": "Doces", "bebidas": "Bebidas", "outros": "Outros" };
 
 // name, category, default portion (g), per 100 g: kcal, protein, carbs, fat
 const BASE_FOODS = [
@@ -985,10 +985,32 @@ const BASE_FOODS = [
   ["Cerveja sem álcool", "bebidas", 330, 22, 0.3, 5, 0],
   ["Vinho branco", "bebidas", 150, 82, 0.1, 2.6, 0],
   // outros
-  ["Proteína em pó (dose)", "outros", 30, 380, 75, 8, 5]
+  ["Proteína em pó (dose)", "suplementos", 30, 380, 75, 8, 5],
+  // suplementos (valores típicos por 100 g; a porção é uma dose)
+  ["Proteína whey isolada (dose)", "suplementos", 30, 370, 88, 2, 1],
+  ["Caseína (dose)", "suplementos", 30, 360, 78, 5, 2],
+  ["Proteína vegetal (dose)", "suplementos", 30, 380, 72, 8, 6],
+  ["Ganhador de massa (dose)", "suplementos", 100, 380, 20, 68, 3],
+  ["Barra de proteína", "suplementos", 60, 360, 33, 35, 10],
+  ["Creatina monohidratada", "suplementos", 5, 0, 0, 0, 0],
+  ["BCAA / aminoácidos (dose)", "suplementos", 10, 0, 0, 0, 0],
+  ["Glutamina (dose)", "suplementos", 5, 0, 0, 0, 0],
+  ["Pré-treino (dose)", "suplementos", 10, 200, 0, 50, 0],
+  ["Maltodextrina (dose)", "suplementos", 30, 380, 0, 95, 0],
+  ["Gel energético", "suplementos", 40, 250, 0, 62, 0],
+  ["Bebida isotónica", "suplementos", 500, 24, 0, 6, 0],
+  ["Colagénio em pó (dose)", "suplementos", 10, 360, 90, 0, 0],
+  ["Ómega 3 (cápsula)", "suplementos", 1, 900, 0, 0, 100],
+  ["Multivitamínico (comprimido)", "suplementos", 1, 0, 0, 0, 0],
+  ["Vitamina D (cápsula)", "suplementos", 1, 0, 0, 0, 0],
+  ["Vitamina C (comprimido)", "suplementos", 1, 0, 0, 0, 0],
+  ["Magnésio (comprimido)", "suplementos", 1, 0, 0, 0, 0],
+  ["Zinco (comprimido)", "suplementos", 1, 0, 0, 0, 0],
+  ["Cafeína (comprimido)", "suplementos", 1, 0, 0, 0, 0]
 ].map(([name, cat, g, kcal, p, c, f]) => ({ name, cat, g, kcal, p, c, f }));
 
-const MEALS = ["Pequeno-almoço", "Almoço", "Lanche", "Jantar", "Snack"];
+const MEALS = ["Pequeno-almoço", "Almoço", "Lanche", "Jantar", "Snack", "Suplementação"];
+const FOOD_MEALS = MEALS.slice(0, 5); // meals the diet plan may use
 const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -1786,13 +1808,13 @@ function render() {
 
   $("#mealCount").textContent = meals.length ? `${meals.length} ${meals.length === 1 ? "refeição" : "refeições"}` : "";
   const list = $("#meals");
-  const ICONS = { "Pequeno-almoço": "☕", "Almoço": "🍽️", "Lanche": "🥪", "Jantar": "🍲", "Snack": "🍎" };
+  const ICONS = { "Pequeno-almoço": "☕", "Almoço": "🍽️", "Lanche": "🥪", "Jantar": "🍲", "Snack": "🍎", "Suplementação": "💊" };
   list.innerHTML = MEALS.map((name) => {
     const ms = meals.filter((m) => m.meal === name), kc = sum(ms.flatMap((m) => m.items || []), "kcal");
     return `<div class="mgroup"><div class="mg-head"><span class="mg-ic" aria-hidden="true">${ICONS[name] || "🍴"}</span><div class="t"><b>${name}</b><small>${r0(kc)} kcal</small></div>
-      <button class="add-btn" type="button" data-add="${name}" aria-label="Adicionar ao ${name}">+</button></div>${ms.map(mealCard).join("")}</div>`;
+      <button class="add-btn" type="button" data-add="${name}" aria-label="Adicionar: ${name}">+</button></div>${ms.map(mealCard).join("")}</div>`;
   }).join("");
-  list.querySelectorAll("[data-add]").forEach((b) => b.onclick = () => newDraft({ meal: b.dataset.add }));
+  list.querySelectorAll("[data-add]").forEach((b) => b.onclick = () => newDraft(b.dataset.add === "Suplementação" ? { meal: b.dataset.add, tab: "suplementos" } : { meal: b.dataset.add }));
   list.querySelectorAll("[data-del]").forEach((b) => {
     b.onclick = () => {
       if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = "Confirmar"; setTimeout(() => { b.classList.remove("armed"); b.textContent = "Apagar"; }, 3000); return; }
@@ -1976,7 +1998,7 @@ const PLAN_SCHEMA = {
   type: "OBJECT",
   properties: {
     meals: { type: "ARRAY", items: { type: "OBJECT", properties: {
-      meal: { type: "STRING", enum: MEALS }, time: { type: "STRING" }, title: { type: "STRING" },
+      meal: { type: "STRING", enum: FOOD_MEALS }, time: { type: "STRING" }, title: { type: "STRING" },
       items: { type: "ARRAY", items: { type: "OBJECT", properties: {
         name: { type: "STRING" }, grams: { type: "NUMBER" }, kcal100: { type: "NUMBER" },
         protein100: { type: "NUMBER" }, carbs100: { type: "NUMBER" }, fat100: { type: "NUMBER" }
@@ -2016,7 +2038,7 @@ $("#planGo").onclick = async () => {
   btn.disabled = true; say("A IA está a criar o teu plano… (uns segundos)");
   try {
     const r = await geminiJSON([{ text: prompt }], PLAN_SCHEMA, key, 0.7);
-    const meals = (r.meals || []).filter((m) => MEALS.includes(m.meal) && m.items?.length).map((m) => ({
+    const meals = (r.meals || []).filter((m) => FOOD_MEALS.includes(m.meal) && m.items?.length).map((m) => ({
       meal: m.meal, time: String(m.time || "").slice(0, 5), title: String(m.title || m.meal).slice(0, 60),
       items: m.items.filter((x) => x?.name && Number(x.grams) > 0).slice(0, 10).map(aiItem)
     })).filter((m) => m.items.length);
@@ -2125,6 +2147,7 @@ $("#helpWelcome").onclick = () => showWelcome();
 // ---------- what's new (shown once after each update) ----------
 // Rewrite this list in every release: it is what the person reads right after updating.
 const NEWS = [
+  "Suplementação: há uma nova secção no dia, depois do Snack, com creatina, proteína, vitaminas e outros suplementos prontos a registar.",
   "Nome novo: a app passa a chamar-se NutriLente, com um ícone novo. Os teus registos continuam todos cá.",
   "Modo escuro: em «Aparência», escolhe Automático, Claro ou Escuro.",
   "Depois da foto, a app pede para confirmares os alimentos. Podes tirar os errados, acertar os gramas e tocar em «Adicionar mais alimentos».",
@@ -2174,7 +2197,7 @@ const TOUR = [
   { sel: "#draft .keep", demo: true, title: "Guarda os teus pratos", text: "Se comes isto muitas vezes, marca esta opção. O prato fica em «Os meus pratos» e da próxima vez adicionas tudo com um só toque." },
   { sel: "#dSave", demo: true, title: "Guarda a refeição", text: "Quando estiver tudo certo, toca em «Guardar». «Cancelar» ou o «×» em cima deitam fora sem guardar. Esta sandes é só um exemplo e não vai ser guardada." },
   { sel: "#summary", title: "O teu dia", text: "O anel mostra quantas calorias ainda podes comer hoje. As cores são os hidratos, a proteína e a gordura que já comeste, e as barras ao lado mostram quanto falta de cada um para a tua meta." },
-  { sel: "#meals", title: "As tuas refeições", text: "O dia está dividido em pequeno-almoço, almoço, lanche, jantar e snack. O «+» adiciona comida a essa refeição. «Repetir» volta a registar a mesma coisa. Para apagar, toca em «Apagar» e depois em «Confirmar»." },
+  { sel: "#meals", title: "As tuas refeições", text: "O dia está dividido em pequeno-almoço, almoço, lanche, jantar, snack e suplementação. O «+» adiciona comida a essa refeição. «Repetir» volta a registar a mesma coisa. Para apagar, toca em «Apagar» e depois em «Confirmar»." },
   { sel: "header", title: "Escolher o dia", text: "Toca no calendário, no canto de cima à direita, ou no nome do dia para abrir o mês e escolher qualquer dia. As setas avançam ou recuam um dia. Os dias com registos têm um ponto verde, ou amarelo se passaste a meta." },
   { sel: ".week", title: "Últimos 7 dias", text: "O gráfico mostra as calorias de cada dia. A linha tracejada é a tua meta e as barras amarelas são os dias acima dela. Toca num dia para o abrir." },
   { sel: "#goalDetails", title: "A tua meta", text: "A tua meta foi calculada com os dados que preencheste no início (sexo, idade, peso, altura, atividade e objetivo). Em «Meta diária» podes mudar esses dados, por exemplo quando o teu peso mudar, ou escrever tu as calorias." },
