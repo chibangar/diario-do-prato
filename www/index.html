@@ -254,6 +254,14 @@ select, .field { border: 1px solid var(--line); background: var(--paper); border
 .login-card .g-btn { width: 100%; justify-content: center; padding: 14px 16px; font-size: 16px; }
 .login-card .skip { border: 0; background: transparent; color: var(--muted); font-weight: 600; padding: 10px; text-decoration: underline; text-underline-offset: 3px; }
 .login-card .err { color: #C0392B; font-size: 13px; }
+.ai-card { gap: 8px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.ai-ic { width: 64px; height: 64px; border-radius: 20px; background: color-mix(in srgb, var(--hi) 25%, var(--card)); display: grid; place-items: center; font-size: 32px; }
+.ai-why { list-style: none; margin: 2px 0; padding: 10px 12px; width: 100%; text-align: left; display: grid; gap: 6px; background: var(--soft); border-radius: 14px; font-size: 14px; }
+.ai-step { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; font-size: 14px; font-weight: 600; margin-top: 4px; }
+.ai-step b { width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: var(--card); display: grid; place-items: center; font-size: 13px; flex: none; }
+.ai-card .ai-link, .ai-card .field, .ai-card .ai-act { width: 100%; text-align: center; text-decoration: none; }
+.ai-card .ai-msg { font-size: 13.5px; color: var(--ink); }
+.login-card .ai-note { font-size: 12px; }
 /* household units under the food name: − 2 ovos + · 1 ovo = 55 g */
 .qty { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 .qty .stp { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); overflow: hidden; }
@@ -1157,6 +1165,29 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <div id="loginBtnBox" style="width:100%"></div>
     <p class="err" id="loginErr" hidden></p>
     <button class="skip" id="loginSkip" type="button">Continuar sem conta</button>
+  </div>
+</div>
+
+<div class="cal-back" id="aiSheet" role="dialog" aria-modal="true" aria-labelledby="aiSheetTitle" hidden>
+  <div class="cal login-card ai-card">
+    <div class="ai-ic" aria-hidden="true">✨</div>
+    <h2 id="aiSheetTitle">Respostas mais certas com a IA Gemini</h2>
+    <p>Liga a IA da Google e a app acerta muito mais nas fotos.</p>
+    <ul class="ai-why">
+      <li>📷 Identifica cada alimento do prato e estima os gramas</li>
+      <li>⚠️ Avisa do azeite e dos molhos que não se vêem</li>
+      <li>🥗 Cria o teu plano de dieta à medida</li>
+      <li>💸 Grátis, com a tua conta Google</li>
+    </ul>
+    <div class="ai-step"><b>1</b><span>Cria a chave grátis no site da Google e copia-a.</span></div>
+    <a class="btn btn-plain ai-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Abrir aistudio.google.com/apikey ↗</a>
+    <div class="ai-step"><b>2</b><span>Cola a chave aqui e ativa.</span></div>
+    <input type="password" id="aiSheetKey" class="field" placeholder="Cola aqui a chave" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Chave da IA Gemini">
+    <button class="btn btn-accent ai-act" id="aiSheetGo" type="button">Guardar e ativar</button>
+    <p class="ai-msg" id="aiSheetMsg" hidden></p>
+    <p class="ai-note">A chave fica só neste telemóvel. As fotos são enviadas à Google para análise. Podes mudar isto em Perfil › IA Gemini.</p>
+    <button class="skip" id="aiSheetLater" type="button">Agora não</button>
+    <button class="skip" id="aiSheetNever" type="button" style="padding-top:0">Não voltar a perguntar</button>
   </div>
 </div>
 
@@ -3341,21 +3372,52 @@ async function testKey(k) {
     return r.ok ? "ok" : r.status === 400 || r.status === 401 || r.status === 403 ? "bad" : "unknown";
   } catch { return "offline"; }
 }
+const KEY_MSG = { ok: "✅ Chave guardada e a funcionar. A IA está ativa.", bad: "⚠️ Chave guardada, mas a Google não a aceitou. Confirma se a copiaste toda.",
+  unknown: "✅ Chave guardada. Não deu para a testar agora; fica ativa na mesma.", offline: "✅ Chave guardada. Não deu para a testar agora (sem internet?); fica ativa na mesma." };
+// saves the key and asks Google if it works; returns "ok" | "bad" | "unknown" | "offline", or null when the text is not a key
+async function activateKey(v, btn) {
+  if (v.length < 20 || v.length > 200 || /\s/.test(v)) return null;
+  await storeKey(v); aiCheck = null; renderAIState();
+  toast("✅ Chave guardada! A confirmar com a Google…");
+  if (btn) btn.disabled = true;
+  const res = await testKey(v); if (btn) btn.disabled = false;
+  if (aiKey() !== v) return res;
+  aiCheck = res; renderAIState();
+  return res;
+}
 $("#aiSave").onclick = async () => {
   const v = $("#aiKey").value.trim();
   // an empty box never erases the saved key (the box is always empty after saving)
   if (!v) { toast(aiKey() ? "A chave já está guardada e ativa. Para mudar, cola outra." : "Cola primeiro a chave na caixa."); return; }
-  if (v.length < 20 || v.length > 200 || /\s/.test(v)) { toast("Esta chave não parece certa. Copia-a outra vez do site."); return; }
-  await storeKey(v); aiCheck = null; renderAIState();
-  toast("✅ Chave guardada! A confirmar com a Google…");
-  const btn = $("#aiSave"); btn.disabled = true;
-  const res = await testKey(v); btn.disabled = false;
-  if (aiKey() !== v) return;
-  aiCheck = res; renderAIState();
-  toast(res === "ok" ? "✅ Chave guardada e a funcionar. A IA está ativa."
-    : res === "bad" ? "⚠️ Chave guardada, mas a Google não a aceitou. Confirma se a copiaste toda."
-    : "✅ Chave guardada. Não deu para a testar agora (sem internet?); fica ativa na mesma.");
+  const res = await activateKey(v, $("#aiSave"));
+  toast(res ? KEY_MSG[res] : "Esta chave não parece certa. Copia-a outra vez do site.");
 };
+// at start, while the AI is off: a screen that explains it and turns it on (can be skipped, or never shown again)
+async function askGemini(then) {
+  const C = window.Capacitor;
+  if (!C?.isNativePlatform?.() || lsGet("ddp.aiAskNever", false) || Date.now() < (lsGet("ddp.aiAskAfter", 0) || 0)) { then(); return; }
+  // the key may still be coming back from the phone's storage
+  if (!aiKey()) { try { const r = await keyStore("get", { name: "aiKey" }); if (String(r?.value || "").trim()) lsSet("ddp.aiKey", String(r.value).trim()); } catch { /* none */ } }
+  if (aiKey()) { then(); return; }
+  const sh = $("#aiSheet"), msg = $("#aiSheetMsg"), inp = $("#aiSheetKey");
+  const close = () => { sh.hidden = true; then(); };
+  const say = (t) => { msg.hidden = !t; msg.textContent = t || ""; };
+  say(""); inp.value = "";
+  inp.oninput = () => say("");
+  $("#aiSheetGo").onclick = async () => {
+    const v = inp.value.trim();
+    if (!v) { say("Cola primeiro a chave (passo 2). Se ainda não tens, toca no passo 1."); inp.focus(); return; }
+    const res = await activateKey(v, $("#aiSheetGo"));
+    if (!res) { say("Esta chave não parece certa. Copia-a outra vez do site da Google."); return; }
+    if (res === "bad") { say(KEY_MSG.bad + " Podes colar outra, ou continuar e corrigir depois no Perfil."); $("#aiSheetLater").textContent = "Continuar"; return; }
+    toast(KEY_MSG[res]); close();
+  };
+  // "not now": ask again in 3 days
+  $("#aiSheetLater").textContent = "Agora não";
+  $("#aiSheetLater").onclick = () => { lsSet("ddp.aiAskAfter", Date.now() + 3 * 86400000); close(); };
+  $("#aiSheetNever").onclick = () => { lsSet("ddp.aiAskNever", true); toast("Podes ligar a IA quando quiseres em Perfil › IA Gemini."); close(); };
+  sh.hidden = false;
+}
 $("#aiOff").onclick = async () => {
   if (!confirm("Desligar a IA Gemini e apagar a chave deste telemóvel?")) return;
   await storeKey(""); aiCheck = null; renderAIState(); toast("IA desligada e chave apagada.");
@@ -4037,9 +4099,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Visual novo: o ecrã Hoje abre com «Bom dia», a data e o teu nome (com a conta Google). As calorias, a água e as refeições ficaram mais limpas e arrumadas.",
-  "Água com barra de progresso e botão «+ 250 ml». As refeições do dia estão numa só lista.",
-  "Em baixo tens 5 separadores: Hoje, Comer, a câmara, Progresso e Perfil."
+  "Ao abrir a app, se a IA Gemini ainda não estiver ligada, aparece um ecrã que explica como a ligar em 2 passos: criar a chave grátis no site da Google e colá-la na app.",
+  "Com a IA ligada, a app identifica cada alimento da foto, estima os gramas e avisa do azeite e dos molhos que não se vêem.",
+  "Podes escolher «Agora não» (volta a perguntar daqui a 3 dias) ou «Não voltar a perguntar». A IA também se liga em Perfil › IA Gemini."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
@@ -4460,10 +4522,10 @@ render();
 renderNotif(); setTimeout(() => scheduleNotifs(), 4000);
 checkUpdate(false);
 // opening animation with sound, then the usual start (welcome the first time, else profile / news)
-playIntro(() => { if (lsGet("ddp.seenWelcomeVoice", false)) greet(); askLogin(() => {
+playIntro(() => { if (lsGet("ddp.seenWelcomeVoice", false)) greet(); askLogin(() => askGemini(() => {
   if (!lsGet("ddp.seenWelcomeVoice", false)) { lsSet("ddp.newsBuild", APP_BUILD); showWelcome(); }
   else { needProfile(); if (lsGet("ddp.newsBuild", 0) !== APP_BUILD) showNews(); }
-}); });
+})); });
 })();
 </script>
 <script type="module">
