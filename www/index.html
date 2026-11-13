@@ -753,6 +753,56 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
 @media (prefers-reduced-motion: reduce) { .intro * { animation-duration: .01s !important; animation-delay: 0s !important; } }
 .key-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .key-row input { flex: 1 1 200px; min-width: 0; }
+/* ---------- modern look (1.0.50) ---------- */
+.brand { display: none; }
+.head-top { align-items: flex-end; }
+.hello { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hello small { color: var(--muted); font-size: 13.5px; font-weight: 600; }
+.hello small::first-letter { text-transform: uppercase; }
+.hello small:empty { display: none; }
+.tab-h, body[data-tab="hoje"] .tab-h { display: block; font-size: 27px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.daynav { box-shadow: none; border: 1px solid var(--line); padding: 2px; }
+.daynav button { height: 34px; min-width: 34px; font-size: 16px; }
+.daynav .lbl { font-size: 13.5px; min-width: 120px; }
+.icon-btn { width: 42px; height: 42px; box-shadow: none; border: 1px solid var(--line); }
+.card, .mgroup, .q-btn, .week, details.settings, .idea-btn { box-shadow: none; }
+.card, .week, details.settings, .q-btn { border: 1px solid var(--line); border-radius: 22px; }
+.q-btn { border-radius: 16px; }
+/* calories */
+.summary { grid-template-columns: 128px minmax(0, 1fr); gap: 16px; padding: 18px; }
+.sum-head h2 { font-size: 15px; font-weight: 700; color: var(--muted); font-family: var(--f-body); letter-spacing: .01em; }
+.ring { width: 128px; height: 128px; }
+.ring-c b { font-size: 30px; }
+.ring-c span { font-size: 12px; }
+.mbars { gap: 12px; }
+.mbar .top { font-size: 13.5px; }
+.mbar .bar { height: 8px; }
+.sum-foot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; border-top: 0; padding-top: 0; }
+.sum-foot > span { background: var(--soft); border-radius: 14px; padding: 8px 10px; display: flex; flex-direction: column; gap: 1px; font-size: 11.5px; line-height: 1.3; min-width: 0; }
+.sum-foot b, .sum-foot .goal-link { font-size: 14px; }
+.burn { border-top: 0; padding-top: 0; }
+.burn-row { border-radius: 14px; padding: 8px 10px; grid-template-columns: 36px minmax(0, 1fr) auto; }
+.burn-ic { width: 36px; height: 36px; font-size: 18px; border-radius: 10px; }
+.burn-tx b { font-size: 14px; }
+.burn-row:not(.on) .burn-tx small { display: none; }
+/* water */
+.water { gap: 10px; padding: 14px 16px; }
+.water .w-top h2 { font-size: 16px; }
+.w-line { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.w-bar { height: 10px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+.w-bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: #4AA3E8; transition: width .35s ease; }
+.w-chip { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 700; min-width: 40px; }
+.w-chip.on { background: #4AA3E8; border-color: #4AA3E8; color: #fff; }
+.water .glasses { display: none; }
+/* meals: one list */
+.meals { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 2px 14px; gap: 0; margin-top: 8px; }
+.mgroup { background: transparent; border-radius: 0; padding: 12px 0; border-bottom: 1px solid var(--line); animation: none; }
+.mgroup:last-child { border-bottom: 0; }
+.mg-ic { width: 38px; height: 38px; font-size: 18px; }
+.mg-head .t b { font-size: 15px; }
+.add-btn { width: 34px; height: 34px; font-size: 22px; background: var(--soft); color: var(--ink); }
+.again-day { margin: 12px 0 4px; }
+.sec-head h2 { font-size: 18px; }
 </style>
 </head>
 <body data-tab="hoje">
@@ -764,6 +814,7 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
         <h1>NutriLente</h1>
         <p>Foto, escolhe os alimentos, está registado.</p>
       </div>
+      <div class="hello"><small id="tabSub"></small><h2 class="tab-h" id="tabH"></h2></div>
       <div class="head-btns">
       <button class="icon-btn avatar-btn" id="acctBtn" type="button" aria-label="A minha conta"></button>
       <button class="icon-btn" id="calBtn" type="button" aria-label="Abrir calendário" aria-haspopup="dialog">
@@ -771,7 +822,6 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
       </button>
       </div>
     </div>
-    <h2 class="tab-h" id="tabH"></h2>
     <nav class="daynav" aria-label="Escolher dia">
       <button id="prevDay" aria-label="Dia anterior">‹</button>
       <button class="lbl" id="dayLbl" type="button" aria-label="Abrir calendário">Hoje</button>
@@ -803,8 +853,9 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
 
   <section class="card water" id="waterCard" data-tab="hoje" aria-labelledby="waterT">
     <div class="w-top"><span aria-hidden="true" style="font-size:22px">💧</span><h2 id="waterT">Água</h2><span class="amt" id="waterAmt"></span></div>
+    <div class="w-line"><div class="w-bar" aria-hidden="true"><i id="waterBar"></i></div>
+      <button class="w-chip" id="waterMinus" type="button" aria-label="Tirar um copo">−</button><button class="w-chip on" id="waterPlus" type="button" aria-label="Juntar um copo de 250 ml">+ 250 ml</button></div>
     <div class="glasses" id="waterGlasses"></div>
-    <div class="w-acts"><button class="btn btn-plain" id="waterMinus" type="button" aria-label="Tirar um copo">− Copo</button><button class="btn btn-accent" id="waterPlus" type="button">+ Copo (250 ml)</button></div>
   </section>
 
   <section class="card mcard" id="missions" data-tab="progresso">
@@ -2974,7 +3025,7 @@ function render() {
   tb.textContent = training ? (burnedOf(S.day) ? "🏋️ Dia de treino" : `🏋️ Dia de treino +${trainKcal(P)} kcal`) : "Dia de descanso";
   renderBurn();
   $("#kcalTotal").textContent = `${r0(kcal)} kcal`;
-  $("#kcalLeft").textContent = kcal <= goal ? `Faltam ${r0(goal - kcal)} kcal` : `${r0(kcal - goal)} kcal acima`;
+  $("#kcalLeft").innerHTML = kcal <= goal ? `Faltam <b>${r0(goal - kcal)} kcal</b>` : `Acima <b>${r0(kcal - goal)} kcal</b>`;
   $("#kcalGoal").textContent = `${goal} kcal`;
   if (!CAL.el.hidden) renderCal();
   if ($("#dishDetails")?.open) renderDishes();
@@ -3036,6 +3087,7 @@ function render() {
   if (typeof renderMissions === "function") try { renderMissions(); } catch { /* first paint */ }
   renderDishes();
   if (document.activeElement !== $("#goalIn")) $("#goalIn").value = S.goal;
+  setHead();
 }
 
 function mealCard(m) {
@@ -3119,11 +3171,21 @@ function closeCal() { CAL.el.hidden = true; CAL.opener?.focus?.(); }
 function shiftMonth(n) { const d = new Date(CAL.y, CAL.m + n, 1); CAL.y = d.getFullYear(); CAL.m = d.getMonth(); renderCal(); }
 // ---------- tabs ----------
 const TAB_TITLES = { hoje: "", comer: "Comer", progresso: "Progresso", perfil: "Perfil" };
+function setHead() {
+  const t = document.body.dataset.tab || "hoje", h = $("#tabH"), sub = $("#tabSub"); if (!h || !sub) return;
+  const titles = { comer: "Comer", progresso: "Progresso", perfil: "Perfil" };
+  if (t !== "hoje") { h.textContent = titles[t] || ""; sub.textContent = ""; return; }
+  const name = String(lsGet("ddp.user", null)?.name || "").trim().split(/\s+/)[0];
+  const d = dateOf(S.day), isToday = S.day === todayKey();
+  sub.textContent = d.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" });
+  const hr = new Date().getHours(), hi = hr < 6 ? "Boa noite" : hr < 13 ? "Bom dia" : hr < 20 ? "Boa tarde" : "Boa noite";
+  h.textContent = isToday ? (name ? `${hi}, ${name}` : hi) : dayLabel(S.day);
+}
 function setTab(t, keepScroll) {
   if (!TAB_TITLES.hasOwnProperty(t)) t = "hoje";
   const changed = document.body.dataset.tab !== t;
   document.body.dataset.tab = t;
-  $("#tabH").textContent = TAB_TITLES[t];
+  setHead();
   document.querySelectorAll(".dock [data-go]").forEach((b) => { if (b.dataset.go === t) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   if (t === "comer") { $("#planDetails").open = true; $("#dishDetails").open = true; }
   if (t === "perfil") renderProfHead();
@@ -3647,6 +3709,7 @@ function renderWater() {
   const ml = waterOf(S.day), goal = waterGoal(), n = Math.ceil(goal / 250), have = Math.round(ml / 250);
   const L = (v) => String(Math.round(v / 100) / 10).replace(".", ",");
   $("#waterAmt").textContent = `${L(ml)} / ${L(goal)} L`;
+  const wb = $("#waterBar"); if (wb) wb.style.width = Math.min(100, ml / goal * 100) + "%";
   $("#waterGlasses").innerHTML = Array.from({ length: Math.max(n, have) }, (_, i) => `<button type="button" class="${i < have ? "full" : ""}" data-glass="${i + 1}" aria-label="${i + 1} copos"></button>`).join("");
   $("#waterGlasses").querySelectorAll("[data-glass]").forEach((b) => b.onclick = () => { const g = +b.dataset.glass; setWater((g === have ? g - 1 : g) * 250); haptic("LIGHT"); });
 }
@@ -3974,9 +4037,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "App nova e mais arrumada: em baixo tens 5 separadores. Hoje (o teu dia), Comer (ideias, plano de dieta e os teus pratos), a câmara ao centro, Progresso (peso, missões e semana) e Perfil (definições).",
-  "No separador Hoje ficam só as calorias, a água e as refeições, com os botões «Galeria» e «Procurar» logo à mão.",
-  "O Perfil mostra a tua meta, o peso e a proteína num cartão, e as definições estão numa lista com ícones."
+  "Visual novo: o ecrã Hoje abre com «Bom dia», a data e o teu nome (com a conta Google). As calorias, a água e as refeições ficaram mais limpas e arrumadas.",
+  "Água com barra de progresso e botão «+ 250 ml». As refeições do dia estão numa só lista.",
+  "Em baixo tens 5 separadores: Hoje, Comer, a câmara, Progresso e Perfil."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
