@@ -2953,7 +2953,7 @@ function renderDraft() {
     const n = it.g / U.g;
     let next = dir > 0 ? (n < 1 ? 1 : Math.floor(n + 1e-6) + 1) : (n <= 1.05 ? 0.5 : Math.ceil(n - 1e-6) - 1);
     if (dir < 0 && n <= 0.55) return;
-    setGrams(it, next * U.g); haptic("LIGHT"); renderDraft();
+    setGrams(it, next * U.g); renderDraft();
   };
   el.querySelectorAll("[data-qi]").forEach((b) => b.onclick = () => step(+b.dataset.qi, 1));
   el.querySelectorAll("[data-qd]").forEach((b) => b.onclick = () => step(+b.dataset.qd, -1));
@@ -3626,23 +3626,25 @@ function haptic(style = "LIGHT") {
 }
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const PRESSABLE = "button, .food, .tab, .chip-btn, .goal-opt, label.sw";
+// The finger touching a button only shows it pressed. The vibration and the light effects come with the
+// click, which Android only sends for a real tap: sliding the page over a button does not vibrate.
 document.addEventListener("pointerdown", (e) => {
   const el = e.target.closest(PRESSABLE); if (!el || el.disabled) return;
-  el.classList.add("pressing"); haptic();
-  if (REDUCED || el.matches("label.sw")) return;
+  el.classList.add("pressing");
+}, { passive: true });
+document.addEventListener("click", (e) => {
+  const el = e.target.closest(PRESSABLE); if (!el || el.disabled) return;
+  haptic();
+  if (REDUCED) return;
+  el.classList.remove("shine"); void el.offsetWidth; el.classList.add("shine"); setTimeout(() => el.classList.remove("shine"), 750);
+  if (el.classList.contains("add-btn")) { el.classList.remove("spin"); void el.offsetWidth; el.classList.add("spin"); }
+  if (el.matches("label.sw") || !e.clientX && !e.clientY) return;
   const r = el.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.4;
   const lq = document.createElement("span"); lq.className = "lq";
   lq.style.cssText = `--x:${e.clientX - r.left}px;--y:${e.clientY - r.top}px;--d:${d}px`;
   el.append(lq); setTimeout(() => lq.remove(), 800);
-}, { passive: true });
-const release = (e) => {
-  document.querySelectorAll(".pressing").forEach((el) => {
-    el.classList.remove("pressing");
-    if (REDUCED) return;
-    el.classList.remove("shine"); void el.offsetWidth; el.classList.add("shine"); setTimeout(() => el.classList.remove("shine"), 750);
-    if (el.classList.contains("add-btn")) { el.classList.remove("spin"); void el.offsetWidth; el.classList.add("spin"); }
-  });
-};
+}, { capture: true, passive: true });
+const release = () => document.querySelectorAll(".pressing").forEach((el) => el.classList.remove("pressing"));
 ["pointerup", "pointercancel", "pointerleave"].forEach((t) => document.addEventListener(t, release, { passive: true }));
 // celebration: particles fly out of an element (or the centre of the screen)
 function burst(el, n = 26) {
@@ -3797,9 +3799,9 @@ function renderWater() {
   $("#waterAmt").textContent = `${L(ml)} / ${L(goal)} L`;
   const wb = $("#waterBar"); if (wb) wb.style.width = Math.min(100, ml / goal * 100) + "%";
   $("#waterGlasses").innerHTML = Array.from({ length: Math.max(n, have) }, (_, i) => `<button type="button" class="${i < have ? "full" : ""}" data-glass="${i + 1}" aria-label="${i + 1} copos"></button>`).join("");
-  $("#waterGlasses").querySelectorAll("[data-glass]").forEach((b) => b.onclick = () => { const g = +b.dataset.glass; setWater((g === have ? g - 1 : g) * 250); haptic("LIGHT"); });
+  $("#waterGlasses").querySelectorAll("[data-glass]").forEach((b) => b.onclick = () => { const g = +b.dataset.glass; setWater((g === have ? g - 1 : g) * 250); });
 }
-$("#waterPlus").onclick = () => { const before = waterOf(S.day); setWater(before + 250); haptic("LIGHT"); if (before < waterGoal() && before + 250 >= waterGoal()) burst($("#waterPlus"), 24); };
+$("#waterPlus").onclick = () => { const before = waterOf(S.day); setWater(before + 250); if (before < waterGoal() && before + 250 >= waterGoal()) burst($("#waterPlus"), 24); };
 $("#waterMinus").onclick = () => setWater(waterOf(S.day) - 250);
 // ---------- weekly summary ----------
 let wkOffset = 0;
@@ -4123,8 +4125,8 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Vídeo novo com animação e voz em português (48 segundos) que mostra como ligar a IA Gemini: abrir o site da Google, criar a chave, copiá-la e colá-la na app.",
-  "Encontras o vídeo no ecrã que aparece ao abrir a app e em Perfil › IA Gemini, no botão «▶ Ver o vídeo»."
+  "Ao deslizar a página, o telemóvel já não vibra quando o dedo passa por cima dos botões. Só vibra quando tocas mesmo num botão.",
+  "O botão da água vibra uma vez só, em vez de duas."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
