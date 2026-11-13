@@ -386,6 +386,10 @@ details.settings summary { font-weight: 600; cursor: pointer; }
 .ai-box small { font-weight: 500; color: var(--muted); font-family: var(--f-num); }
 .ai-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--hi); flex: none; animation: aipulse .8s ease-in-out infinite alternate; }
 @keyframes aipulse { to { opacity: .25; transform: scale(.7); } }
+.manual-open { width: 100%; }
+.manual { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+.manual-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .manual-row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.manual-row label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; } .manual-row .field { width: 100%; min-width: 0; }
 .ai-alerts { margin-top: 4px; font-size: 13px; color: var(--muted); display: grid; gap: 6px; justify-items: start; }
 .ai-alerts ul { margin: 0; padding-left: 18px; color: var(--ink); } .ai-alerts li { margin: 2px 0; }
 .ai-alts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px; color: var(--muted); font-size: 13px; }
@@ -1991,7 +1995,7 @@ function aiItem(x) {
   const g = Math.max(1, Math.min(2000, Math.round(Number(x.peso_estimado_g) || 0)));
   const nn = norm(name), foods = allFoods();
   // exact name, or the same name with/without "cozido(a)", e.g. "arroz branco" = "Arroz branco cozido"
-  const bare = (t) => norm(t).replace(/s+(cozid[oa]s?)$/, "");
+  const bare = (t) => norm(t).replace(/\s+(cozid[oa]s?)$/, "");
   const db = foods.find((f) => norm(f.name) === nn) || foods.find((f) => bare(f.name) === bare(name));
   if (db) return { ...fromFood(db, g), fromAI: true };
   const cat = (CAT_GUESS.find(([re]) => re.test(nn)) || [0, "outros"])[1];
@@ -2646,6 +2650,64 @@ function renderPicker() {
   };
 }
 
+// typing a food by hand when the photo missed it
+function manualBox(d) {
+  if (!d.manual) return `<button class="btn btn-plain manual-open" id="dManOpen" type="button">✍️ Não está aqui? Escrever à mão</button>`;
+  const m = d.manual;
+  return `<div class="manual" id="dMan">
+    <h3 class="list-title" style="margin:0">Escrever à mão</h3>
+    <p class="note" style="margin:0">Escreve o nome e os gramas. Se a app conhecer o alimento, calcula as calorias sozinha; se não, escreve-as tu (vêm no rótulo).</p>
+    <input class="field" id="dManName" placeholder="Nome (ex.: Molho de cogumelos)" maxlength="60" value="${esc(m.name || "")}" aria-label="Nome do alimento">
+    <div class="manual-row">
+      <label><span>Gramas</span><input class="field num" id="dManG" type="number" inputmode="decimal" min="1" value="${esc(m.g ?? "100")}"></label>
+      <label><span>Calorias</span><input class="field num" id="dManK" type="number" inputmode="decimal" min="0" placeholder="auto" value="${esc(m.kcal ?? "")}"></label>
+    </div>
+    <div class="manual-row three">
+      <label><span>Proteína g</span><input class="field num" id="dManP" type="number" inputmode="decimal" min="0" placeholder="opcional" value="${esc(m.p ?? "")}"></label>
+      <label><span>Hidratos g</span><input class="field num" id="dManC" type="number" inputmode="decimal" min="0" placeholder="opcional" value="${esc(m.c ?? "")}"></label>
+      <label><span>Gordura g</span><input class="field num" id="dManF" type="number" inputmode="decimal" min="0" placeholder="opcional" value="${esc(m.f ?? "")}"></label>
+    </div>
+    <p class="note" id="dManHint" style="margin:0" hidden></p>
+    <div class="manual-row"><button class="btn btn-plain" id="dManCancel" type="button">Fechar</button><button class="btn btn-accent" id="dManAdd" type="button">Juntar ao prato</button></div>
+  </div>`;
+}
+// the food in the app's tables with this name (also "arroz branco" = "Arroz branco cozido")
+function knownFood(name) {
+  const bare = (t) => norm(t).replace(/\s+(cozid[oa]s?)$/, ""), n = norm(name), foods = allFoods();
+  return foods.find((f) => norm(f.name) === n) || foods.find((f) => bare(f.name) === bare(name)) || null;
+}
+function wireManual(d, q) {
+  const open = q("#dManOpen");
+  if (open) { open.onclick = () => { d.manual = { g: "100" }; renderDraft(); setTimeout(() => { $("#dMan")?.scrollIntoView({ behavior: "smooth", block: "center" }); $("#dManName")?.focus({ preventScroll: true }); }, 50); }; return; }
+  if (!q("#dMan")) return;
+  const val = (id) => q(id).value.trim(), keep = () => Object.assign(d.manual, { name: val("#dManName"), g: val("#dManG"), kcal: val("#dManK"), p: val("#dManP"), c: val("#dManC"), f: val("#dManF") });
+  const hint = q("#dManHint");
+  const showHint = () => {
+    const f = knownFood(val("#dManName"));
+    hint.hidden = !f; if (f) hint.textContent = `Conheço «${f.name}»: ${r0(f.kcal)} kcal por 100 g. Deixa as calorias vazias e eu calculo.`;
+  };
+  ["#dManName", "#dManG", "#dManK", "#dManP", "#dManC", "#dManF"].forEach((id) => q(id).oninput = () => { keep(); if (id === "#dManName") showHint(); });
+  showHint();
+  q("#dManCancel").onclick = () => { d.manual = null; renderDraft(); };
+  q("#dManAdd").onclick = () => {
+    keep();
+    const name = d.manual.name.replace(/\s+/g, " ").replace(/^./, (ch) => ch.toUpperCase()).slice(0, 60);
+    const g = Number(String(d.manual.g).replace(",", "."));
+    const nums = ["kcal", "p", "c", "f"].map((k) => String(d.manual[k] || "").replace(",", ".")).map((v) => (v === "" ? null : Number(v)));
+    if (!name) { toast("Escreve o nome do alimento."); q("#dManName").focus(); return; }
+    if (!(g > 0 && g <= 3000)) { toast("Escreve os gramas (entre 1 e 3000)."); q("#dManG").focus(); return; }
+    if (nums.some((v) => v != null && !(v >= 0))) { toast("Os números não podem ser negativos."); return; }
+    const [kcal, p, c, f] = nums, known = knownFood(name), cat = (CAT_GUESS.find(([re]) => re.test(norm(name))) || [0, "outros"])[1];
+    let it;
+    if (kcal == null && known) it = fromFood(known, g);
+    else if (kcal == null && (p != null || c != null || f != null)) it = { name, detail: "", cat, g, kcal: r0(4 * (p || 0) + 4 * (c || 0) + 9 * (f || 0)), p: r1(p || 0), c: r1(c || 0), f: r1(f || 0), custom: true };
+    else if (kcal == null) { toast(`Não conheço «${name}». Escreve as calorias (vêm no rótulo).`); q("#dManK").focus(); return; }
+    else if (kcal > g * 9) { toast("Calorias a mais para esse peso: nenhum alimento passa de 9 kcal por grama."); q("#dManK").focus(); return; }
+    else it = { name, detail: "", cat, g, kcal: r0(kcal), p: r1(p || 0), c: r1(c || 0), f: r1(f || 0), custom: true };
+    if (d.items.some((i) => i.name === it.name)) { toast(`«${it.name}» já está no prato: acerta os gramas na lista.`); return; }
+    d.items.push(it); d.manual = null; renderDraft(); toast(`«${it.name}» junto ao prato: ${r0(it.g)} g, ${r0(it.kcal)} kcal`);
+  };
+}
 function renderDraft() {
   const el = $("#draft"), d = S.draft;
   if (!d) { el.hidden = true; el.innerHTML = ""; return; }
@@ -2683,6 +2745,7 @@ function renderDraft() {
           </div>`).join("")}</div>
         <div class="confirm-row"><button class="btn" id="dMore2" type="button">+ Adicionar mais alimentos</button>${d.preview ? '<button class="btn" id="dMorePhoto" type="button">📷 Fotografar outro produto</button>' : ""}</div></div>` : ""}
 
+      ${d.preview ? manualBox(d) : ""}
       <div class="picker" id="dPicker">
         <h3 class="list-title">${d.items.length ? "Acrescentar alimentos" : "Toca no que vais comer"}</h3>
         <div class="search"><input class="field" id="dSearch" type="search" placeholder="Procurar alimento…" value="${esc(d.q)}" aria-label="Procurar alimento"></div>
@@ -2718,6 +2781,7 @@ function renderDraft() {
   q("#dMorePhoto") && (q("#dMorePhoto").onclick = () => { addMore = d; warmAI(); openScan(); });
   q("#dGal") && (q("#dGal").onclick = () => { warmAI(); takePhoto("PHOTOS"); });
   
+  wireManual(d, q);
   q("#dSearch").oninput = (e) => { d.q = e.target.value; d.more = false; d.supMore = false; renderPicker(); };
   renderPicker();
   q("#dKeep") && (q("#dKeep").onchange = (e) => { d.keep = e.target.checked; });
@@ -3814,9 +3878,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "IA Gemini mais rigorosa: estima os gramas pelo tamanho do prato e dos talheres e pela forma de confeção, e mostra a confiança da análise.",
-  "Avisos do que pode estar no prato sem se ver (azeite, molhos, manteiga), com um botão para juntar 1 colher de azeite.",
-  "As calorias vêm das tabelas da app sempre que o alimento é conhecido, e as da IA são verificadas contra a proteína, os hidratos e a gordura."
+  "Depois da foto, se faltar algum alimento, toca em «✍️ Não está aqui? Escrever à mão»: escreve o nome e os gramas.",
+  "Se a app conhecer o alimento (ex.: «arroz branco»), calcula as calorias sozinha. Se não conhecer, escreves as calorias do rótulo, e a proteína, os hidratos e a gordura se quiseres.",
+  "Correção: os nomes da IA como «arroz branco» passam a usar os valores das tabelas da app."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
