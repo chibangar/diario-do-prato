@@ -386,6 +386,8 @@ details.settings summary { font-weight: 600; cursor: pointer; }
 .ai-box small { font-weight: 500; color: var(--muted); font-family: var(--f-num); }
 .ai-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--hi); flex: none; animation: aipulse .8s ease-in-out infinite alternate; }
 @keyframes aipulse { to { opacity: .25; transform: scale(.7); } }
+.ai-alerts { margin-top: 4px; font-size: 13px; color: var(--muted); display: grid; gap: 6px; justify-items: start; }
+.ai-alerts ul { margin: 0; padding-left: 18px; color: var(--ink); } .ai-alerts li { margin: 2px 0; }
 .ai-alts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px; color: var(--muted); font-size: 13px; }
 .chip-btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 5px 11px; font-size: 13px; font-weight: 600; }
 /* welcome */
@@ -1907,23 +1909,36 @@ async function recognize(d, canvas) {
 }
 // ---------- online AI (Google Gemini, the user's own free key) ----------
 const aiKey = () => String(lsGet("ddp.aiKey", "") || "").trim();
-const AI_PROMPT = "És um nutricionista português. Olha para a fotografia e identifica CADA alimento que está no prato em separado " +
-  "(por exemplo: arroz branco, feijão, grelos, entrecosto, chouriço, batata frita, salada). Para cada um, estima o peso em gramas tal como está no prato " +
-  "e os valores nutricionais por 100 g (kcal, proteína, hidratos de carbono e gordura) desse alimento cozinhado como aparece. " +
-  "Usa nomes curtos em português de Portugal, com a forma de preparação quando se vê (ex.: «Entrecosto grelhado», «Arroz de feijão»). " +
-  "Se for um alimento embalado ou uma bebida, identifica-o na mesma. Dá também um nome curto ao prato e uma pontuação de saúde de 1 a 10. " +
-  "Se não houver comida na foto, devolve a lista vazia.";
+// The rules Gemini follows on every photo (system instruction): a strict Portuguese nutritionist
+const AI_SYSTEM = "És um nutricionista português, rigoroso e conservador. A tua tarefa é registar com a máxima precisão o que está no prato. Regras: " +
+  "1) Identifica CADA alimento em separado (ex.: arroz branco, feijão, grelos, entrecosto, chouriço, batata frita, salada). Não inventes alimentos que não se vêem. " +
+  "2) Estima o peso em gramas de cada alimento tal como está no prato, cozinhado. Usa as referências de tamanho: um prato raso mede cerca de 26 cm, " +
+  "uma colher de sopa 15 cm, um garfo 19 cm, uma faca 22 cm, uma lata 12 cm de altura. Considera a altura do alimento, não só a área. " +
+  "3) Vê o estado de confeção (grelhado, frito, cozido, assado, cru) e usa valores nutricionais desse estado, de tabelas de composição de alimentos (INSA/USDA), não estimativas soltas. " +
+  "4) Para cada alimento dá as calorias, proteína, hidratos de carbono e gordura do peso estimado (não por 100 g). As calorias devem bater certo com 4×proteína + 4×hidratos + 9×gordura. " +
+  "5) Em «nome» usa um nome genérico e limpo em português de Portugal, com a confeção quando se vê (ex.: «peito de frango grelhado», «arroz branco cozido», «batata frita»), sem marcas nem adjetivos. " +
+  "6) Em «alertas_ocultos» avisa do que pode estar no prato sem se ver bem e muda as calorias: azeite ou óleo de cozinhar, manteiga, natas, molhos, açúcar, pão por baixo. Escreve cada alerta numa frase curta. " +
+  "7) «confianca_geral» de 0 a 100: baixa se a foto estiver escura, desfocada, de longe, ou se houver alimentos tapados. " +
+  "8) Se for um produto embalado ou uma bebida, identifica-o na mesma. Se não houver comida, devolve a lista vazia. Dá também uma pontuação de saúde de 1 a 10.";
+const AI_PROMPT = "Analisa a fotografia deste prato e responde no formato pedido.";
+// Structured output: Gemini must answer exactly in this shape (responseSchema)
 const AI_SCHEMA = {
   type: "OBJECT",
   properties: {
-    dish: { type: "STRING" },
-    healthScore: { type: "INTEGER" },
-    items: { type: "ARRAY", items: { type: "OBJECT", properties: {
-      name: { type: "STRING" }, grams: { type: "NUMBER" }, kcal100: { type: "NUMBER" },
-      protein100: { type: "NUMBER" }, carbs100: { type: "NUMBER" }, fat100: { type: "NUMBER" }
-    }, required: ["name", "grams", "kcal100", "protein100", "carbs100", "fat100"] } }
+    nome_prato: { type: "STRING", description: "Nome curto do prato em português de Portugal" },
+    confianca_geral: { type: "INTEGER", description: "Confiança na análise, de 0 a 100", minimum: 0, maximum: 100 },
+    pontuacao_saude: { type: "INTEGER", description: "Pontuação de saúde de 1 a 10", minimum: 1, maximum: 10 },
+    ingredientes: { type: "ARRAY", items: { type: "OBJECT", properties: {
+      nome: { type: "STRING", description: "Nome genérico e limpo, ex.: peito de frango grelhado" },
+      peso_estimado_g: { type: "NUMBER", description: "Peso estimado no prato, em gramas" },
+      calorias_estimadas: { type: "NUMBER", description: "kcal para o peso estimado" },
+      proteinas_g: { type: "NUMBER" }, hidratos_g: { type: "NUMBER" }, gorduras_g: { type: "NUMBER" }
+    }, required: ["nome", "peso_estimado_g", "calorias_estimadas", "proteinas_g", "hidratos_g", "gorduras_g"],
+      propertyOrdering: ["nome", "peso_estimado_g", "calorias_estimadas", "proteinas_g", "hidratos_g", "gorduras_g"] } },
+    alertas_ocultos: { type: "ARRAY", items: { type: "STRING" } }
   },
-  required: ["dish", "items", "healthScore"]
+  required: ["nome_prato", "confianca_geral", "pontuacao_saude", "ingredientes", "alertas_ocultos"],
+  propertyOrdering: ["nome_prato", "confianca_geral", "pontuacao_saude", "ingredientes", "alertas_ocultos"]
 };
 function cloudRecognize(canvas, key, shots) {
   const list = shots?.length > 1 ? shots : [canvas];
@@ -1931,11 +1946,12 @@ function cloudRecognize(canvas, key, shots) {
   const text = list.length > 1
     ? `Estas ${list.length} fotografias são do MESMO prato, tiradas de ângulos diferentes (a primeira de cima, as outras inclinadas e de lado). Usa todos os ângulos: o de cima para ver a área de cada alimento, os inclinados para ver a altura e o que está escondido. Cada alimento conta UMA só vez, mesmo que apareça em várias fotos. ` + AI_PROMPT.replace("Olha para a fotografia", "Olha para as fotografias")
     : AI_PROMPT;
-  return geminiJSON([...parts, { text }], AI_SCHEMA, key, 0.2);
+  return geminiJSON([...parts, { text }], AI_SCHEMA, key, 0.1, AI_SYSTEM);
 }
 // one question to Gemini, answered as JSON in the given shape
-async function geminiJSON(parts, schema, key, temperature) {
+async function geminiJSON(parts, schema, key, temperature, system) {
   const body = JSON.stringify({
+    ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
     contents: [{ parts }],
     generationConfig: { temperature, responseMimeType: "application/json", responseSchema: schema }
   });
@@ -1968,13 +1984,24 @@ const CAT_GUESS = [
   [/agua|sumo|cafe|cerveja|vinho|refrigerante|cha\b|galao|meia de leite/, "bebidas"],
   [/azeite|oleo|molho|maionese|ketchup|manteiga/, "gorduras e molhos"]
 ];
+// One ingredient from Gemini. Calories come from the app's food tables whenever the name is known there
+// (the same values as the rest of the app); otherwise Gemini's numbers are used, after a sanity check.
 function aiItem(x) {
-  const name = String(x.name || "").trim().replace(/^./, (c) => c.toUpperCase()).slice(0, 60);
-  const g = Math.max(1, Math.min(2000, Math.round(Number(x.grams) || 0)));
-  const db = allFoods().find((f) => norm(f.name) === norm(name));
-  if (db) return fromFood(db, g);
-  const k = g / 100, nn = norm(name), cat = (CAT_GUESS.find(([re]) => re.test(nn)) || [0, "outros"])[1];
-  return { name, detail: "", cat, g, kcal: r0(num(x.kcal100) * k), p: r1(num(x.protein100) * k), c: r1(num(x.carbs100) * k), f: r1(num(x.fat100) * k), custom: true };
+  const name = String(x.nome || "").trim().replace(/^./, (c) => c.toUpperCase()).slice(0, 60);
+  const g = Math.max(1, Math.min(2000, Math.round(Number(x.peso_estimado_g) || 0)));
+  const nn = norm(name), foods = allFoods();
+  // exact name, or the same name with/without "cozido(a)", e.g. "arroz branco" = "Arroz branco cozido"
+  const bare = (t) => norm(t).replace(/s+(cozid[oa]s?)$/, "");
+  const db = foods.find((f) => norm(f.name) === nn) || foods.find((f) => bare(f.name) === bare(name));
+  if (db) return { ...fromFood(db, g), fromAI: true };
+  const cat = (CAT_GUESS.find(([re]) => re.test(nn)) || [0, "outros"])[1];
+  let p = Math.max(0, num(x.proteinas_g)), c = Math.max(0, num(x.hidratos_g)), f = Math.max(0, num(x.gorduras_g)), kcal = Math.max(0, num(x.calorias_estimadas));
+  // no food has more than 9 kcal per gram (pure fat): above that the numbers are wrong
+  if (kcal > g * 9) { const s = (g * 9) / kcal; kcal *= s; p *= s; c *= s; f *= s; }
+  // calories must match the macros (4/4/9 kcal per gram); if they don't, the macros win
+  const fromMacros = 4 * p + 4 * c + 9 * f;
+  if (fromMacros > 0 && Math.abs(kcal - fromMacros) > Math.max(15, fromMacros * 0.2)) kcal = fromMacros;
+  return { name, detail: "", cat, g, kcal: r0(kcal), p: r1(p), c: r1(c), f: r1(f), custom: true, fromAI: true };
 }
 // Words that say nothing about which product it is (nutrition table, legal text, units)
 const PACK_STOP = new Set(("de do da dos das com sem para por pelo pela the and with for of en con los las del la el le les du des une per " +
@@ -2132,12 +2159,14 @@ async function recognizeAny(d, canvas, shots, big) {
     try {
       const r = await cloudRecognize(canvas, key, shots);
       if (S.draft !== d) return;
-      const items = (Array.isArray(r?.items) ? r.items : []).filter((x) => x?.name && Number(x.grams) > 0).slice(0, 12).map(aiItem);
+      const items = (Array.isArray(r?.ingredientes) ? r.ingredientes : []).filter((x) => x?.nome && Number(x.peso_estimado_g) > 0).slice(0, 12).map(aiItem);
       if (items.length) {
         for (const it of items) if (!d.items.some((i) => i.name === it.name)) d.items.push(it);
-        if (!d.title.trim()) d.title = String(r.dish || "").trim().slice(0, 80) || items.slice(0, 3).map((i) => i.name).join(", ");
-        const sc = Math.round(Number(r.healthScore));
-        d.ai = { status: "cloud", names: items.map((i) => i.name), score: sc >= 1 && sc <= 10 ? sc : null, angles: shots?.length || 1 };
+        if (!d.title.trim()) d.title = String(r.nome_prato || "").trim().slice(0, 80) || items.slice(0, 3).map((i) => i.name).join(", ");
+        const sc = Math.round(Number(r.pontuacao_saude)), conf = Math.round(Number(r.confianca_geral));
+        const alerts = (Array.isArray(r.alertas_ocultos) ? r.alertas_ocultos : []).map((t) => String(t).trim().slice(0, 160)).filter(Boolean).slice(0, 4);
+        d.ai = { status: "cloud", names: items.map((i) => i.name), score: sc >= 1 && sc <= 10 ? sc : null, angles: shots?.length || 1,
+          conf: conf >= 0 && conf <= 100 ? conf : null, alerts };
         renderDraft(); return;
       }
       d.cloudNote = "A IA não encontrou comida nesta foto.";
@@ -2202,7 +2231,12 @@ function aiBanner(d) {
       : `<div class="ai-box"><b>Li o texto ${ai.maybe.length > 1 ? `de ${ai.maybe.length} embalagens` : "de uma embalagem"}</b><span>Não tenho a certeza de qual é o produto, por isso não pus nada no prato. Toca no certo:</span>${rows}${more}</div>`;
   }
   if (ai.status === "barcode") return `<div class="ai-box ok-box"><b>Produto: ${esc(ai.name)}</b><span>Encontrado pelo código de barras. Confirma os gramas na lista.</span></div>`;
-  if (ai.status === "cloud") return `<div class="ai-box ok-box"><b>Encontrei ${ai.names.length} ${ai.names.length === 1 ? "alimento" : "alimentos"}${ai.angles > 1 ? ` · ${ai.angles} ângulos` : ""}</b><span>${esc(ai.names.join(", "))}. Os gramas são uma estimativa da IA: confirma-os na lista.</span></div>`;
+  if (ai.status === "cloud") {
+    const low = ai.conf != null && ai.conf < 60, fat = (ai.alerts || []).some((t) => /azeite|óleo|oleo|manteiga|gordura|frit/i.test(t)) && !d.items.some((i) => /^(Azeite|Óleo|Manteiga)/.test(i.name));
+    return `<div class="ai-box ${low ? "" : "ok-box"}"><b>Encontrei ${ai.names.length} ${ai.names.length === 1 ? "alimento" : "alimentos"}${ai.angles > 1 ? ` · ${ai.angles} ângulos` : ""}${ai.conf != null ? ` · confiança ${ai.conf}%` : ""}</b>` +
+      `<span>${esc(ai.names.join(", "))}. ${low ? "A IA não tem muita certeza: confirma bem cada alimento e os gramas. " : ""}Os gramas são uma estimativa: toca nos gramas de cada alimento para os acertar antes de guardar.</span>` +
+      (ai.alerts?.length ? `<div class="ai-alerts"><span>⚠️ Pode haver o que não se vê:</span><ul>${ai.alerts.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>${fat ? `<button class="chip-btn" type="button" data-addfat>+ 1 colher de azeite (10 g)</button>` : ""}</div>` : "") + `</div>`;
+  }
   const note = d.cloudNote ? `<span class="muted" style="font-size:13px">${esc(d.cloudNote)}</span>` : "";
   const goAI = d.clipOk === false && d._canvas && window.FoodClip?.available ? `<button class="btn btn-plain ai-go" data-clipdl type="button">Reconhecer cada alimento do prato<small>Descarrega o modelo uma vez (${window.FoodClip?.MODEL_MB || 100} MB, melhor em Wi-Fi). Depois funciona sem internet.</small></button>` : "";
   if (ai.status === "error") return `<div class="ai-box muted-box">Não consegui analisar a foto neste telemóvel. Escolhe os alimentos na lista.</div>`;
@@ -2689,6 +2723,10 @@ function renderDraft() {
   q("#dKeep") && (q("#dKeep").onchange = (e) => { d.keep = e.target.checked; });
   q("#dCancel").onclick = () => { S.draft = null; renderDraft(); };
   q("#dSave").onclick = saveDraft;
+  el.querySelectorAll("[data-addfat]").forEach((b) => b.onclick = () => {
+    const f = byName("Azeite"); if (!f || d.items.some((i) => i.name === "Azeite")) return;
+    d.items.push(fromFood(f, 10)); renderDraft(); toast("Azeite acrescentado: 10 g (88 kcal)");
+  });
   el.querySelectorAll("[data-prod]").forEach((b) => b.onclick = () => {
     const row = window.OFF_PT?.[+b.dataset.prod]; if (!row) return;
     const p = superItem(row), idx = d.items.findIndex((i) => i.name === p.name);
@@ -3154,7 +3192,8 @@ $("#planGo").onclick = async () => {
     const r = await geminiJSON([{ text: prompt }], PLAN_SCHEMA, key, 0.7);
     const meals = (r.meals || []).filter((m) => FOOD_MEALS.includes(m.meal) && m.items?.length).map((m) => ({
       meal: m.meal, time: String(m.time || "").slice(0, 5), title: String(m.title || m.meal).slice(0, 60),
-      items: m.items.filter((x) => x?.name && Number(x.grams) > 0).slice(0, 10).map(aiItem)
+      items: m.items.filter((x) => x?.name && Number(x.grams) > 0).slice(0, 10).map((x) => { const k = Number(x.grams) / 100;
+        return aiItem({ nome: x.name, peso_estimado_g: x.grams, calorias_estimadas: num(x.kcal100) * k, proteinas_g: num(x.protein100) * k, hidratos_g: num(x.carbs100) * k, gorduras_g: num(x.fat100) * k }); })
     })).filter((m) => m.items.length);
     if (!meals.length) throw new Error("vazio");
     plan = { meals, tips: (r.tips || []).map((t) => String(t).slice(0, 200)).slice(0, 4), goal: S.goal, date: new Date().toLocaleDateString("pt-PT") };
@@ -3775,9 +3814,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Reconhecimento testado com mais de 100 fotos de pratos (cozido, francesinha, sardinhas, bacalhau, polvo, bifana, pizza, sushi, fruta…) e afinado com o que falhava.",
-  "Menos alimentos a mais: por exemplo, ovo com batata frita já não aparece também como bacalhau à Brás, e não junta dois pratos inteiros na mesma foto.",
-  "Reconhece também salada de fruta, e o arroz e as batatas no mesmo prato contam os dois."
+  "IA Gemini mais rigorosa: estima os gramas pelo tamanho do prato e dos talheres e pela forma de confeção, e mostra a confiança da análise.",
+  "Avisos do que pode estar no prato sem se ver (azeite, molhos, manteiga), com um botão para juntar 1 colher de azeite.",
+  "As calorias vêm das tabelas da app sempre que o alimento é conhecido, e as da IA são verificadas contra a proteína, os hidratos e a gordura."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
