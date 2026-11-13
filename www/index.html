@@ -766,6 +766,13 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
 @media (prefers-reduced-motion: reduce) { .intro * { animation-duration: .01s !important; animation-delay: 0s !important; } }
 .key-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .key-row input { flex: 1 1 200px; min-width: 0; }
+/* sugars inside the carbs */
+.mbar .bar { position: relative; }
+.mbar .bar i.sug { position: absolute; left: 0; top: 0; height: 100%; background: repeating-linear-gradient(135deg, #B9431F 0 3px, #D9622B 3px 6px); border-radius: 999px; }
+.sug-l { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+.sug-l i { width: 10px; height: 10px; border-radius: 3px; background: repeating-linear-gradient(135deg, #B9431F 0 2px, #D9622B 2px 4px); flex: none; }
+.sug-l b { color: var(--ink); font-family: var(--f-num); font-weight: 600; }
+.t-sug { display: block; font-size: 11px; color: var(--muted); font-weight: 500; font-family: var(--f-body); margin-top: 1px; }
 /* ---------- modern look (1.0.50) ---------- */
 .brand { display: none; }
 .head-top { align-items: flex-end; }
@@ -1270,6 +1277,241 @@ const CATS = {
 const TAB_NAMES = { "suplementos": "Suplementos", "pratos": "Pratos", "frutos secos": "Frutos secos", "pão e cereais": "Pão", "arroz e massa": "Arroz e massa", "batata": "Batata", "laticínios": "Queijo e lácteos", "carne e charcutaria": "Carne e fiambre", "peixe": "Peixe", "ovos": "Ovos", "leguminosas": "Feijão e grão", "legumes e salada": "Legumes", "fruta": "Fruta", "gorduras e molhos": "Molhos", "doces": "Doces", "bebidas": "Bebidas", "outros": "Outros" };
 
 // name, category, default portion (g), per 100 g: kcal, protein, carbs, fat
+// sugars per 100 g of the foods below (INSA table where it has the same food; otherwise usual reference values)
+const BASE_SUGAR = {
+  "Abacate": 0.7,
+  "Abóbora": 2.8,
+  "Açúcar": 99.8,
+  "Alcachofra cozida": 2.1,
+  "Alface": 1.2,
+  "Alheira": 1,
+  "Alheira com ovo e batata frita": 1,
+  "Almôndegas": 1.1,
+  "Ameixa": 9.9,
+  "Amêndoas": 4.4,
+  "Amendoins": 4.7,
+  "Ananás": 10,
+  "Anona": 14.8,
+  "Arroz basmati cozido": 0.1,
+  "Arroz branco cozido": 0.1,
+  "Arroz de feijão": 0.4,
+  "Arroz de frango": 0.7,
+  "Arroz de marisco": 0.8,
+  "Arroz de pato": 0.4,
+  "Arroz de tomate": 2,
+  "Arroz doce": 20,
+  "Arroz integral cozido": 0.4,
+  "Bacalhau à Brás": 0.8,
+  "Bacalhau à Gomes de Sá": 1.5,
+  "Bacalhau com natas": 1.6,
+  "Bacon": 0.5,
+  "Bagel": 6,
+  "Banana": 17.5,
+  "Barra de cereais": 28,
+  "Barra de proteína": 4,
+  "Batata a murro": 1,
+  "Batata assada": 1.2,
+  "Batata cozida": 0.8,
+  "Batata frita": 0.5,
+  "Batata-doce assada": 7.9,
+  "Batatas fritas de pacote": 0.6,
+  "Batido de fruta": 11,
+  "Bebida de aveia": 5.3,
+  "Bebida de soja": 3,
+  "Bebida energética": 11,
+  "Bebida isotónica": 6,
+  "Beterraba": 6.8,
+  "Bifana": 2.5,
+  "Bitoque (bife, ovo, batata frita, arroz)": 0.5,
+  "Bola de Berlim": 20,
+  "Bolacha Maria": 21.5,
+  "Bolachas de água e sal": 5,
+  "Bolachas de chocolate": 33.2,
+  "Bolo (fatia)": 30,
+  "Bolo de arroz": 27.1,
+  "Bolo do caco": 3,
+  "Broa de milho": 1.5,
+  "Brócolos cozidos": 1.4,
+  "Cachorro-quente": 4,
+  "Cajus": 5.9,
+  "Caldo verde": 0.7,
+  "Canja de galinha": 0.3,
+  "Cappuccino": 4,
+  "Caril de frango com arroz": 2,
+  "Carne de porco à alentejana": 0.5,
+  "Caseína (dose)": 3,
+  "Cebola": 4.2,
+  "Cenoura": 4.7,
+  "Cereais de pequeno-almoço": 18,
+  "Cerejas": 12.8,
+  "Cerveja": 0.3,
+  "Cerveja sem álcool": 1.2,
+  "Chili com carne": 2.5,
+  "Chocolate de leite": 53,
+  "Chocolate negro": 29,
+  "Chouriço": 1,
+  "Cogumelos salteados": 1.5,
+  "Compota": 55,
+  "Couve cozida": 1.6,
+  "Couve-flor cozida": 1.9,
+  "Cozido à portuguesa": 2.2,
+  "Creme de chocolate para barrar": 56,
+  "Croissant": 9,
+  "Croquetes": 0.5,
+  "Curgete": 2.5,
+  "Cuscuz cozido": 0.1,
+  "Donut": 22,
+  "Edamame": 2.2,
+  "Empadão de carne": 1.3,
+  "Ervilhas cozidas": 5,
+  "Esparguete à bolonhesa": 2.5,
+  "Esparguete à carbonara": 1,
+  "Espinafres cozidos": 0.4,
+  "Favas cozidas": 1.8,
+  "Feijão cozido": 0.5,
+  "Feijão-verde cozido": 1.5,
+  "Feijoada à transmontana": 1.5,
+  "Fiambre de peru": 1,
+  "Fiambre de porco": 1.3,
+  "Fígado de vaca": 0,
+  "Figos": 16.3,
+  "Filetes de pescada panados": 1,
+  "Flocos de aveia": 1,
+  "Framboesas": 4.4,
+  "Francesinha": 2,
+  "Galão": 3.5,
+  "Ganhador de massa (dose)": 15,
+  "Gel energético": 30,
+  "Gelado": 21.7,
+  "Granola": 20,
+  "Grão-de-bico cozido": 1.5,
+  "Hambúrguer no pão com queijo": 5,
+  "Húmus": 0.3,
+  "Iogurte açucarado / aroma": 13.5,
+  "Iogurte grego": 4,
+  "Iogurte líquido": 11.5,
+  "Iogurte natural": 4.7,
+  "Kebab (carne)": 1,
+  "Ketchup": 25.8,
+  "Kiwi": 8.3,
+  "Laranja": 9.8,
+  "Lasanha à bolonhesa": 2.5,
+  "Legumes salteados": 3,
+  "Leite com chocolate": 9.5,
+  "Leite gordo": 4.7,
+  "Leite magro": 4.9,
+  "Leite meio-gordo": 4.8,
+  "Leite-creme": 18.5,
+  "Lentilhas cozidas": 0.8,
+  "Limão": 1.9,
+  "Lulas grelhadas": 0,
+  "Maçã": 10.5,
+  "Maionese": 1,
+  "Maltodextrina (dose)": 5,
+  "Manga": 13.7,
+  "Manteiga": 0.5,
+  "Manteiga de amendoim": 6,
+  "Marisco cozido": 0,
+  "Massa cozida": 0.8,
+  "Massa integral cozida": 0.8,
+  "Massa recheada (ravioli)": 1.5,
+  "Meia de leite": 4,
+  "Mel": 78,
+  "Melancia": 6.2,
+  "Melão": 7.9,
+  "Mexilhão": 0,
+  "Milho doce": 4.5,
+  "Mirtilos": 10,
+  "Molho de francesinha": 2.5,
+  "Molho de tomate": 4.5,
+  "Morangos": 5.3,
+  "Mortadela": 0.5,
+  "Mostarda": 3,
+  "Mousse de chocolate": 22,
+  "Mozzarella": 0.7,
+  "Muesli": 16.8,
+  "Natas": 2.9,
+  "Noodles cozidos": 0.5,
+  "Nozes": 2.6,
+  "Nuggets de frango": 0.5,
+  "Omelete (2 ovos)": 0.6,
+  "Omelete de queijo e fiambre": 0.8,
+  "Ovo cozido": 1.1,
+  "Ovo estrelado": 0.8,
+  "Ovos mexidos": 1,
+  "Panado de frango": 0.8,
+  "Panquecas": 8,
+  "Pão branco (carcaça)": 2.5,
+  "Pão de centeio": 2.2,
+  "Pão de forma branco": 4.5,
+  "Pão de forma integral": 4,
+  "Pão de leite": 8,
+  "Pão de ló": 36.1,
+  "Pão de mistura": 2,
+  "Pão de sementes": 2.5,
+  "Pão integral": 2.2,
+  "Passas": 59,
+  "Pastéis de bacalhau": 0.9,
+  "Pastel de nata": 27.3,
+  "Pepino": 1.7,
+  "Pera": 9.2,
+  "Pêssego": 8.4,
+  "Pesto": 1.5,
+  "Pimento": 4.2,
+  "Pizza": 3.5,
+  "Polvo à lagareiro": 0.7,
+  "Polvo cozido": 0,
+  "Pré-treino (dose)": 0,
+  "Prego no pão": 2.5,
+  "Pretzel": 2.5,
+  "Proteína em pó (dose)": 5,
+  "Proteína vegetal (dose)": 2,
+  "Proteína whey isolada (dose)": 1,
+  "Pudim flan": 22,
+  "Puré de batata": 1.3,
+  "Queijo creme": 4,
+  "Queijo da Serra": 0,
+  "Queijo de cabra": 0,
+  "Queijo flamengo": 0,
+  "Queijo fresco": 2.7,
+  "Queijo parmesão": 0,
+  "Queijo ralado": 0.5,
+  "Queque": 27.6,
+  "Quinoa cozida": 0.9,
+  "Refrigerante": 10.6,
+  "Requeijão": 2.5,
+  "Rissóis de camarão": 1.3,
+  "Rojões": 0.2,
+  "Romã": 12,
+  "Salada César": 2,
+  "Salada de atum com grão": 1.5,
+  "Salada verde": 1.5,
+  "Salame de chocolate": 40,
+  "Salpicão": 0.3,
+  "Salsicha": 1.5,
+  "Sandes de atum": 2.5,
+  "Sandes mista": 3,
+  "Skyr": 3.8,
+  "Sopa de feijão com couve": 1.3,
+  "Sopa de legumes": 2,
+  "Strogonoff de frango com arroz": 1.5,
+  "Sumo de fruta (pacote)": 10.5,
+  "Sumo de laranja natural": 8.5,
+  "Sushi (8 peças)": 5,
+  "Tâmaras": 63,
+  "Tangerina": 10.6,
+  "Tarte de maçã": 17.1,
+  "Tofu": 0.6,
+  "Tomate": 3.1,
+  "Tortilha / wrap": 3,
+  "Tosta mista": 3,
+  "Tostas": 4,
+  "Tripas à moda do Porto": 1,
+  "Uvas": 16,
+  "Vinho branco": 0.6,
+  "Vinho tinto": 0.6,
+  "Wrap de frango": 2.5
+};
 const BASE_FOODS = [
   ["Pão branco (carcaça)", "pão e cereais", 50, 280, 9, 56, 1.5],
   ["Pão integral", "pão e cereais", 60, 247, 13, 41, 3.4],
@@ -1565,7 +1807,7 @@ const BASE_FOODS = [
   ["Magnésio (comprimido)", "suplementos", 1, 0, 0, 0, 0],
   ["Zinco (comprimido)", "suplementos", 1, 0, 0, 0, 0],
   ["Cafeína (comprimido)", "suplementos", 1, 0, 0, 0, 0]
-].map(([name, cat, g, kcal, p, c, f]) => ({ name, cat, g, kcal, p, c, f }));
+].map(([name, cat, g, kcal, p, c, f]) => ({ name, cat, g, kcal, p, c, f, s: BASE_SUGAR[name] ?? (c < 1 ? 0 : undefined) }));
 
 const MEALS = ["Pequeno-almoço", "Almoço", "Lanche", "Jantar", "Snack", "Suplementação"];
 const FOOD_MEALS = MEALS.slice(0, 5); // meals the diet plan may use
@@ -1585,6 +1827,8 @@ const shiftKey = (k, n) => { const d = dateOf(k); d.setDate(d.getDate() + n); re
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const catColor = (c) => CATS[c] || CATS.outros;
 const sum = (items, k) => items.reduce((a, it) => a + num(it[k]), 0);
+const sugarOf = (items) => ({ g: sum(items, "s"), partial: items.some((it) => it.s == null && num(it.c) >= 2) });
+const sugarTxt = (items) => { const x = sugarOf(items); return `${x.partial ? "≥ " : ""}${r0(x.g)} g`; };
 const norm = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const guessMeal = () => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h < 11 ? MEALS[0] : h < 15.5 ? MEALS[1] : h < 18.5 ? MEALS[2] : h < 22.5 ? MEALS[3] : MEALS[4]; };
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
@@ -1671,12 +1915,13 @@ function qtyText(it) {
 function setGrams(it, v) {
   v = Math.max(0, Math.round(v));
   const ratio = it.g > 0 ? v / it.g : 0;
-  if (ratio) { it.kcal = r0(it.kcal * ratio); it.p = r1(it.p * ratio); it.c = r1(it.c * ratio); it.f = r1(it.f * ratio); }
+  if (ratio) { it.kcal = r0(it.kcal * ratio); it.p = r1(it.p * ratio); it.c = r1(it.c * ratio); it.f = r1(it.f * ratio); if (it.s != null) it.s = r1(it.s * ratio); }
   it.g = v;
 }
 function fromFood(f, grams) {
   const g = grams ?? f.g, k = g / 100;
   const it = { name: f.name, detail: "", cat: f.cat, g, kcal: r0(f.kcal * k), p: r1(f.p * k), c: r1(f.c * k), f: r1(f.f * k) };
+  if (f.s != null && Number.isFinite(+f.s)) it.s = r1(+f.s * k);
   if (f.img) it.img = f.img;
   if (f.g > 0) it.unitG = f.g;
   return it;
@@ -1693,9 +1938,18 @@ const S = { meals: lsGet("ddp.meals", []), custom: lsGet("ddp.custom", []), dish
 const INSA_FOODS = (() => {
   const seen = new Set(BASE_FOODS.map((f) => norm(f.name)));
   return (window.INSA_FOODS || []).filter((r) => !seen.has(norm(r[0])))
-    .map(([name, cat, g, kcal, p, c, f]) => ({ name, cat, g, kcal, p, c, f, src: "insa" }));
+    .map(([name, cat, g, kcal, p, c, f, s]) => ({ name, cat, g, kcal, p, c, f, s, src: "insa" }));
 })();
 const allFoods = () => [...S.custom, ...BASE_FOODS, ...INSA_FOODS];
+// meals and dishes saved before the app knew sugars: add them from the food tables, by name and grams
+(() => {
+  const by = new Map(allFoods().map((x) => [x.name, x])); let meals = false, dishes = false;
+  const fill = (it) => { if (it.s != null || !(it.g > 0)) return false; const x = by.get(it.name); if (!x || x.s == null) return false; it.s = r1(Math.min(x.s * it.g / 100, num(it.c) || x.s * it.g / 100)); return true; };
+  for (const m of S.meals) for (const it of m.items || []) if (fill(it)) meals = true;
+  for (const x of S.dishes) for (const it of x.items || []) if (fill(it)) dishes = true;
+  if (meals) saveMeals();
+  if (dishes) lsSet("ddp.dishes", S.dishes);
+})();
 const INSA_SOURCE = "Fonte: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P. - INSA. v 7.1 - 2026.";
 
 function saveMeals() {
@@ -2053,7 +2307,7 @@ const AI_SYSTEM = "És um nutricionista português, rigoroso e conservador. A tu
   "2) Estima o peso em gramas de cada alimento tal como está no prato, cozinhado. Usa as referências de tamanho: um prato raso mede cerca de 26 cm, " +
   "uma colher de sopa 15 cm, um garfo 19 cm, uma faca 22 cm, uma lata 12 cm de altura. Considera a altura do alimento, não só a área. " +
   "3) Vê o estado de confeção (grelhado, frito, cozido, assado, cru) e usa valores nutricionais desse estado, de tabelas de composição de alimentos (INSA/USDA), não estimativas soltas. " +
-  "4) Para cada alimento dá as calorias, proteína, hidratos de carbono e gordura do peso estimado (não por 100 g). As calorias devem bater certo com 4×proteína + 4×hidratos + 9×gordura. " +
+  "4) Para cada alimento dá as calorias, proteína, hidratos de carbono (e, desses, quantos gramas são açúcares) e gordura do peso estimado (não por 100 g). As calorias devem bater certo com 4×proteína + 4×hidratos + 9×gordura. " +
   "5) Em «nome» usa um nome genérico e limpo em português de Portugal, com a confeção quando se vê (ex.: «peito de frango grelhado», «arroz branco cozido», «batata frita»), sem marcas nem adjetivos. " +
   "6) Em «alertas_ocultos» avisa do que pode estar no prato sem se ver bem e muda as calorias: azeite ou óleo de cozinhar, manteiga, natas, molhos, açúcar, pão por baixo. Escreve cada alerta numa frase curta. " +
   "7) «confianca_geral» de 0 a 100: baixa se a foto estiver escura, desfocada, de longe, ou se houver alimentos tapados. " +
@@ -2070,9 +2324,9 @@ const AI_SCHEMA = {
       nome: { type: "STRING", description: "Nome genérico e limpo, ex.: peito de frango grelhado" },
       peso_estimado_g: { type: "NUMBER", description: "Peso estimado no prato, em gramas" },
       calorias_estimadas: { type: "NUMBER", description: "kcal para o peso estimado" },
-      proteinas_g: { type: "NUMBER" }, hidratos_g: { type: "NUMBER" }, gorduras_g: { type: "NUMBER" }
-    }, required: ["nome", "peso_estimado_g", "calorias_estimadas", "proteinas_g", "hidratos_g", "gorduras_g"],
-      propertyOrdering: ["nome", "peso_estimado_g", "calorias_estimadas", "proteinas_g", "hidratos_g", "gorduras_g"] } },
+      proteinas_g: { type: "NUMBER" }, hidratos_g: { type: "NUMBER" }, acucares_g: { type: "NUMBER", description: "Dos hidratos, quantos gramas são açúcares" }, gorduras_g: { type: "NUMBER" }
+    }, required: ["nome", "peso_estimado_g", "calorias_estimadas", "proteinas_g", "hidratos_g", "acucares_g", "gorduras_g"],
+      propertyOrdering: ["nome", "peso_estimado_g", "calorias_estimadas", "proteinas_g", "hidratos_g", "acucares_g", "gorduras_g"] } },
     alertas_ocultos: { type: "ARRAY", items: { type: "STRING" } }
   },
   required: ["nome_prato", "confianca_geral", "pontuacao_saude", "ingredientes", "alertas_ocultos"],
@@ -2139,7 +2393,8 @@ function aiItem(x) {
   // calories must match the macros (4/4/9 kcal per gram); if they don't, the macros win
   const fromMacros = 4 * p + 4 * c + 9 * f;
   if (fromMacros > 0 && Math.abs(kcal - fromMacros) > Math.max(15, fromMacros * 0.2)) kcal = fromMacros;
-  return { name, detail: "", cat, g, kcal: r0(kcal), p: r1(p), c: r1(c), f: r1(f), custom: true, fromAI: true };
+  const sg = Number(x.acucares_g);
+  return { name, detail: "", cat, g, kcal: r0(kcal), p: r1(p), c: r1(c), f: r1(f), ...(Number.isFinite(sg) && sg >= 0 ? { s: r1(Math.min(sg, c)) } : {}), custom: true, fromAI: true };
 }
 // Words that say nothing about which product it is (nutrition table, legal text, units)
 const PACK_STOP = new Set(("de do da dos das com sem para por pelo pela the and with for of en con los las del la el le les du des une per " +
@@ -2629,7 +2884,7 @@ function offProduct(h) {
   const brand = String(h.brands || "").split(",")[0].trim();
   const full = (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70);
   const sq = Number(h.serving_quantity);
-  return { img: safeImg(h.image_front_small_url), name: full, cat: "outros", g: sq > 0 && sq <= 1000 ? Math.round(sq) : 100, kcal: r0(kcal), p: r1(n.proteins_100g), c: r1(n.carbohydrates_100g), f: r1(n.fat_100g), src: "off", code: h.code || "" };
+  return { img: safeImg(h.image_front_small_url), name: full, cat: "outros", g: sq > 0 && sq <= 1000 ? Math.round(sq) : 100, kcal: r0(kcal), p: r1(n.proteins_100g), c: r1(n.carbohydrates_100g), f: r1(n.fat_100g), s: n.sugars_100g != null && Number.isFinite(+n.sugars_100g) ? r1(Math.min(+n.sugars_100g, num(n.carbohydrates_100g) || +n.sugars_100g)) : undefined, src: "off", code: h.code || "" };
 }
 async function searchOFF(d, qq) {
   d.off = { q: qq, status: "loading", items: [] }; renderPicker();
@@ -2669,7 +2924,7 @@ function offImg(code, tok) {
 }
 const safeImg = (u) => (/^https:\/\/images\.openfoodfacts\.org\//.test(String(u || "")) ? String(u) : "");
 const thumb = (u, cls = "pimg") => (safeImg(u) ? `<img class="${cls}" src="${esc(u)}" alt="" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">` : "");
-const superItem = ([name, brand, st, g, kcal, p, c, f, code, tok]) => ({ img: offImg(code || "", tok || ""), name: (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70), cat: SPORT_BRANDS.has(st) ? "suplementos" : "outros", g, kcal, p, c, f, src: "off" });
+const superItem = ([name, brand, st, g, kcal, p, c, f, code, tok, sg]) => ({ s: sg == null ? undefined : sg, img: offImg(code || "", tok || ""), name: (brand && !norm(name).includes(norm(brand)) ? `${name} (${brand})` : name).slice(0, 70), cat: SPORT_BRANDS.has(st) ? "suplementos" : "outros", g, kcal, p, c, f, src: "off" });
 // ---------- barcode: read it from a photo, find the product in the app's list or online ----------
 async function readBarcode(canvas) {
   if (!("BarcodeDetector" in window)) return null;
@@ -2801,6 +3056,7 @@ function manualBox(d) {
       <label><span>Hidratos g</span><input class="field num" id="dManC" type="number" inputmode="decimal" min="0" placeholder="opcional" value="${esc(m.c ?? "")}"></label>
       <label><span>Gordura g</span><input class="field num" id="dManF" type="number" inputmode="decimal" min="0" placeholder="opcional" value="${esc(m.f ?? "")}"></label>
     </div>
+    <div class="manual-row"><label><span>Dos hidratos, açúcares g</span><input class="field num" id="dManS" type="number" inputmode="decimal" min="0" placeholder="opcional" value="${esc(m.s ?? "")}"></label><span></span></div>
     <p class="note" id="dManHint" style="margin:0" hidden></p>
     <div class="manual-row"><button class="btn btn-plain" id="dManCancel" type="button">Fechar</button><button class="btn btn-accent" id="dManAdd" type="button">Juntar ao prato</button></div>
   </div>`;
@@ -2814,13 +3070,13 @@ function wireManual(d, q) {
   const open = q("#dManOpen");
   if (open) { open.onclick = () => { d.manual = { g: "100" }; renderDraft(); setTimeout(() => { $("#dMan")?.scrollIntoView({ behavior: "smooth", block: "center" }); $("#dManName")?.focus({ preventScroll: true }); }, 50); }; return; }
   if (!q("#dMan")) return;
-  const val = (id) => q(id).value.trim(), keep = () => Object.assign(d.manual, { name: val("#dManName"), g: val("#dManG"), kcal: val("#dManK"), p: val("#dManP"), c: val("#dManC"), f: val("#dManF") });
+  const val = (id) => q(id).value.trim(), keep = () => Object.assign(d.manual, { name: val("#dManName"), g: val("#dManG"), kcal: val("#dManK"), p: val("#dManP"), c: val("#dManC"), f: val("#dManF"), s: val("#dManS") });
   const hint = q("#dManHint");
   const showHint = () => {
     const f = knownFood(val("#dManName"));
     hint.hidden = !f; if (f) hint.textContent = `Conheço «${f.name}»: ${r0(f.kcal)} kcal por 100 g. Deixa as calorias vazias e eu calculo.`;
   };
-  ["#dManName", "#dManG", "#dManK", "#dManP", "#dManC", "#dManF"].forEach((id) => q(id).oninput = () => { keep(); if (id === "#dManName") showHint(); });
+  ["#dManName", "#dManG", "#dManK", "#dManP", "#dManC", "#dManF", "#dManS"].forEach((id) => q(id).oninput = () => { keep(); if (id === "#dManName") showHint(); });
   showHint();
   q("#dManCancel").onclick = () => { d.manual = null; renderDraft(); };
   q("#dManAdd").onclick = () => {
@@ -2838,6 +3094,8 @@ function wireManual(d, q) {
     else if (kcal == null) { toast(`Não conheço «${name}». Escreve as calorias (vêm no rótulo).`); q("#dManK").focus(); return; }
     else if (kcal > g * 9) { toast("Calorias a mais para esse peso: nenhum alimento passa de 9 kcal por grama."); q("#dManK").focus(); return; }
     else it = { name, detail: "", cat, g, kcal: r0(kcal), p: r1(p || 0), c: r1(c || 0), f: r1(f || 0), custom: true };
+    const sg = Number(String(d.manual.s || "").replace(",", "."));
+    if (it.custom && String(d.manual.s || "") !== "" && sg >= 0) it.s = r1(Math.min(sg, it.c || sg));
     if (d.items.some((i) => i.name === it.name)) { toast(`«${it.name}» já está no prato: acerta os gramas na lista.`); return; }
     d.items.push(it); d.manual = null; renderDraft(); toast(`«${it.name}» junto ao prato: ${r0(it.g)} g, ${r0(it.kcal)} kcal`);
   };
@@ -2859,7 +3117,7 @@ function renderDraft() {
       <input class="title-in" id="dTitle" placeholder="Nome da refeição (ex.: Sandes mista)" value="${esc(d.title)}" aria-label="Nome da refeição">
       <div class="seg-meal" id="dMeal" role="radiogroup" aria-label="Tipo de refeição">${MEALS.map((m) => `<button type="button" role="radio" aria-checked="${m === d.meal}" data-meal="${m}">${m}</button>`).join("")}</div>
       <div class="tiles">
-        ${tile("🔥", "Calorias", `${r0(tot)}`)}${tile("🌾", "Hidratos", `${r0(sum(d.items, "c"))} g`)}
+        ${tile("🔥", "Calorias", `${r0(tot)}`)}${tile("🌾", "Hidratos", `${r0(sum(d.items, "c"))} g<small class="t-sug">açúcares ${sugarTxt(d.items)}</small>`)}
         ${tile("🍗", "Proteína", `${r0(sum(d.items, "p"))} g`)}${tile("🥑", "Gordura", `${r0(sum(d.items, "f"))} g`)}
       </div>
       ${score ? `<div class="health"><span class="ic" aria-hidden="true">💚</span><div class="h"><div class="h-top"><span style="font-family:var(--f-body)">Pontuação de saúde</span><span>${score}/10</span></div><div class="h-bar"><i style="width:${score * 10}%"></i></div><small>${d.ai?.status === "cloud" && d.ai.score ? "Avaliação da IA" : "Estimativa pela proteína, gordura e legumes do prato"}</small></div></div>` : ""}
@@ -2871,7 +3129,7 @@ function renderDraft() {
         <div class="items">${d.items.map((it, i) => `
           <div class="item" data-i="${i}">
             <div class="nm">${it.img ? `<div class="nm-row">${thumb(it.img, "pimg sm")}<input value="${esc(it.name)}" data-k="name" aria-label="Nome do alimento"></div>` : `<input value="${esc(it.name)}" data-k="name" aria-label="Nome do alimento">`}
-              <span class="sub"><span class="cat"><i style="background:${catColor(it.cat)}"></i>${esc(TAB_NAMES[it.cat] || it.cat)}</span><span class="num">P ${r0(it.p)} · H ${r0(it.c)} · G ${r0(it.f)}</span></span>
+              <span class="sub"><span class="cat"><i style="background:${catColor(it.cat)}"></i>${esc(TAB_NAMES[it.cat] || it.cat)}</span><span class="num">P ${r0(it.p)} · H ${r0(it.c)}${it.s != null ? ` (açúc. ${r0(it.s)})` : ""} · G ${r0(it.f)}</span></span>
               ${qtyRow(it, i, d)}</div>
             <div class="unit"><input type="number" inputmode="numeric" min="0" value="${r0(it.g)}" data-k="g" aria-label="Gramas de ${esc(it.name)}"><span>g</span></div>
             <div class="unit"><input type="number" inputmode="numeric" min="0" value="${r0(it.kcal)}" data-k="kcal" aria-label="Calorias de ${esc(it.name)}"><span>kcal</span></div>
@@ -2998,7 +3256,7 @@ function saveDraft() {
   for (const it of d.items) {
     if (it.custom && it.kcal > 0 && it.g > 0 && !allFoods().some((f) => f.name === it.name)) {
       const k = 100 / it.g;
-      S.custom.unshift({ name: it.name, cat: "outros", g: it.g, kcal: r0(it.kcal * k), p: r1(it.p * k), c: r1(it.c * k), f: r1(it.f * k) });
+      S.custom.unshift({ name: it.name, cat: "outros", g: it.g, kcal: r0(it.kcal * k), p: r1(it.p * k), c: r1(it.c * k), f: r1(it.f * k), ...(it.s != null ? { s: r1(it.s * k) } : {}) });
     }
   }
   lsSet("ddp.custom", S.custom.slice(0, 200));
@@ -3079,7 +3337,8 @@ function render() {
   const M = [["c", "Hidratos", "var(--carb)", 4], ["p", "Proteína", "var(--prot)", 4], ["f", "Gordura", "var(--fat)", 9]];
   $("#macros").innerHTML = M.map(([k, n, col]) => {
     const g = sum(items, k), pc = Math.min(100, g / targets[k] * 100);
-    return `<div class="mbar"><div class="top">${n}<span>${r0(g)} / ${r0(targets[k])} g</span></div><div class="bar"><i style="width:${pc}%;background:${col}"></i></div></div>`;
+    const sug = k === "c" ? sugarOf(items) : null, sp = sug && targets.c ? Math.min(pc, sug.g / targets.c * 100) : 0;
+    return `<div class="mbar"><div class="top">${n}<span>${r0(g)} / ${r0(targets[k])} g</span></div><div class="bar"><i style="width:${pc}%;background:${col}"></i>${sug ? `<i class="sug" style="width:${sp}%"></i>` : ""}</div>${sug ? `<div class="sug-l"><i></i>dos quais açúcares <b>${sugarTxt(items)}</b></div>` : ""}</div>`;
   }).join("");
   // ring: each macro's calories as a coloured arc, out of the daily goal
   const R = 62, Cc = 2 * Math.PI * R;
@@ -4125,8 +4384,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Ao deslizar a página, o telemóvel já não vibra quando o dedo passa por cima dos botões. Só vibra quando tocas mesmo num botão.",
-  "O botão da água vibra uma vez só, em vez de duas."
+  "Nos hidratos, a app mostra agora quantos são açúcares: no ecrã Hoje («dos quais açúcares»), em cada alimento e no total da refeição.",
+  "Os açúcares vêm da tabela oficial portuguesa (INSA) e dos rótulos dos produtos de supermercado. Também a IA Gemini e a escrita à mão passam a indicar os açúcares.",
+  "As refeições que já tinhas registado ganham os açúcares automaticamente, quando o alimento é conhecido."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
