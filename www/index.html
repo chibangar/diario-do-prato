@@ -867,6 +867,7 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
       <button class="btn btn-accent" id="aiSave" type="button">Guardar</button>
     </div>
     <p class="note" id="aiState"></p>
+    <button class="btn btn-plain" id="aiOff" type="button" hidden>Desligar a IA e apagar a chave</button>
     <p class="note">A chave fica só neste telemóvel. As fotos e os teus dados (sexo, idade, peso, altura, objetivo) são enviados à Google para análise e, na versão gratuita, a Google pode usá-los para melhorar os seus serviços. Sem chave ou sem internet, a app usa o reconhecimento do telemóvel.</p>
   </details>
 
@@ -3196,19 +3197,53 @@ async function renderRec(p) {
   st.textContent = ok ? "Ativo: a app vê cada alimento do prato." : can ? "Ainda não descarregado." : "Só funciona na app instalada no telemóvel.";
   btn.hidden = ok || !can;
 }
+// The key is kept twice: in the page's storage and in the app's private Android storage (KeyStore),
+// so it stays active after closing the app, after updates, or if the page's storage is cleared.
+const keyStore = (method, args) => { const C = window.Capacitor; return C?.isNativePlatform?.() && typeof C.nativePromise === "function" ? C.nativePromise("KeyStore", method, args) : Promise.resolve(null); };
+function storeKey(v) { lsSet("ddp.aiKey", v); return keyStore("set", { name: "aiKey", value: v }).catch(() => null); }
+let aiCheck = null; // result of the last test of the key with Google
 function renderAIState() {
   const k = aiKey();
-  $("#aiState").textContent = k ? `IA ligada (chave …${k.slice(-4)}). Para a desligar, guarda com o campo vazio.` : "IA desligada: a app usa só o reconhecimento do telemóvel.";
+  $("#aiState").textContent = !k ? "IA desligada: a app usa só o reconhecimento do telemóvel."
+    : aiCheck === "bad" ? `⚠️ Chave guardada (…${k.slice(-4)}), mas a Google não a aceitou. Confirma se a copiaste toda e cola-a outra vez.`
+    : `✅ IA ativa (chave …${k.slice(-4)}). Fica ligada mesmo depois de fechares a app.`;
   $("#aiKey").value = "";
   $("#aiKey").placeholder = k ? "Para mudar, cola outra chave" : "Cola aqui a chave";
+  $("#aiOff").hidden = !k;
 }
-$("#aiSave").onclick = () => {
+// asks Google if the key works, without spending the photo quota (lists the models)
+async function testKey(k) {
+  try {
+    const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1", { headers: { "x-goog-api-key": k } });
+    return r.ok ? "ok" : r.status === 400 || r.status === 401 || r.status === 403 ? "bad" : "unknown";
+  } catch { return "offline"; }
+}
+$("#aiSave").onclick = async () => {
   const v = $("#aiKey").value.trim();
-  if (!v) { lsSet("ddp.aiKey", ""); renderAIState(); toast("IA desligada"); return; }
+  // an empty box never erases the saved key (the box is always empty after saving)
+  if (!v) { toast(aiKey() ? "A chave já está guardada e ativa. Para mudar, cola outra." : "Cola primeiro a chave na caixa."); return; }
   if (v.length < 20 || v.length > 200 || /\s/.test(v)) { toast("Esta chave não parece certa. Copia-a outra vez do site."); return; }
-  lsSet("ddp.aiKey", v); renderAIState(); toast("IA ligada. Tira uma foto a um prato para experimentar.");
+  await storeKey(v); aiCheck = null; renderAIState();
+  toast("✅ Chave guardada! A confirmar com a Google…");
+  const btn = $("#aiSave"); btn.disabled = true;
+  const res = await testKey(v); btn.disabled = false;
+  if (aiKey() !== v) return;
+  aiCheck = res; renderAIState();
+  toast(res === "ok" ? "✅ Chave guardada e a funcionar. A IA está ativa."
+    : res === "bad" ? "⚠️ Chave guardada, mas a Google não a aceitou. Confirma se a copiaste toda."
+    : "✅ Chave guardada. Não deu para a testar agora (sem internet?); fica ativa na mesma.");
+};
+$("#aiOff").onclick = async () => {
+  if (!confirm("Desligar a IA Gemini e apagar a chave deste telemóvel?")) return;
+  await storeKey(""); aiCheck = null; renderAIState(); toast("IA desligada e chave apagada.");
 };
 renderAIState();
+// after the app is opened: if the page lost the key but Android still has it, bring it back (and the other way round)
+keyStore("get", { name: "aiKey" }).then((r) => {
+  const saved = String(r?.value || "").trim(), here = aiKey();
+  if (saved && !here) { lsSet("ddp.aiKey", saved); renderAIState(); }
+  else if (here && !saved) keyStore("set", { name: "aiKey", value: here }).catch(() => {});
+}).catch(() => {});
 // ---------- diet plan (Gemini) ----------
 const PLAN_SCHEMA = {
   type: "OBJECT",
@@ -3878,9 +3913,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Depois da foto, se faltar algum alimento, toca em «✍️ Não está aqui? Escrever à mão»: escreve o nome e os gramas.",
-  "Se a app conhecer o alimento (ex.: «arroz branco»), calcula as calorias sozinha. Se não conhecer, escreves as calorias do rótulo, e a proteína, os hidratos e a gordura se quiseres.",
-  "Correção: os nomes da IA como «arroz branco» passam a usar os valores das tabelas da app."
+  "Ao guardar a chave da IA Gemini aparece o aviso «✅ Chave guardada», e a app confirma logo com a Google se a chave funciona.",
+  "A chave fica guardada também no telemóvel: a IA continua ativa depois de fechares e voltares a abrir a app, e depois das atualizações.",
+  "Carregar em «Guardar» com a caixa vazia já não apaga a chave. Para a apagar, há o botão «Desligar a IA e apagar a chave»."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
