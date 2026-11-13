@@ -512,6 +512,39 @@ body { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
 .scan { width: 68px; height: 68px; border-radius: 50%; border: 0; background: var(--ink); color: var(--card); display: grid; place-items: center; margin-top: -34px; box-shadow: 0 10px 26px rgba(0, 0, 0, .28); padding: 0; }
 .scan svg { width: 30px; height: 30px; }
 .toast { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
+/* tabs: only the blocks of the open tab are shown */
+body[data-tab="hoje"] .wrap > [data-tab]:not([data-tab~="hoje"]),
+body[data-tab="comer"] .wrap > [data-tab]:not([data-tab~="comer"]),
+body[data-tab="progresso"] .wrap > [data-tab]:not([data-tab~="progresso"]),
+body[data-tab="perfil"] .wrap > [data-tab]:not([data-tab~="perfil"]) { display: none !important; }
+body:not([data-tab="hoje"]) .daynav { display: none; }
+.tab-h { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 2px 2px 0; }
+body[data-tab="hoje"] .tab-h { display: none; }
+.dock { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; align-items: end; padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
+.dock .tab { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 600; padding: 6px 0 2px; min-width: 0; }
+.dock .tab svg { width: 24px; height: 24px; }
+.dock .tab[aria-current="page"] { color: var(--accent); }
+.dock .tab[aria-current="page"] svg { stroke-width: 2.4; }
+.dock .scan { justify-self: center; width: 62px; height: 62px; margin-top: -30px; }
+.quick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.q-btn { display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; background: var(--card); color: var(--ink); border-radius: 16px; padding: 13px 10px; font-weight: 600; font-size: 14px; box-shadow: var(--shadow); }
+.q-btn span { font-size: 18px; line-height: 1; }
+details.settings summary { list-style: none; display: flex; align-items: center; gap: 12px; min-height: 30px; }
+details.settings summary::-webkit-details-marker { display: none; }
+details.settings summary::after { content: "›"; margin-left: auto; color: var(--muted); font-size: 22px; line-height: 1; transition: transform .2s; }
+details.settings[open] summary::after { transform: rotate(90deg); }
+details.settings[open] summary { margin-bottom: 6px; }
+.si { width: 34px; height: 34px; border-radius: 10px; background: var(--soft); display: grid; place-items: center; font-size: 17px; flex: none; }
+body[data-tab="perfil"] .wrap, body[data-tab="comer"] .wrap { gap: 12px; }
+.prof-head { display: block; }
+.prof-head .av { width: 54px; height: 54px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 22px; font-weight: 800; flex: none; overflow: hidden; }
+.prof-head .av img { width: 100%; height: 100%; object-fit: cover; }
+.prof-head b { display: block; font-size: 18px; }
+.prof-head small { display: block; color: var(--muted); font-size: 13px; }
+.prof-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.prof-stats div { background: var(--soft); border-radius: 12px; padding: 8px 10px; }
+.prof-stats small { display: block; color: var(--muted); font-size: 11px; }
+.prof-stats b { font-size: 15px; font-family: var(--f-num); }
 /* add / photo result screen */
 .draft { position: fixed; inset: 0; z-index: 800; background: var(--paper); overflow-y: auto; overscroll-behavior: contain; border: 0; border-radius: 0; display: flex; flex-direction: column; }
 .sheet-bar { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; text-align: center;
@@ -722,9 +755,9 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
 .key-row input { flex: 1 1 200px; min-width: 0; }
 </style>
 </head>
-<body>
+<body data-tab="hoje">
 <div class="wrap">
-  <header>
+  <header data-tab="hoje comer progresso perfil">
     <div class="head-top">
       <div class="brand">
         <svg class="logo" viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" rx="26" fill="#0F3D2E"/><path d="M26,39v-7a6,6 0 0 1 6,-6h7M69,26h7a6,6 0 0 1 6,6v7M82,69v7a6,6 0 0 1 -6,6h-7M39,82h-7a6,6 0 0 1 -6,-6v-7" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="54" cy="54" r="21" fill="#fff"/><circle cx="54" cy="54" r="15" fill="#F2B705"/><path fill="#0F3D2E" d="M46.5,61.5c0,-9.5 6.5,-15.5 15.5,-15.5c0,9.5 -6.5,15.5 -15.5,15.5z"/></svg>
@@ -738,6 +771,7 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
       </button>
       </div>
     </div>
+    <h2 class="tab-h" id="tabH"></h2>
     <nav class="daynav" aria-label="Escolher dia">
       <button id="prevDay" aria-label="Dia anterior">‹</button>
       <button class="lbl" id="dayLbl" type="button" aria-label="Abrir calendário">Hoje</button>
@@ -752,7 +786,7 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <a class="upd-alt" id="updateLink" href="#" hidden>Descarregar pelo navegador</a>
   </section>
 
-  <section class="card summary" id="summary" aria-labelledby="labelTitle">
+  <section class="card summary" id="summary" data-tab="hoje" aria-labelledby="labelTitle">
     <div class="sum-head"><h2 id="labelTitle">Calorias</h2><div class="r"><small id="labelDate"></small><button class="train-btn" id="trainBtn" type="button" aria-pressed="false">Dia de descanso</button></div></div>
     <div class="ring" id="ring"></div>
     <div class="mbars" id="macros"></div>
@@ -760,27 +794,32 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <div class="burn" id="burnBox"></div>
   </section>
 
-  <button class="idea-btn" id="ideaBtn" type="button"><span class="em" aria-hidden="true">🤔</span><span><b>Não sei o que comer</b><small>A app escolhe uma refeição à medida do que te falta hoje</small></span></button>
+  <div class="quick" data-tab="hoje">
+    <button class="q-btn" id="galBtn" type="button"><span aria-hidden="true">🖼️</span>Galeria</button>
+    <button class="q-btn" id="manBtn" type="button"><span aria-hidden="true">🔍</span>Procurar</button>
+  </div>
 
-  <section class="card water" id="waterCard" aria-labelledby="waterT">
+  <button class="idea-btn" id="ideaBtn" data-tab="comer" type="button"><span class="em" aria-hidden="true">🤔</span><span><b>Não sei o que comer</b><small>A app escolhe uma refeição à medida do que te falta hoje</small></span></button>
+
+  <section class="card water" id="waterCard" data-tab="hoje" aria-labelledby="waterT">
     <div class="w-top"><span aria-hidden="true" style="font-size:22px">💧</span><h2 id="waterT">Água</h2><span class="amt" id="waterAmt"></span></div>
     <div class="glasses" id="waterGlasses"></div>
     <div class="w-acts"><button class="btn btn-plain" id="waterMinus" type="button" aria-label="Tirar um copo">− Copo</button><button class="btn btn-accent" id="waterPlus" type="button">+ Copo (250 ml)</button></div>
   </section>
 
-  <section class="card mcard" id="missions">
+  <section class="card mcard" id="missions" data-tab="progresso">
     <div class="m-top"><div class="lvl" id="mLvl"><div><small>NÍVEL</small><b>1</b></div></div><div class="t"><b id="mTitle">Missões</b><span id="mXp"></span></div><span class="streak" id="mStreak"></span></div>
     <div class="xpbar"><i id="mXpBar" style="width:0%"></i></div>
     <div class="m-tabs" role="tablist"><button type="button" role="tab" data-mtab="d" aria-selected="true">Hoje</button><button type="button" role="tab" data-mtab="w" aria-selected="false">Esta semana</button></div>
     <div id="mList"></div>
   </section>
 
-  <section>
+  <section data-tab="hoje">
     <div class="sec-head"><h2>Refeições</h2><span class="muted" id="mealCount"></span></div>
     <div class="meals" id="meals"></div>
   </section>
 
-  <section class="card wcard" id="weightCard">
+  <section class="card wcard" id="weightCard" data-tab="progresso">
     <div class="w-top"><h2>Peso</h2><span class="w-diff" id="wDiff"></span></div>
     <div class="w-big" id="wNow">—</div>
     <div id="wChart"></div>
@@ -789,29 +828,21 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <div id="wAdapt"></div>
   </section>
 
-  <section class="week">
+  <section class="week" data-tab="progresso">
     <div class="sec-head" style="padding:0 4px 6px"><h2 style="font-size:16px">Últimos 7 dias</h2><button class="wk-btn" id="wkOpen" type="button">Resumo da semana ›</button></div>
     <div id="week"></div>
   </section>
 
-  <details class="settings" id="acctDetails">
-    <summary>A minha conta</summary>
+  <section class="card prof-head" id="profHead" data-tab="perfil"></section>
+
+  <details class="settings" id="acctDetails" data-tab="perfil">
+    <summary><span class="si" aria-hidden="true">👤</span>A minha conta</summary>
     <div id="acctBox"></div>
     <p class="note"> Com a conta, os teus registos, a meta e os teus pratos ficam guardados na conta (servidores da Google, na Europa) e voltam se trocares de telemóvel. As fotos das refeições ficam só no telemóvel.</p>
   </details>
 
-  <details class="settings" id="helpDetails">
-    <summary>Ajuda</summary>
-    <p class="note" style="margin:10px 0 0">Revê a mensagem de boas-vindas ou o tutorial que explica a app passo a passo.</p>
-    <div class="help-actions">
-      <button class="btn btn-accent" id="helpTour">Ver tutorial</button>
-      <button class="btn btn-plain" id="helpWelcome">Ver boas-vindas</button>
-      <button class="btn btn-plain" id="helpNews">Ver novidades</button>
-    </div>
-  </details>
-
-  <details class="settings" id="goalDetails">
-    <summary>Meta diária</summary>
+  <details class="settings" id="goalDetails" data-tab="perfil">
+    <summary><span class="si" aria-hidden="true">🎯</span>Meta diária</summary>
     <div class="set-row">
       <label for="goalIn">Calorias por dia</label>
       <input type="number" id="goalIn" class="field num" min="800" max="6000" step="10" value="2000" inputmode="numeric">
@@ -827,8 +858,8 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <p class="note">Valores nutricionais: Base de Dados da Composição de Alimentos. Instituto Nacional de Saúde Doutor Ricardo Jorge, I. P. - INSA. v 7.1 - 2026 (portfir.insa.min-saude.pt). Produtos de marca: Open Food Facts (openfoodfacts.org), base de dados aberta (ODbL).</p>
   </details>
 
-  <details class="settings" id="notifDetails">
-    <summary>Notificações</summary>
+  <details class="settings" id="notifDetails" data-tab="perfil">
+    <summary><span class="si" aria-hidden="true">🔔</span>Notificações</summary>
     <div style="margin-top:8px">
       <label class="sw">Notificações<input type="checkbox" id="nOn"></label>
       <label class="sw"><span>Lembrar as refeições<small>9:00, 13:00 e 20:30, só se ainda não registaste</small></span><input type="checkbox" id="nMeals"></label>
@@ -838,8 +869,8 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <p class="note" id="nState"></p>
   </details>
 
-  <details class="settings" id="themeDetails">
-    <summary>Aparência</summary>
+  <details class="settings" id="themeDetails" data-tab="perfil">
+    <summary><span class="si" aria-hidden="true">🎨</span>Aparência</summary>
     <div class="theme-seg" id="themeSeg" role="radiogroup" aria-label="Tema da app">
       <button type="button" role="radio" data-theme-set="auto">Automático</button>
       <button type="button" role="radio" data-theme-set="light">Claro</button>
@@ -851,16 +882,16 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <label class="sw"><span>Voz de boas-vindas ao abrir<small>Uma frase curta em português de Portugal</small></span><input type="checkbox" id="greetOn"></label>
   </details>
 
-  <details class="settings" id="planDetails">
-    <summary>O meu plano de dieta</summary>
+  <details class="settings" id="planDetails" data-tab="comer">
+    <summary><span class="si" aria-hidden="true">🥗</span>O meu plano de dieta</summary>
     <p class="note" style="margin:10px 0 0">A IA cria um dia de refeições à tua medida, com os teus dados e a tua meta de calorias. Precisa de internet e da chave em «IA Gemini».</p>
     <div class="help-actions"><button class="btn btn-accent" id="planGo" type="button">Criar plano</button></div>
     <p class="note" id="planNote" hidden></p>
     <div id="planOut"></div>
   </details>
 
-  <details class="settings" id="aiDetails">
-    <summary>IA Gemini</summary>
+  <details class="settings" id="aiDetails" data-tab="perfil">
+    <summary><span class="si" aria-hidden="true">✨</span>IA Gemini</summary>
     <p class="note" style="margin:10px 0 0">Com a IA Gemini da Google, a app identifica cada alimento da foto, estima os gramas e cria o plano de dieta. Cria uma chave gratuita em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, copia-a e cola-a aqui.</p>
     <div class="key-row">
       <input type="password" id="aiKey" class="field" placeholder="Cola aqui a chave" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Chave da IA Gemini">
@@ -871,21 +902,21 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <p class="note">A chave fica só neste telemóvel. As fotos e os teus dados (sexo, idade, peso, altura, objetivo) são enviados à Google para análise e, na versão gratuita, a Google pode usá-los para melhorar os seus serviços. Sem chave ou sem internet, a app usa o reconhecimento do telemóvel.</p>
   </details>
 
-  <details class="settings" id="recDetails">
-    <summary>Reconhecimento dos alimentos</summary>
+  <details class="settings" id="recDetails" data-tab="perfil">
+    <summary><span class="si" aria-hidden="true">📷</span>Reconhecimento dos alimentos</summary>
     <p class="note" style="margin:10px 0 0">Para a app ver cada alimento de um prato misturado (arroz, feijão, grelos, entrecosto, batatas, salada…), descarrega uma vez o modelo de reconhecimento. Funciona no telemóvel, sem internet e sem contas.</p>
     <div class="set-row"><span class="note" id="recState" style="flex:1 1 180px">A verificar…</span><button class="btn btn-accent" id="recDl" type="button">Descarregar</button></div>
     <div class="upd-progress" id="recProg" hidden style="background:var(--soft)"><i style="background:var(--accent)"></i></div>
     <p class="note">Modelo: OpenAI CLIP ViT-B/16 (licença MIT), cerca de 100 MB, guardado na app.</p>
   </details>
 
-  <details class="settings" id="dishDetails">
-    <summary>Os meus pratos</summary>
+  <details class="settings" id="dishDetails" data-tab="comer">
+    <summary><span class="si" aria-hidden="true">🍽️</span>Os meus pratos</summary>
     <div id="dishList" style="margin-top:10px"></div>
   </details>
 
-  <details class="settings" id="updDetails">
-    <summary>Atualizações</summary>
+  <details class="settings" id="updDetails" data-tab="perfil">
+    <summary><span class="si" aria-hidden="true">⬇️</span>Atualizações</summary>
     <div class="set-row">
       <span class="num" id="versionLbl">Versão 1.0.1</span>
       <button class="btn btn-plain" id="updCheck">Procurar atualização</button>
@@ -893,22 +924,28 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <p class="note" id="updNote">A app procura versões novas sempre que é aberta com internet.</p>
     <label class="sw" style="border-top:1px solid var(--line)"><span>Atualizar automaticamente<small>Descarrega sozinha e abre o instalador. O Android pede sempre um toque em «Atualizar» por segurança.</small></span><input type="checkbox" id="autoUpd"></label>
   </details>
+
+  <details class="settings" id="helpDetails" data-tab="perfil">
+    <summary><span class="si" aria-hidden="true">❓</span>Ajuda</summary>
+    <p class="note" style="margin:10px 0 0">Revê a mensagem de boas-vindas ou o tutorial que explica a app passo a passo.</p>
+    <div class="help-actions">
+      <button class="btn btn-accent" id="helpTour">Ver tutorial</button>
+      <button class="btn btn-plain" id="helpWelcome">Ver boas-vindas</button>
+      <button class="btn btn-plain" id="helpNews">Ver novidades</button>
+    </div>
+  </details>
 </div>
 
 <section class="draft" id="draft" hidden></section>
 
-<nav class="dock" aria-label="Adicionar comida">
-  <button class="side" id="galBtn" type="button">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8.5 8.5"/></svg>
-    Galeria
-  </button>
+<nav class="dock" aria-label="Separadores da app">
+  <button class="tab" type="button" data-go="hoje" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v8a1.5 1.5 0 0 1-1.5 1.5H15v-6H9v6H5.5A1.5 1.5 0 0 1 4 19z"/></svg>Hoje</button>
+  <button class="tab" type="button" data-go="comer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10M17 21V3c-2.2 0-4 2.5-4 6v4h4"/></svg>Comer</button>
   <button class="scan" id="camBtn" type="button" aria-label="Tirar foto à comida">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.2"/></svg>
   </button>
-  <button class="side" id="manBtn" type="button">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
-    Pesquisar
-  </button>
+  <button class="tab" type="button" data-go="progresso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16M6 15l4-4 3 3 5-6"/></svg>Progresso</button>
+  <button class="tab" type="button" data-go="perfil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg>Perfil</button>
   <input type="file" id="camIn" class="visually-hidden" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
   <input type="file" id="galIn" class="visually-hidden" accept="image/*" tabindex="-1" aria-hidden="true">
 </nav>
@@ -3080,15 +3117,39 @@ function openCal() {
 }
 function closeCal() { CAL.el.hidden = true; CAL.opener?.focus?.(); }
 function shiftMonth(n) { const d = new Date(CAL.y, CAL.m + n, 1); CAL.y = d.getFullYear(); CAL.m = d.getMonth(); renderCal(); }
+// ---------- tabs ----------
+const TAB_TITLES = { hoje: "", comer: "Comer", progresso: "Progresso", perfil: "Perfil" };
+function setTab(t, keepScroll) {
+  if (!TAB_TITLES.hasOwnProperty(t)) t = "hoje";
+  const changed = document.body.dataset.tab !== t;
+  document.body.dataset.tab = t;
+  $("#tabH").textContent = TAB_TITLES[t];
+  document.querySelectorAll(".dock [data-go]").forEach((b) => { if (b.dataset.go === t) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+  if (t === "comer") { $("#planDetails").open = true; $("#dishDetails").open = true; }
+  if (t === "perfil") renderProfHead();
+  if (changed && !keepScroll) window.scrollTo({ top: 0, behavior: "instant" });
+}
+// shows the tab that holds this element (tutorial, links between screens)
+function showTabFor(el) { const b = el?.closest?.(".wrap > [data-tab]"); if (b && !b.dataset.tab.split(" ").includes(document.body.dataset.tab)) setTab(b.dataset.tab.split(" ")[0], true); }
+function renderProfHead() {
+  const el = $("#profHead"); if (!el) return;
+  const u = lsGet("ddp.user", null), name = (u?.name || "").trim();
+  const ini = name ? name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase() : "🙂";
+  const lastW = (lsGet("ddp.weights", []) || []).slice(-1)[0];
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:14px"><div class="av">${u?.photo ? `<img src="${esc(u.photo)}" alt="" referrerpolicy="no-referrer">` : esc(ini)}</div>
+    <div><b>${esc(name || "O meu perfil")}</b><small>${P.objective ? "Objetivo: " + esc(GOAL_NAMES[P.objective] || "") : "Ainda sem objetivo definido"}</small></div></div>
+    <div class="prof-stats"><div><small>Meta</small><b>${(S.goal || 0).toLocaleString("pt-PT")}</b></div><div><small>Peso</small><b>${lastW?.kg != null ? lastW.kg + " kg" : P.weight ? P.weight + " kg" : "—"}</b></div><div><small>Proteína</small><b>${r0(macroTargets(S.goal).p)} g</b></div></div>`;
+}
+document.querySelectorAll(".dock [data-go]").forEach((b) => b.onclick = () => setTab(b.dataset.go));
 $("#calBtn").onclick = openCal;
 $("#dayLbl").onclick = openCal;
 $("#calPrev").onclick = () => shiftMonth(-1);
 $("#calNext").onclick = () => shiftMonth(1);
 $("#calClose").onclick = closeCal;
-$("#calToday").onclick = () => { S.day = todayKey(); render(); closeCal(); };
+$("#calToday").onclick = () => { S.day = todayKey(); render(); closeCal(); setTab("hoje"); };
 $("#calGrid").onclick = (e) => {
   const b = e.target.closest("[data-day]"); if (!b || b.disabled) return;
-  S.day = b.dataset.day; render(); closeCal();
+  S.day = b.dataset.day; render(); closeCal(); setTab("hoje");
   if (S.day !== todayKey()) toast(`A ver ${dayLabel(S.day)}`);
 };
 CAL.el.addEventListener("click", (e) => { if (e.target === CAL.el) closeCal(); });
@@ -3184,7 +3245,7 @@ $("#cOut").onclick = (e) => {
   toast(`Meta guardada: ${S.goal.toLocaleString("pt-PT")} kcal por dia`);
 };
 $("#kcalGoal").onclick = () => {
-  const det = $("#goalDetails"); det.open = true;
+  const det = $("#goalDetails"); setTab("perfil"); det.open = true;
   det.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 fillProfile(); renderCalc();
@@ -3278,7 +3339,7 @@ function renderPlan() {
 $("#planGo").onclick = async () => {
   const note = $("#planNote"), btn = $("#planGo"), say = (t) => { note.hidden = !t; note.textContent = t || ""; };
   const key = aiKey();
-  if (!key) { say("Primeiro cola a chave em «IA Gemini», logo aqui em baixo."); $("#aiDetails").open = true; return; }
+  if (!key) { say("Primeiro cola a chave em «IA Gemini», no separador Perfil."); setTab("perfil"); $("#aiDetails").open = true; setTimeout(() => $("#aiDetails").scrollIntoView({ behavior: "smooth", block: "start" }), 50); return; }
   if (!profileDone()) { needProfile(); return; }
   const mt = macroTargets(S.goal);
   const prompt = `És um nutricionista português. Cria um plano alimentar para UM dia para esta pessoa: sexo ${P.sex === "m" ? "masculino" : "feminino"}, ${P.age} anos, ${P.weight} kg, ${P.height} cm, objetivo: ${GOAL_NAMES[P.objective]}. ` +
@@ -3913,9 +3974,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Ao guardar a chave da IA Gemini aparece o aviso «✅ Chave guardada», e a app confirma logo com a Google se a chave funciona.",
-  "A chave fica guardada também no telemóvel: a IA continua ativa depois de fechares e voltares a abrir a app, e depois das atualizações.",
-  "Carregar em «Guardar» com a caixa vazia já não apaga a chave. Para a apagar, há o botão «Desligar a IA e apagar a chave»."
+  "App nova e mais arrumada: em baixo tens 5 separadores. Hoje (o teu dia), Comer (ideias, plano de dieta e os teus pratos), a câmara ao centro, Progresso (peso, missões e semana) e Perfil (definições).",
+  "No separador Hoje ficam só as calorias, a água e as refeições, com os botões «Galeria» e «Procurar» logo à mão.",
+  "O Perfil mostra a tua meta, o peso e a proteína num cartão, e as definições estão numa lista com ícones."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
@@ -3995,7 +4056,7 @@ function askLogin(then) {
   $("#loginSkip").onclick = close;
   sh.hidden = false;
 }
-$("#acctBtn").onclick = () => { const d = $("#acctDetails"); d.open = true; d.scrollIntoView({ behavior: "smooth", block: "start" }); };
+$("#acctBtn").onclick = () => { const d = $("#acctDetails"); setTab("perfil"); d.open = true; d.scrollIntoView({ behavior: "smooth", block: "start" }); };
 renderAcct();
 // cloud copy of the diary: filled in when the account backup is set up
 // A signed-in person keeps one document in Firestore: users/{uid}/backup/main, readable only by them.
@@ -4133,8 +4194,8 @@ function closeDemo() {
 const TOUR = [
   { title: "Vamos lá", text: "Em cerca de um minuto ficas a saber usar tudo. Toca em «Seguinte» para avançar. Podes sair quando quiseres e rever o tutorial em «Ajuda», no fundo da app." },
   { sel: "#camBtn", title: "Tira uma foto", text: "O botão redondo em baixo abre a câmara. Fotografa o prato e a app reconhece os alimentos e põe-nos na lista, com as calorias, os hidratos, a proteína e a gordura. Da primeira vez, o Android pede autorização para usar a câmara: escolhe «Permitir»." },
-  { sel: "#galBtn", title: "Ou usa uma foto que já tens", text: "«Galeria» deixa-te escolher uma fotografia que já tiraste antes." },
-  { sel: "#manBtn", title: "Também dá sem foto", text: "«Pesquisar» abre a lista de alimentos para escolheres à mão. Também podes tocar no «+» de cada refeição." },
+  { sel: "#galBtn", title: "Ou usa uma foto que já tens", text: "«Galeria», no separador Hoje, deixa-te escolher uma fotografia que já tiraste antes." },
+  { sel: "#manBtn", title: "Também dá sem foto", text: "«Procurar» abre a lista de alimentos para escolheres à mão. Também podes tocar no «+» de cada refeição." },
   { sel: "#dResults .tabs", demo: true, title: "Escolhe a categoria", text: "Os alimentos estão organizados por separadores: Pratos, Pão, Queijo e lácteos, Carne e fiambre, Arroz e massa, Fruta e outros. Desliza para o lado para veres todos. «Recentes» mostra o que comes mais vezes." },
   { sel: "#dResults .grid", demo: true, title: "Toca no que está no prato", text: "Toca num alimento para o pôr no prato: fica com o contorno verde. Toca outra vez para o tirar. Cada alimento entra com uma porção normal, que podes acertar a seguir." },
   { sel: "#dSearch", demo: true, title: "Procura pelo nome", text: "Escreve parte do nome, por exemplo «entrecosto» ou «arroz feijão». A lista tem mais de 1500 alimentos da tabela oficial portuguesa (INSA). Por baixo aparecem os produtos de supermercado (Pingo Doce, Continente, Mercadona, Lidl…), que podes filtrar por loja. Se mesmo assim não existir, toca em «+ Criar» e escreve as calorias." },
@@ -4167,6 +4228,7 @@ function startTour() {
 function endTour(done) {
   T.on = false; $("#tour").hidden = true; document.body.style.overflow = "";
   closeDemo(); lsSet("ddp.seenWelcomeVoice", true);
+  setTab("hoje");
   window.scrollTo({ top: 0, behavior: "smooth" });
   if (done) toast("Tutorial concluído. Podes revê-lo em «Ajuda».");
 }
@@ -4181,6 +4243,7 @@ function showStep() {
   $("#tourNext").textContent = T.i === TOUR.length - 1 ? "Terminar" : "Seguinte";
   const target = s.sel ? document.querySelector(s.sel) : null;
   if (target) {
+    showTabFor(target);
     const d = target.closest("details"); if (d) d.open = true;
     const r = target.getBoundingClientRect(), free = window.innerHeight - $("#tourCard").offsetHeight - 40;
     // place the target in the space above the card (a taller target is pinned to the top)
