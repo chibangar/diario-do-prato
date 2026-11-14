@@ -621,6 +621,7 @@ body[data-tab="perfil"] .wrap, body[data-tab="comer"] .wrap { gap: 12px; }
 .g-btn svg { width: 20px; height: 20px; }
 .avatar-btn { overflow: hidden; }
 .avatar-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.head-btns { gap: 8px; }
 .head-btns { display: flex; gap: 8px; }
 .store-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; }
 .store-chips::-webkit-scrollbar { display: none; }
@@ -836,6 +837,7 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
       </div>
       <div class="hello"><small id="tabSub"></small><h2 class="tab-h" id="tabH"></h2></div>
       <div class="head-btns">
+      <button class="icon-btn" id="shareBtn" type="button" aria-label="Partilhar as calorias e o progresso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5L12 3l4.5 4.5"/><path d="M5 12v6.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V12"/></svg></button>
       <button class="icon-btn avatar-btn" id="acctBtn" type="button" aria-label="A minha conta"></button>
       <button class="icon-btn" id="calBtn" type="button" aria-label="Abrir calendário" aria-haspopup="dialog">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01"/></svg>
@@ -4103,6 +4105,89 @@ function openWeekSummary() { wkOffset = 0; renderWeekSummary(); $("#wkSheet").hi
 $("#wkOpen").onclick = openWeekSummary;
 $("#wkOk").onclick = () => { $("#wkSheet").hidden = true; };
 $("#wkPrev").onclick = () => { wkOffset++; renderWeekSummary(); $("#wkPrev").textContent = "‹ Semana anterior"; };
+// ---------- share: a picture of the day's calories and the progress ----------
+function shareData() {
+  const items = S.meals.filter((m) => m.day === S.day).flatMap((m) => m.items || []);
+  const goal = dayGoal(S.day), kcal = sum(items, "kcal"), t = macroTargets(goal), sug = sugarOf(items);
+  const W = weights(), last = W[W.length - 1];
+  // weight change over the last 30 days (from the first weigh-in in that period)
+  const from = W.find((w) => w.d >= shiftKey(todayKey(), -30)), wDiff = last && from && from !== last ? r1(last.kg - from.kg) : null;
+  const wDays = last && from ? Math.round((dateOf(last.d) - dateOf(from.d)) / 86400000) : 0;
+  return { items, goal, kcal, t, sug, p: sum(items, "p"), c: sum(items, "c"), f: sum(items, "f"), water: waterOf(S.day), waterGoal: waterGoal(), streak: streakDays(), last, wDiff, wDays };
+}
+const fmt1 = (v) => String(r1(v)).replace(".", ",");
+function shareCanvas(x) {
+  const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d"), F = "Roboto, 'Segoe UI', system-ui, sans-serif";
+  const rr = (x0, y0, w, h, r, fill) => { g.beginPath(); g.roundRect(x0, y0, w, h, r); g.fillStyle = fill; g.fill(); };
+  const txt = (t, x0, y0, size, color, weight = 400, align = "left") => { g.font = `${weight} ${size}px ${F}`; g.fillStyle = color; g.textAlign = align; g.textBaseline = "alphabetic"; g.fillText(t, x0, y0); };
+  // background
+  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#123526"); bg.addColorStop(1, "#0B1611"); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  // header
+  rr(64, 64, 88, 88, 24, "#0F3D2E"); g.save(); g.translate(64, 64); g.scale(88 / 108, 88 / 108);
+  g.strokeStyle = "#fff"; g.lineWidth = 5; g.lineCap = "round"; g.stroke(new Path2D("M26,39v-7a6,6 0 0 1 6,-6h7M69,26h7a6,6 0 0 1 6,6v7M82,69v7a6,6 0 0 1 -6,6h-7M39,82h-7a6,6 0 0 1 -6,-6v-7"));
+  g.fillStyle = "#fff"; g.beginPath(); g.arc(54, 54, 21, 0, 7); g.fill(); g.fillStyle = "#F2B705"; g.beginPath(); g.arc(54, 54, 15, 0, 7); g.fill();
+  g.fillStyle = "#0F3D2E"; g.fill(new Path2D("M46.5,61.5c0,-9.5 6.5,-15.5 15.5,-15.5c0,9.5 -6.5,15.5 -15.5,15.5z")); g.restore();
+  txt("NutriLente", 176, 122, 46, "#FFFFFF", 800);
+  const d = dateOf(S.day), when = d.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" });
+  txt(when.charAt(0).toUpperCase() + when.slice(1), W - 64, 120, 30, "#A8C3B3", 500, "right");
+  // calories panel
+  rr(48, 200, W - 96, 560, 44, "rgba(255,255,255,0.06)");
+  const cx = 250, cy = 470, R = 150, pct = x.goal ? x.kcal / x.goal : 0;
+  g.lineCap = "round"; g.lineWidth = 34; g.strokeStyle = "rgba(255,255,255,0.10)"; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+  const parts = [[x.c * 4, "#EDB54E"], [x.p * 4, "#E8836E"], [x.f * 9, "#62A8DC"]]; let a0 = -Math.PI / 2;
+  g.lineCap = "butt";
+  for (const [k, col] of parts) { const a = Math.min(k / Math.max(x.goal, 1), Math.max(0, 1 - (a0 + Math.PI / 2) / (Math.PI * 2))) * Math.PI * 2; if (a <= 0) continue; g.strokeStyle = col; g.beginPath(); g.arc(cx, cy, R, a0, a0 + a); g.stroke(); a0 += a; }
+  txt(String(r0(x.kcal)), cx, cy + 10, 76, "#FFFFFF", 800, "center");
+  txt(`de ${r0(x.goal)} kcal`, cx, cy + 56, 30, "#A8C3B3", 500, "center");
+  const left = x.goal - x.kcal;
+  txt(left >= 0 ? `Faltam ${r0(left)} kcal` : `${r0(-left)} kcal acima`, cx, 690, 30, left >= 0 ? "#8FD3A8" : "#F2A08F", 700, "center");
+  // macros
+  const bars = [["Proteína", x.p, x.t.p, "#E8836E"], ["Hidratos", x.c, x.t.c, "#EDB54E"], ["Gordura", x.f, x.t.f, "#62A8DC"]];
+  let by = 300;
+  for (const [n, v, tg, col] of bars) {
+    txt(n, 470, by, 34, "#FFFFFF", 700); txt(`${r0(v)} / ${r0(tg)} g`, W - 96, by, 30, "#C9D8CF", 500, "right");
+    rr(470, by + 20, W - 566, 22, 11, "rgba(255,255,255,0.10)");
+    const w = Math.max(0, Math.min(1, v / Math.max(tg, 1))) * (W - 566); if (w > 0) rr(470, by + 20, Math.max(w, 22), 22, 11, col);
+    if (n === "Hidratos") {
+      const sw = Math.max(0, Math.min(w, x.sug.g / Math.max(tg, 1) * (W - 566))); if (sw > 0) rr(470, by + 20, Math.max(sw, 22), 22, 11, "#C2502A");
+      txt(`dos quais açúcares ${x.sug.partial ? "≥ " : ""}${r0(x.sug.g)} g`, 470, by + 82, 26, "#C9D8CF", 500); by += 40;
+    }
+    by += 130;
+  }
+  // progress tiles
+  const tiles = [
+    ["💧 Água", `${fmt1(x.water / 1000)} / ${fmt1(x.waterGoal / 1000)} L`],
+    ["🔥 Dias seguidos", x.streak ? `${x.streak} ${x.streak === 1 ? "dia" : "dias"}` : "—"],
+    ["⚖️ Peso", x.last ? `${fmt1(x.last.kg)} kg` : "—"]
+  ];
+  const tw = (W - 96 - 2 * 24) / 3;
+  tiles.forEach(([lbl, val], i) => { const x0 = 48 + i * (tw + 24); rr(x0, 800, tw, 200, 36, "rgba(255,255,255,0.06)"); txt(lbl, x0 + 30, 865, 28, "#A8C3B3", 600); txt(val, x0 + 30, 945, 46, "#FFFFFF", 800); });
+  // weight trend line
+  if (x.wDiff != null && x.wDays >= 3) {
+    const wk = Math.max(1, Math.round(x.wDays / 7)), down = x.wDiff < 0;
+    rr(48, 1030, W - 96, 120, 36, down ? "rgba(111,191,142,0.16)" : "rgba(255,255,255,0.06)");
+    txt(`${x.wDiff > 0 ? "+" : x.wDiff < 0 ? "−" : ""}${fmt1(Math.abs(x.wDiff))} kg em ${wk} ${wk === 1 ? "semana" : "semanas"}`, 96, 1106, 40, down ? "#8FD3A8" : "#FFFFFF", 800);
+  }
+  txt("Registado com a NutriLente", W / 2, H - 70, 30, "#7FA08D", 500, "center");
+  return c;
+}
+async function shareProgress() {
+  const btn = $("#shareBtn"); if (btn) btn.disabled = true;
+  try {
+    const x = shareData();
+    if (!x.items.length && !x.last) { toast("Ainda não há nada para partilhar neste dia. Regista uma refeição primeiro."); return; }
+    const c = shareCanvas(x), url = c.toDataURL("image/jpeg", 0.9);
+    const text = `${dayLabel(S.day)}: ${r0(x.kcal)} de ${r0(x.goal)} kcal · Proteína ${r0(x.p)} g · Hidratos ${r0(x.c)} g (açúcares ${r0(x.sug.g)} g) · Gordura ${r0(x.f)} g${x.streak > 1 ? ` · 🔥 ${x.streak} dias seguidos` : ""}. Registado com a NutriLente.`;
+    const C = window.Capacitor;
+    if (C?.isNativePlatform?.() && typeof C.nativePromise === "function") { await C.nativePromise("ShareImage", "share", { image: url, text, title: "Partilhar o meu progresso" }); return; }
+    const blob = await (await fetch(url)).blob(), file = new File([blob], "NutriLente.jpg", { type: "image/jpeg" });
+    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text }); return; }
+    const a = document.createElement("a"); a.href = url; a.download = "NutriLente.jpg"; a.click(); toast("Imagem guardada nas transferências.");
+  } catch (e) { if (!/abort|cancel/i.test(String(e?.message || e))) toast("Não foi possível partilhar. Tenta outra vez."); }
+  finally { if (btn) btn.disabled = false; }
+}
+$("#shareBtn").onclick = shareProgress;
 // ---------- missions, XP, levels, streak ----------
 const LEVELS = [[0, "Iniciante"], [100, "Em forma"], [250, "Focado"], [500, "Consistente"], [900, "Atleta"], [1500, "Máquina"], [2500, "Elite"], [4000, "Lenda"]];
 const weekStart = (k) => { const d = dateOf(k); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return keyOf(d); };
@@ -4384,9 +4469,8 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Nos hidratos, a app mostra agora quantos são açúcares: no ecrã Hoje («dos quais açúcares»), em cada alimento e no total da refeição.",
-  "Os açúcares vêm da tabela oficial portuguesa (INSA) e dos rótulos dos produtos de supermercado. Também a IA Gemini e a escrita à mão passam a indicar os açúcares.",
-  "As refeições que já tinhas registado ganham os açúcares automaticamente, quando o alimento é conhecido."
+  "Novo botão de partilhar (a seta, no topo da app): cria uma imagem com as calorias do dia, a proteína, os hidratos e os açúcares, a gordura, a água, os dias seguidos e o peso.",
+  "A imagem abre no menu de partilha do telemóvel, para enviares pelo WhatsApp, Instagram, mensagens ou guardares."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
