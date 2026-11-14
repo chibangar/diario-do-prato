@@ -73,7 +73,7 @@ function pixels(src, x, y, w, h) {
 // returns, for the whole photo, its 4 quarters and the centre, the probability of every label.
 // few = true: only the whole photo and its centre (used for the extra angles, to keep it quick).
 // All parts go through the model at once, which is much faster than one by one.
-async function analyze(src, few) {
+async function analyzeNow(src, few) {
   const s = await open(), T = textMatrix(), L = T.length / 512;
   const W = src.width, H = src.height, regions = [[0, 0, W, H]];
   for (const [fx, fy] of few ? [[0.25, 0.25]] : [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5], [0.25, 0.25]]) regions.push([fx * W, fy * H, W / 2, H / 2]);
@@ -94,4 +94,7 @@ async function analyze(src, few) {
   return { regions: out, labels: window.CLIP_LABELS || [] };
 }
 // available: false outside the Android app (the model is downloaded by the app itself)
+// one analysis at a time (the live camera and the final photo share the model)
+let queue = Promise.resolve();
+function analyze(src, few) { const p = queue.then(() => analyzeNow(src, few)); queue = p.catch(() => {}); return p; }
 window.FoodClip = { ready, download, open, analyze, MODEL_MB, available: !!native() };

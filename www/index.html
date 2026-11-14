@@ -184,6 +184,16 @@ select, .field { border: 1px solid var(--line); background: var(--paper); border
 .scanx .frame b:nth-child(3) { right: 0; bottom: 0; border-left: 0; border-top: 0; border-radius: 0 0 14px 0; }
 .scanx .frame b:nth-child(4) { left: 0; bottom: 0; border-right: 0; border-top: 0; border-radius: 0 0 0 14px; }
 .scanx.ok .frame b { border-color: #7FD3A2; }
+.scanx .live-lbls { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.live-lbl { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, .95); color: #121614; font-size: 14px; font-weight: 700; padding: 6px 12px 6px 8px; border-radius: 999px; white-space: nowrap; box-shadow: 0 4px 16px rgba(0, 0, 0, .35); transition: left .5s ease, top .5s ease, opacity .3s; animation: lblIn .4s cubic-bezier(.2, 1.4, .4, 1) both; }
+.live-lbl i { width: 9px; height: 9px; border-radius: 50%; background: #34D399; box-shadow: 0 0 0 3px rgba(52, 211, 153, .35); }
+.live-lbl.unsure { background: rgba(255, 255, 255, .8); }
+.live-lbl.unsure i { background: #F2B705; box-shadow: 0 0 0 3px rgba(242, 183, 5, .35); }
+.live-lbl.out { opacity: 0; }
+.scanx .live-chip { position: absolute; z-index: 2; left: 50%; top: calc(max(14px, env(safe-area-inset-top, 0px)) + 56px); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: rgba(0, 0, 0, .55); color: #fff; font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 999px; backdrop-filter: blur(6px); white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; }
+.live-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #F2B705; animation: livePulse 1s ease-in-out infinite; flex: none; }
+.live-chip .dot.on { background: #34D399; }
+@keyframes livePulse { 50% { opacity: .3; } }
 .scanx .frame .sweep { position: absolute; left: 6%; right: 6%; height: 2px; top: 10%; background: linear-gradient(90deg, transparent, #F2B705, transparent); animation: sweep 2.2s ease-in-out infinite; }
 @keyframes sweep { 50% { top: 88%; } }
 .scanx .guide { position: relative; z-index: 2; margin-top: auto; padding: 14px 18px 0; text-align: center; background: linear-gradient(transparent, rgba(0,0,0,.7) 30%); }
@@ -1195,6 +1205,8 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
   <video id="scanVid" playsinline muted autoplay></video>
   <div class="shade"></div>
   <div class="frame" id="scanFrame"><b></b><b></b><b></b><b></b><span class="sweep"></span></div>
+  <div class="live-lbls" id="scanLbls" aria-live="polite"></div>
+  <div class="live-chip" id="scanLive" hidden></div>
   <div class="msg" id="scanMsg" hidden></div>
   <div class="top">
     <button class="ic" id="scanX" type="button" aria-label="Fechar">✕</button>
@@ -2761,6 +2773,7 @@ async function openScan() {
   try { $("#scanTorch").hidden = !track.getCapabilities?.().torch; } catch { $("#scanTorch").hidden = true; }
   try { track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {}); } catch { /* not supported */ }
   window.addEventListener("deviceorientation", scanTilt);
+  liveScan(v);
   // no motion sensor: hide the angle meter
   setTimeout(() => { if (SC.tilt == null && !$("#scanx").hidden) $("#scanAng").hidden = true; }, 1500);
   $("#scanAng").hidden = false;
@@ -2786,6 +2799,53 @@ async function openScan() {
     w.hidden = L >= 55; w.textContent = $("#scanTorch").hidden ? "Pouca luz: aproxima-te de uma janela ou acende uma luz." : "Pouca luz: toca em 💡 ou acende uma luz.";
   }, 500);
 }
+// Live: while the camera is open, the on-phone recognition looks at the picture again and again and puts
+// a label on each food it sees (same model and rules as the photo; a new look every few seconds).
+async function liveScan(v) {
+  const FC = window.FoodClip, chip = $("#scanLive"), box = $("#scanLbls");
+  SC.liveOn = true; SC.liveSeen = new Map();
+  if (!FC?.available) return;
+  if (!(await FC.ready().catch(() => false))) { chip.hidden = false; chip.textContent = "Tira a primeira foto para ativar o reconhecimento ao vivo"; return; }
+  const cv = document.createElement("canvas");
+  chip.hidden = false; chip.innerHTML = '<i class="dot"></i>A identificar a comida…';
+  while (SC.liveOn && !$("#scanx").hidden) {
+    if (!v.videoWidth) { await wait(300); continue; }
+    const sc = Math.min(1, 640 / Math.max(v.videoWidth, v.videoHeight));
+    cv.width = Math.round(v.videoWidth * sc); cv.height = Math.round(v.videoHeight * sc);
+    cv.getContext("2d").drawImage(v, 0, 0, cv.width, cv.height);
+    let res = null; try { res = await FC.analyze(cv); } catch { await wait(1000); continue; }
+    if (!SC.liveOn) break;
+    const cf = clipFoods(res);
+    // a food stays on screen until it has been missing twice in a row (no flicker)
+    const now = new Map(cf.map((c) => [c.name, c]));
+    for (const [n, o] of SC.liveSeen) if (!now.has(n)) { o.miss = (o.miss || 0) + 1; if (o.miss >= 2) SC.liveSeen.delete(n); }
+    for (const c of cf) SC.liveSeen.set(c.name, { c, miss: 0 });
+    liveDraw(v, box);
+    const n = SC.liveSeen.size;
+    chip.innerHTML = n ? `<i class="dot on"></i>${n} ${n === 1 ? "alimento" : "alimentos"} · tira a foto` : clipFoods.notFood > 0.5 ? '<i class="dot"></i>Aponta para o prato' : '<i class="dot"></i>A identificar a comida…';
+    await wait(250);
+  }
+}
+function liveDraw(v, box) {
+  // the video fills the screen ("cover"): turn photo positions into screen positions
+  const W = box.clientWidth, H = box.clientHeight, s = Math.max(W / v.videoWidth, H / v.videoHeight);
+  const dw = v.videoWidth * s, dh = v.videoHeight * s, ox = (W - dw) / 2, oy = (H - dh) / 2;
+  const items = [...SC.liveSeen.values()].map(({ c }) => ({ c, x: c.pw ? c.px / c.pw : 0.5, y: c.pw ? c.py / c.pw : 0.5 }));
+  for (let i = 0; i < items.length; i++) for (let j = 0; j < i; j++) if (Math.abs(items[i].x - items[j].x) < 0.25 && Math.abs(items[i].y - items[j].y) < 0.07) items[i].y = items[j].y + 0.08;
+  const keep = new Set();
+  for (const it of items) {
+    const name = it.c.name, key = "l-" + norm(name).replace(/[^a-z0-9]+/g, "-");
+    keep.add(key);
+    let el = box.querySelector(`[data-k="${key}"]`);
+    if (!el) { el = document.createElement("span"); el.className = "live-lbl"; el.dataset.k = key; box.append(el); }
+    const sure = it.c.max >= 0.4;
+    el.innerHTML = `<i></i>${esc(name.replace(/ (cozid[oa]s?|grelhad[oa]s?|assad[oa]s?)$/i, ""))}${sure ? "" : " ?"}`;
+    el.classList.toggle("unsure", !sure);
+    el.style.left = Math.max(70, Math.min(W - 70, ox + it.x * dw)) + "px";
+    el.style.top = Math.max(110, Math.min(H - 260, oy + it.y * dh)) + "px";
+  }
+  box.querySelectorAll(".live-lbl").forEach((el) => { if (!keep.has(el.dataset.k)) { el.classList.add("out"); setTimeout(() => el.remove(), 300); } });
+}
 async function scanBarcode(code) {
   closeScan(); haptic("MEDIUM");
   const keepMeal = S.draft && !S.draft.preview && !S.draft.demo ? S.draft.meal : null;
@@ -2797,7 +2857,7 @@ async function scanBarcode(code) {
   renderDraft();
 }
 function closeScan() {
-  clearInterval(SC.timer);
+  clearInterval(SC.timer); SC.liveOn = false; $("#scanLbls").innerHTML = ""; $("#scanLive").hidden = true;
   window.removeEventListener("deviceorientation", scanTilt);
   SC.stream?.getTracks().forEach((t) => t.stop()); SC.stream = null;
   $("#scanVid").srcObject = null; $("#scanx").hidden = true; $("#scanx").classList.remove("ok");
@@ -4550,9 +4610,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Depois da foto, cada alimento reconhecido aparece com uma etiqueta em cima da foto, no sítio onde está no prato.",
-  "Novo «Resumo nutricional»: as calorias do prato em grande, uma barra com a divisão entre proteína, hidratos e gordura, os gramas de cada um e os açúcares.",
-  "Cada alimento da lista tem agora um ícone (arroz, carne, peixe, legumes, fruta…)."
+  "Reconhecimento ao vivo: com a câmara da app aberta, os alimentos aparecem identificados em cima do prato, em tempo real, antes de tirares a foto.",
+  "Em cima aparece quantos alimentos a app está a ver. Um «?» quer dizer que ainda não tem a certeza: aproxima-te ou melhora a luz.",
+  "Depois da foto, cada alimento aparece com uma etiqueta e há um novo «Resumo nutricional»."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
