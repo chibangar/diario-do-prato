@@ -6,34 +6,28 @@
 <meta name="color-scheme" content="light dark">
 <script>
 // theme before first paint: "auto" follows the phone, "light" / "dark" are the user's choice
-try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("ddp.theme") || '"auto"'); } catch (e) { document.documentElement.dataset.theme = "auto"; }
+try { var th = JSON.parse(localStorage.getItem("ddp.theme") || '"auto"'); th = { light: "neve", dark: "meia-noite" }[th] || th; if (!/^(auto|neve|areia|lavanda|meia-noite|grafite|oceano|ametista)$/.test(th)) th = "auto"; document.documentElement.dataset.theme = th; } catch (e) { document.documentElement.dataset.theme = "auto"; }
 </script>
 <title>NutriLente</title>
 <style>
 /* Layout: one mobile column; a nutrition-facts label anchors the day, meals stack below like a diary. */
+/* Themes: modern palettes, light (Neve, Areia, Lavanda) and dark (Meia-noite, Grafite, Oceano, Ametista). "auto" follows the phone. */
 :root {
-  --paper: #F3F4F1; --card: #FFFFFF; --ink: #121614; --muted: #6A716C; --line: #E4E7E2;
-  --accent: #2E6A45; --accent-ink: #FFFFFF; --hi: #F2B705; --prot: #E0705A; --carb: #E9A93A;
-  --fat: #4A90C8; --danger: #B42318; --soft: #EEF0EC; --shadow: 0 1px 2px rgba(16, 22, 18, .05), 0 8px 28px rgba(16, 22, 18, .07);
+  --paper: #F4F6F9; --card: #FFFFFF; --ink: #0F172A; --muted: #64748B; --line: #E2E8F0; --soft: #EEF2F6; --accent: #059669; --accent-ink: #FFFFFF; --hi: #F59E0B; --prot: #E0705A; --carb: #E9A93A; --fat: #4A90C8; --danger: #B42318; --shadow: 0 1px 2px rgba(16, 22, 18, .05), 0 8px 28px rgba(16, 22, 18, .07); color-scheme: light;
   --f-display: "Roboto Condensed", "Segoe UI", Roboto, system-ui, sans-serif;
   --f-body: Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
   --f-num: "Roboto Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
-:root[data-theme="dark"] {
-  --paper: #0F1311; --card: #1A201C; --ink: #EDF1EC; --muted: #9AA59D; --line: #2A332D;
-  --accent: #6FBF8E; --accent-ink: #0E1A12; --hi: #F5C842; --prot: #E8836E; --carb: #EDB54E;
-  --fat: #62A8DC; --danger: #F07A6E; --soft: #232B26; --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .35);
-  color-scheme: dark;
-}
+:root[data-theme="neve"] { --paper: #F4F6F9; --card: #FFFFFF; --ink: #0F172A; --muted: #64748B; --line: #E2E8F0; --soft: #EEF2F6; --accent: #059669; --accent-ink: #FFFFFF; --hi: #F59E0B; --prot: #E0705A; --carb: #E9A93A; --fat: #4A90C8; --danger: #B42318; --shadow: 0 1px 2px rgba(16, 22, 18, .05), 0 8px 28px rgba(16, 22, 18, .07); color-scheme: light; }
+:root[data-theme="areia"] { --paper: #F6F1E9; --card: #FFFDF8; --ink: #2B2118; --muted: #857565; --line: #E9DECD; --soft: #F0E7D8; --accent: #C2410C; --accent-ink: #FFFFFF; --hi: #D99A00; --prot: #E0705A; --carb: #E9A93A; --fat: #4A90C8; --danger: #B42318; --shadow: 0 1px 2px rgba(16, 22, 18, .05), 0 8px 28px rgba(16, 22, 18, .07); color-scheme: light; }
+:root[data-theme="lavanda"] { --paper: #F5F3FC; --card: #FFFFFF; --ink: #1E1B2E; --muted: #6B6784; --line: #E5E0F4; --soft: #EEEAF9; --accent: #7C3AED; --accent-ink: #FFFFFF; --hi: #F59E0B; --prot: #E0705A; --carb: #E9A93A; --fat: #4A90C8; --danger: #B42318; --shadow: 0 1px 2px rgba(16, 22, 18, .05), 0 8px 28px rgba(16, 22, 18, .07); color-scheme: light; }
+:root[data-theme="meia-noite"] { --paper: #0B1220; --card: #131C2E; --ink: #E6EDF7; --muted: #8A9BB4; --line: #22304A; --soft: #1A2438; --accent: #34D399; --accent-ink: #05261A; --hi: #FBBF24; --prot: #F08A74; --carb: #F2BE5C; --fat: #6CB2E6; --danger: #F07A6E; --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .35); color-scheme: dark; }
+:root[data-theme="grafite"] { --paper: #000000; --card: #101010; --ink: #F2F2F2; --muted: #9A9A9A; --line: #262626; --soft: #1B1B1B; --accent: #A3E635; --accent-ink: #0B1400; --hi: #FACC15; --prot: #F08A74; --carb: #F2BE5C; --fat: #6CB2E6; --danger: #F07A6E; --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .35); color-scheme: dark; }
+:root[data-theme="oceano"] { --paper: #06161F; --card: #0D2230; --ink: #E3F4FA; --muted: #86A9B8; --line: #1B3747; --soft: #12303F; --accent: #22D3EE; --accent-ink: #03222C; --hi: #FBBF24; --prot: #F08A74; --carb: #F2BE5C; --fat: #6CB2E6; --danger: #F07A6E; --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .35); color-scheme: dark; }
+:root[data-theme="ametista"] { --paper: #120D1F; --card: #1C1530; --ink: #EFE9FB; --muted: #A79CC2; --line: #2E2547; --soft: #241B3B; --accent: #C084FC; --accent-ink: #1A0F2E; --hi: #FBBF24; --prot: #F08A74; --carb: #F2BE5C; --fat: #6CB2E6; --danger: #F07A6E; --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .35); color-scheme: dark; }
 @media (prefers-color-scheme: dark) {
-  :root[data-theme="auto"] {
-  --paper: #0F1311; --card: #1A201C; --ink: #EDF1EC; --muted: #9AA59D; --line: #2A332D;
-  --accent: #6FBF8E; --accent-ink: #0E1A12; --hi: #F5C842; --prot: #E8836E; --carb: #EDB54E;
-  --fat: #62A8DC; --danger: #F07A6E; --soft: #232B26; --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .35);
-  color-scheme: dark;
-  }
+  :root[data-theme="auto"] { --paper: #0B1220; --card: #131C2E; --ink: #E6EDF7; --muted: #8A9BB4; --line: #22304A; --soft: #1A2438; --accent: #34D399; --accent-ink: #05261A; --hi: #FBBF24; --prot: #F08A74; --carb: #F2BE5C; --fat: #6CB2E6; --danger: #F07A6E; --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .35); color-scheme: dark; }
 }
-:root[data-theme="light"] { color-scheme: light; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html { background: var(--paper); }
 body {
@@ -604,6 +598,15 @@ body[data-tab="perfil"] .wrap, body[data-tab="comer"] .wrap { gap: 12px; }
 .plan-meal .btn { align-self: flex-start; padding: 8px 14px; font-size: 14px; }
 .plan-tot { font-family: var(--f-num); font-size: 13.5px; background: var(--soft); border-radius: 12px; padding: 10px 12px; margin-top: 12px; }
 .plan-tips { margin: 10px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--muted); }
+.theme-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.th-card { display: flex; flex-direction: column; gap: 8px; align-items: stretch; text-align: left; border: 2px solid var(--line); background: var(--card); color: var(--ink); border-radius: 18px; padding: 8px; }
+.th-card[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.th-prev { position: relative; height: 64px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(127, 127, 127, .25); }
+.th-prev i { position: absolute; left: 10px; right: 10px; top: 10px; height: 22px; border-radius: 8px; }
+.th-prev b { position: absolute; left: 10px; bottom: 10px; width: 46%; height: 14px; border-radius: 999px; }
+.th-prev em { position: absolute; right: 10px; bottom: 8px; width: 18px; height: 18px; border-radius: 50%; }
+.th-name { font-weight: 700; font-size: 14px; padding: 0 4px 2px; }
+.th-name small { display: block; font-weight: 500; font-size: 11.5px; color: var(--muted); }
 .theme-seg { display: flex; gap: 6px; margin-top: 12px; }
 .theme-seg button { flex: 1; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 10px; padding: 10px 6px; font-weight: 600; }
 .theme-seg button[aria-checked="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
@@ -944,12 +947,41 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
 
   <details class="settings" id="themeDetails" data-tab="perfil">
     <summary><span class="si" aria-hidden="true">🎨</span>Aparência</summary>
-    <div class="theme-seg" id="themeSeg" role="radiogroup" aria-label="Tema da app">
-      <button type="button" role="radio" data-theme-set="auto">Automático</button>
-      <button type="button" role="radio" data-theme-set="light">Claro</button>
-      <button type="button" role="radio" data-theme-set="dark">Escuro</button>
+    <div class="theme-grid" id="themeSeg" role="radiogroup" aria-label="Tema da app">
+      <button type="button" role="radio" class="th-card" data-theme-set="auto">
+        <span class="th-prev" style="background:linear-gradient(135deg,#F4F6F9 50%,#0B1220 50%)"><i style="background:#FFFFFF"></i><b style="background:#059669"></b><em style="background:#34D399"></em></span>
+        <span class="th-name">Automático<small>segue o telemóvel</small></span>
+      </button>
+      <button type="button" role="radio" class="th-card" data-theme-set="neve">
+        <span class="th-prev" style="background:#F4F6F9"><i style="background:#FFFFFF"></i><b style="background:#059669"></b><em style="background:#F59E0B"></em></span>
+        <span class="th-name">Neve<small>claro</small></span>
+      </button>
+      <button type="button" role="radio" class="th-card" data-theme-set="areia">
+        <span class="th-prev" style="background:#F6F1E9"><i style="background:#FFFDF8"></i><b style="background:#C2410C"></b><em style="background:#D99A00"></em></span>
+        <span class="th-name">Areia<small>claro</small></span>
+      </button>
+      <button type="button" role="radio" class="th-card" data-theme-set="lavanda">
+        <span class="th-prev" style="background:#F5F3FC"><i style="background:#FFFFFF"></i><b style="background:#7C3AED"></b><em style="background:#F59E0B"></em></span>
+        <span class="th-name">Lavanda<small>claro</small></span>
+      </button>
+      <button type="button" role="radio" class="th-card" data-theme-set="meia-noite">
+        <span class="th-prev" style="background:#0B1220"><i style="background:#131C2E"></i><b style="background:#34D399"></b><em style="background:#FBBF24"></em></span>
+        <span class="th-name">Meia-noite<small>escuro</small></span>
+      </button>
+      <button type="button" role="radio" class="th-card" data-theme-set="grafite">
+        <span class="th-prev" style="background:#000000"><i style="background:#101010"></i><b style="background:#A3E635"></b><em style="background:#FACC15"></em></span>
+        <span class="th-name">Grafite<small>escuro</small></span>
+      </button>
+      <button type="button" role="radio" class="th-card" data-theme-set="oceano">
+        <span class="th-prev" style="background:#06161F"><i style="background:#0D2230"></i><b style="background:#22D3EE"></b><em style="background:#FBBF24"></em></span>
+        <span class="th-name">Oceano<small>escuro</small></span>
+      </button>
+      <button type="button" role="radio" class="th-card" data-theme-set="ametista">
+        <span class="th-prev" style="background:#120D1F"><i style="background:#1C1530"></i><b style="background:#C084FC"></b><em style="background:#FBBF24"></em></span>
+        <span class="th-name">Ametista<small>escuro</small></span>
+      </button>
     </div>
-    <p class="note">«Automático» segue o modo claro ou escuro do telemóvel.</p>
+    <p class="note">«Automático» usa Neve de dia e Meia-noite quando o telemóvel está em modo escuro.</p>
     <label class="sw" style="border-top:1px solid var(--line)"><span>Animação ao abrir a app<small>O logótipo animado, cerca de 2,5 segundos</small></span><input type="checkbox" id="introOn"></label>
     <label class="sw"><span>Som da animação</span><input type="checkbox" id="introSnd"></label>
     <label class="sw"><span>Voz de boas-vindas ao abrir<small>Uma frase curta em português de Portugal</small></span><input type="checkbox" id="greetOn"></label>
@@ -4469,8 +4501,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Novo botão de partilhar (a seta, no topo da app): cria uma imagem com as calorias do dia, a proteína, os hidratos e os açúcares, a gordura, a água, os dias seguidos e o peso.",
-  "A imagem abre no menu de partilha do telemóvel, para enviares pelo WhatsApp, Instagram, mensagens ou guardares."
+  "Temas novos e modernos, em Perfil › Aparência: Neve, Areia e Lavanda (claros); Meia-noite, Grafite, Oceano e Ametista (escuros). «Automático» usa Neve de dia e Meia-noite no modo escuro do telemóvel.",
+  "Cada tema tem a sua cor de destaque, também nos botões e no separador ativo. O teu tema antigo passa sozinho para o novo equivalente.",
+  "Botão de partilhar (a seta no topo): cria uma imagem com as calorias, os macros, a água, os dias seguidos e o peso para enviares."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
@@ -4660,12 +4693,16 @@ window.addEventListener("online", () => cloudSync());
 // ---------- theme ----------
 function renderTheme() {
   const t = document.documentElement.dataset.theme || "auto";
+  // Android status bar and app background follow the theme
+  try { const bg = getComputedStyle(document.documentElement).getPropertyValue("--paper").trim(); let m = document.querySelector('meta[name="theme-color"]'); if (!m) { m = document.createElement("meta"); m.name = "theme-color"; document.head.append(m); } m.content = bg; } catch { /* ok */ }
   document.querySelectorAll("[data-theme-set]").forEach((b) => b.setAttribute("aria-checked", b.dataset.themeSet === t));
 }
 $("#themeSeg").onclick = (e) => {
   const b = e.target.closest("[data-theme-set]"); if (!b) return;
   document.documentElement.dataset.theme = b.dataset.themeSet; lsSet("ddp.theme", b.dataset.themeSet); renderTheme();
+  toast(`Tema: ${b.querySelector(".th-name")?.firstChild?.textContent.trim() || ""}`);
 };
+if (["light", "dark"].includes(lsGet("ddp.theme", "auto"))) lsSet("ddp.theme", document.documentElement.dataset.theme);
 renderTheme();
 // opening: animation, its sound and the spoken greeting
 $("#introOn").checked = lsGet("ddp.intro", true) !== false; $("#introSnd").checked = lsGet("ddp.introSound", true) !== false;
