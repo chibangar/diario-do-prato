@@ -266,6 +266,13 @@ select, .field { border: 1px solid var(--line); background: var(--paper); border
 .ai-card .ai-link, .ai-card .field, .ai-card .ai-act { width: 100%; text-align: center; text-decoration: none; }
 .ai-card .ai-msg { font-size: 13.5px; color: var(--ink); }
 .login-card .ai-note { font-size: 12px; }
+.meal-times { width: 100%; display: grid; gap: 8px; margin: 4px 0; }
+.mt-row { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 10px; background: var(--soft); border-radius: 14px; padding: 8px 10px; text-align: left; }
+.mt-row input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); margin: 0; }
+.mt-row span { font-weight: 700; font-size: 15px; }
+.mt-row span small { display: block; font-weight: 500; font-size: 12px; color: var(--muted); }
+.mt-row input[type="time"] { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 6px 8px; font: inherit; font-family: var(--f-num); font-size: 15px; }
+.mt-row.off span, .mt-row.off input[type="time"] { opacity: .45; }
 .vid-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0 4px; font-weight: 700; }
 .vid-btn span { width: 28px; height: 28px; border-radius: 50%; background: #E53935; color: #fff; display: grid; place-items: center; font-size: 12px; padding-left: 2px; }
 .vid-back { z-index: 2000; background: rgba(0, 0, 0, .88); align-items: center; justify-content: center; padding: 16px; }
@@ -970,7 +977,8 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <summary><span class="si" aria-hidden="true">🔔</span>Notificações</summary>
     <div style="margin-top:8px">
       <label class="sw">Notificações<input type="checkbox" id="nOn"></label>
-      <label class="sw"><span>Lembrar as refeições<small>9:00, 13:00 e 20:30, só se ainda não registaste</small></span><input type="checkbox" id="nMeals"></label>
+      <label class="sw"><span>Lembrar de comer<small>À hora de cada refeição, se ainda não a registaste</small></span><input type="checkbox" id="nMeals"></label>
+      <div class="meal-times" id="nTimes"></div>
       <label class="sw"><span>Lembrar a pesagem<small>Segunda às 8:30, se ainda não te pesaste na semana</small></span><input type="checkbox" id="nWeigh"></label>
       <label class="sw"><span>Missões do dia<small>21:30, se ainda faltarem missões</small></span><input type="checkbox" id="nMissions"></label>
     </div>
@@ -1277,6 +1285,20 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
   <div class="vid-box">
     <video id="vidPlayer" controls playsinline preload="none" poster="tutorial-gemini.jpg" src="tutorial-gemini.mp4"></video>
     <button class="btn btn-accent" id="vidClose" type="button">Fechar o vídeo</button>
+  </div>
+</div>
+
+<div class="cal-back" id="remSheet" role="dialog" aria-modal="true" aria-labelledby="remTitle" hidden>
+  <div class="cal login-card ai-card">
+    <div class="ai-ic" aria-hidden="true">⏰</div>
+    <h2 id="remTitle">Lembretes para comer</h2>
+    <p>A app avisa-te à hora de cada refeição, para não saltares nenhuma. Se já a registaste, não te incomoda.</p>
+    <div class="meal-times" id="remTimes"></div>
+    <button class="btn btn-accent ai-act" id="remGo" type="button">Ativar lembretes</button>
+    <p class="ai-msg" id="remMsg" hidden></p>
+    <p class="ai-note">Podes mudar as horas ou desligar em Perfil › Notificações.</p>
+    <button class="skip" id="remLater" type="button">Agora não</button>
+    <button class="skip" id="remNever" type="button" style="padding-top:0">Não voltar a perguntar</button>
   </div>
 </div>
 
@@ -4406,28 +4428,49 @@ document.addEventListener("click", (e) => {
 });
 // ---------- notifications (local, scheduled on the phone) ----------
 const NOTIF_DEF = { on: true, meals: true, weigh: true, missions: true };
+// the meals the app reminds you to eat, with their time (each can be switched off)
+const MEAL_REM = [["Pequeno-almoço", "08:30", "☕", "Bom dia! Hora do pequeno-almoço. Não saltes esta refeição 🙂"], ["Almoço", "13:00", "🍽️", "Hora do almoço! Come com calma e tira uma foto ao prato."], ["Lanche", "16:30", "🍎", "Hora do lanche: uma peça de fruta, um iogurte ou uns frutos secos."], ["Jantar", "20:00", "🍲", "Hora do jantar! Não te esqueças de registar o que comeres."]];
+const mealRem = () => { const o = lsGet("ddp.mealRem", {}); return MEAL_REM.map(([meal, t]) => ({ meal, on: o[meal]?.on ?? true, t: /^\d\d:\d\d$/.test(o[meal]?.t || "") ? o[meal].t : t })); };
+function mealTimesHtml(prefix) {
+  return mealRem().map((m, i) => `<label class="mt-row ${m.on ? "" : "off"}"><input type="checkbox" data-mt-on="${i}" ${m.on ? "checked" : ""} aria-label="Lembrar: ${m.meal}"><span>${MEAL_REM[i][2]} ${m.meal}</span><input type="time" data-mt-t="${i}" value="${m.t}" aria-label="Hora: ${m.meal}"></label>`).join("");
+}
+// reads the rows of a box into the saved config
+function readMealTimes(box) {
+  const o = {};
+  MEAL_REM.forEach(([meal], i) => { const on = box.querySelector(`[data-mt-on="${i}"]`)?.checked ?? true, t = box.querySelector(`[data-mt-t="${i}"]`)?.value || MEAL_REM[i][1]; o[meal] = { on, t }; });
+  lsSet("ddp.mealRem", o);
+}
+function wireMealTimes(box, onChange) {
+  box.innerHTML = mealTimesHtml();
+  box.querySelectorAll("input").forEach((el) => el.addEventListener("change", () => {
+    readMealTimes(box); box.querySelectorAll(".mt-row").forEach((r) => r.classList.toggle("off", !r.querySelector("[data-mt-on]").checked)); onChange?.();
+  }));
+}
 const notifCfg = () => ({ ...NOTIF_DEF, ...lsGet("ddp.notif", {}) });
 const LN = (m, o = {}) => { const C = window.Capacitor; if (!C?.isNativePlatform?.() || typeof C.nativePromise !== "function") return Promise.reject(new Error("no-native")); return C.nativePromise("LocalNotifications", m, o); };
 const at = (k, hh, mm) => { const d = dateOf(k); d.setHours(hh, mm, 0, 0); return d; };
 let notifTimer = null;
-function scheduleNotifs() { clearTimeout(notifTimer); notifTimer = setTimeout(() => doSchedule().catch(() => {}), 1500); }
-async function doSchedule() {
+// ask = true only when the person turned something on: the Android permission is never asked by surprise
+function scheduleNotifs(ask) { clearTimeout(notifTimer); notifTimer = setTimeout(() => doSchedule(ask).catch(() => {}), 1500); }
+async function doSchedule(ask) {
   const cfg = notifCfg(), ids = []; for (let i = 1000; i < 1300; i++) ids.push({ id: i });
   try { await LN("cancel", { notifications: ids }); } catch (e) { if (String(e.message) === "no-native") { renderNotif("As notificações funcionam na app instalada no telemóvel."); return; } }
-  if (!cfg.on || !profileDone()) { renderNotif(); return; }
+  if (!cfg.on || (!profileDone() && !cfg.meals)) { renderNotif(); return; }
   let perm = (await LN("checkPermissions"))?.display;
-  if (perm !== "granted") perm = (await LN("requestPermissions"))?.display;
+  if (perm !== "granted" && ask) perm = (await LN("requestPermissions"))?.display;
   if (perm !== "granted") { renderNotif("O Android não deu autorização. Ativa as notificações da NutriLente nas Definições do telemóvel."); return; }
   const now = Date.now(), list = [], t = todayKey();
-  const SLOTS = [["Pequeno-almoço", 9, 0, "☕ Bom dia! Já registaste o pequeno-almoço?"], ["Almoço", 13, 0, "🍽️ Hora do almoço: tira uma foto ao prato."], ["Jantar", 20, 30, "🍲 Não te esqueças de registar o jantar."]];
+  const SLOTS = mealRem().map((m, i) => [m.meal, +m.t.slice(0, 2), +m.t.slice(3, 5), MEAL_REM[i][3], m.on, MEAL_REM[i][2]]);
+  const prof = profileDone();
   for (let d = 0; d < 7; d++) {
     const k = shiftKey(t, d);
-    if (cfg.meals) SLOTS.forEach(([meal, hh, mm, body], i) => {
+    if (cfg.meals) SLOTS.forEach(([meal, hh, mm, body, on, ic], i) => {
+      if (!on) return;
       const when = at(k, hh, mm); if (when.getTime() <= now) return;
       if (S.meals.some((m) => m.day === k && m.meal === meal)) return;
-      list.push({ id: 1000 + d * 10 + i, title: "NutriLente", body, schedule: { at: when.toISOString(), allowWhileIdle: true } });
+      list.push({ id: 1000 + d * 10 + i, title: `${ic} ${meal}`, body, schedule: { at: when.toISOString(), allowWhileIdle: true } });
     });
-    if (cfg.missions) {
+    if (cfg.missions && prof) {
       const when = at(k, 21, 30);
       if (when.getTime() > now) {
         const left = d === 0 ? missionList().daily.filter((m) => !(m.key in lsGet("ddp.missions", {})) && m.p < 1).length : 3;
@@ -4435,7 +4478,7 @@ async function doSchedule() {
       }
     }
   }
-  if (cfg.weigh) {
+  if (cfg.weigh && prof) {
     const ws = weekStart(t);
     for (let w = 0; w < 4; w++) {
       const k = shiftKey(ws, 7 * w), when = at(k, 8, 30);
@@ -4444,7 +4487,7 @@ async function doSchedule() {
       list.push({ id: 1100 + w, title: "Hora da pesagem ⚖️", body: "Pesa-te em jejum e regista na NutriLente. A meta ajusta-se sozinha.", schedule: { at: when.toISOString(), allowWhileIdle: true } });
     }
   }
-  if (cfg.weigh || cfg.missions) {
+  if ((cfg.weigh || cfg.missions) && prof) {
     for (let d = 0; d < 7; d++) {
       const k = shiftKey(t, d); if (dateOf(k).getDay() !== 0) continue;
       const when = at(k, 20, 0); if (when.getTime() <= now) continue;
@@ -4453,17 +4496,44 @@ async function doSchedule() {
   }
   if (list.length) await LN("schedule", { notifications: list.map((n) => ({ ...n, smallIcon: "ic_stat_nutrilente", iconColor: "#2E6A45" })) });
   renderNotif(`Ligadas: ${list.length} lembretes marcados para os próximos dias.`);
+  return list.length;
 }
 function renderNotif(msg) {
   const cfg = notifCfg();
   $("#nOn").checked = cfg.on; $("#nMeals").checked = cfg.meals; $("#nWeigh").checked = cfg.weigh; $("#nMissions").checked = cfg.missions;
   ["nMeals", "nWeigh", "nMissions"].forEach((id) => { $("#" + id).disabled = !cfg.on; $("#" + id).closest(".sw").style.opacity = cfg.on ? 1 : 0.45; });
+  $("#nTimes").hidden = !(cfg.on && cfg.meals);
   $("#nState").textContent = msg || (cfg.on ? "" : "Desligadas: a app não te envia lembretes.");
 }
 ["nOn", "nMeals", "nWeigh", "nMissions"].forEach((id) => $("#" + id).addEventListener("change", () => {
   lsSet("ddp.notif", { on: $("#nOn").checked, meals: $("#nMeals").checked, weigh: $("#nWeigh").checked, missions: $("#nMissions").checked });
-  renderNotif(); scheduleNotifs();
+  renderNotif(); scheduleNotifs(true);
 }));
+wireMealTimes($("#nTimes"), () => scheduleNotifs(true));
+// at start, once: offer the reminders to eat (can be skipped for a week, or never shown again)
+function askMeals(then) {
+  const C = window.Capacitor;
+  if (!C?.isNativePlatform?.() || lsGet("ddp.remAskDone", false) || lsGet("ddp.remAskNever", false) || Date.now() < (lsGet("ddp.remAskAfter", 0) || 0)) { then(); return; }
+  const sh = $("#remSheet"), msg = $("#remMsg"), box = $("#remTimes");
+  wireMealTimes(box);
+  const close = () => { sh.hidden = true; wireMealTimes($("#nTimes"), () => scheduleNotifs(true)); renderNotif(); then(); };
+  msg.hidden = true;
+  $("#remGo").onclick = async () => {
+    readMealTimes(box);
+    if (!mealRem().some((m) => m.on)) { msg.hidden = false; msg.textContent = "Escolhe pelo menos uma refeição."; return; }
+    lsSet("ddp.notif", { ...notifCfg(), on: true, meals: true });
+    $("#remGo").disabled = true;
+    let n = 0; try { n = await doSchedule(true); } catch { /* shown below */ }
+    $("#remGo").disabled = false;
+    let perm = null; try { perm = (await LN("checkPermissions"))?.display; } catch { /* no-native */ }
+    if (perm !== "granted") { msg.hidden = false; msg.textContent = "O Android não deu autorização. Toca outra vez em «Ativar lembretes» e escolhe «Permitir», ou ativa as notificações da NutriLente nas Definições do telemóvel."; return; }
+    lsSet("ddp.remAskDone", true);
+    toast(`⏰ Lembretes ligados${n ? `: ${n} marcados` : ""}`); close();
+  };
+  $("#remLater").onclick = () => { lsSet("ddp.remAskAfter", Date.now() + 7 * 86400000); close(); };
+  $("#remNever").onclick = () => { lsSet("ddp.remAskNever", true); toast("Podes ligar os lembretes em Perfil › Notificações."); close(); };
+  sh.hidden = false;
+}
 // ---------- automatic updates ----------
 const autoUpd = () => lsGet("ddp.autoUpd", true) !== false;
 $("#autoUpd").checked = autoUpd();
@@ -4610,9 +4680,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Reconhecimento ao vivo: com a câmara da app aberta, os alimentos aparecem identificados em cima do prato, em tempo real, antes de tirares a foto.",
-  "Em cima aparece quantos alimentos a app está a ver. Um «?» quer dizer que ainda não tem a certeza: aproxima-te ou melhora a luz.",
-  "Depois da foto, cada alimento aparece com uma etiqueta e há um novo «Resumo nutricional»."
+  "Lembretes para comer: a app avisa-te à hora do pequeno-almoço, almoço, lanche e jantar, para não saltares refeições. Se já registaste essa refeição, não te incomoda.",
+  "Escolhes as horas e que refeições queres lembrar, logo no ecrã que aparece ao abrir a app ou em Perfil › Notificações.",
+  "O Android só pede autorização para notificações quando ativas os lembretes."
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
@@ -5037,10 +5107,10 @@ render();
 renderNotif(); setTimeout(() => scheduleNotifs(), 4000);
 checkUpdate(false);
 // opening animation with sound, then the usual start (welcome the first time, else profile / news)
-playIntro(() => { if (lsGet("ddp.seenWelcomeVoice", false)) greet(); askLogin(() => askGemini(() => {
+playIntro(() => { if (lsGet("ddp.seenWelcomeVoice", false)) greet(); askLogin(() => askGemini(() => askMeals(() => {
   if (!lsGet("ddp.seenWelcomeVoice", false)) { lsSet("ddp.newsBuild", APP_BUILD); showWelcome(); }
   else { needProfile(); if (lsGet("ddp.newsBuild", 0) !== APP_BUILD) showNews(); }
-})); });
+}))); });
 })();
 </script>
 <script type="module">
