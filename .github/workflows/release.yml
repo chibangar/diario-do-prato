@@ -71,6 +71,8 @@ jobs:
             -PappVersionCode=${{ steps.ver.outputs.code }} \
             -PappVersionName=${{ steps.ver.outputs.name }}
           cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/NutriLente-${{ steps.ver.outputs.name }}.apk"
+          # same file with a fixed name: .../releases/latest/download/NutriLente.apk always gives the newest app
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/NutriLente.apk"
 
       - name: Publicar release
         env:
@@ -78,5 +80,6 @@ jobs:
         run: |
           gh release create "v${{ steps.ver.outputs.name }}" \
             "$RUNNER_TEMP/NutriLente-${{ steps.ver.outputs.name }}.apk" \
+            "$RUNNER_TEMP/NutriLente.apk" \
             --title "NutriLente ${{ steps.ver.outputs.name }}" \
             --notes "$(git log -1 --pretty=%B)"
