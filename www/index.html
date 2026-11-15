@@ -809,6 +809,22 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
 .n-leg small { font-size: 11px; }
 .n-pc { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
 .nm-row .cat-emo { width: 34px; height: 34px; border-radius: 50%; background: var(--soft); display: grid; place-items: center; font-size: 17px; flex: none; }
+/* achievements */
+.bcard { display: grid; gap: 12px; }
+.b-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.b-top h2 { font-size: 18px; margin: 0; }
+.b-count { font-family: var(--f-num); font-size: 14px; color: var(--muted); font-weight: 600; }
+.b-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.badge { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; border: 1px solid var(--line); background: var(--soft); color: var(--ink); border-radius: 16px; padding: 10px 6px 8px; min-width: 0; }
+.badge .b-ic { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; background: var(--card); filter: grayscale(1); opacity: .45; }
+.badge b { font-size: 12px; line-height: 1.2; font-weight: 700; overflow-wrap: anywhere; }
+.badge small { font-size: 11px; color: var(--muted); font-family: var(--f-num); }
+.badge .b-pb { width: 70%; height: 4px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.badge .b-pb i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.badge.on { background: color-mix(in srgb, var(--accent) 12%, var(--card)); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.badge.on .b-ic { filter: none; opacity: 1; background: color-mix(in srgb, var(--hi) 30%, var(--card)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--hi) 35%, transparent); }
+.badge.just { animation: badgePop .7s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes badgePop { 0% { transform: scale(.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
 /* sugars inside the carbs */
 .mbar .bar { position: relative; }
 .mbar .bar i.sug { position: absolute; left: 0; top: 0; height: 100%; background: repeating-linear-gradient(135deg, #B9431F 0 3px, #D9622B 3px 6px); border-radius: 999px; }
@@ -920,6 +936,12 @@ button, .food, .tab, .add-btn, .goal-opt, .chip-btn { position: relative; overfl
     <div class="w-line"><div class="w-bar" aria-hidden="true"><i id="waterBar"></i></div>
       <button class="w-chip" id="waterMinus" type="button" aria-label="Tirar um copo">−</button><button class="w-chip on" id="waterPlus" type="button" aria-label="Juntar um copo de 250 ml">+ 250 ml</button></div>
     <div class="glasses" id="waterGlasses"></div>
+  </section>
+
+  <section class="card bcard" id="badges" data-tab="progresso">
+    <div class="b-top"><h2>🏅 Conquistas</h2><span class="b-count" id="bCount"></span></div>
+    <div class="xpbar"><i id="bBar" style="width:0%"></i></div>
+    <div class="b-grid" id="bGrid"></div>
   </section>
 
   <section class="card mcard" id="missions" data-tab="progresso">
@@ -1922,7 +1944,7 @@ const sugarTxt = (items) => { const x = sugarOf(items); return `${x.partial ? "�
 const norm = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const guessMeal = () => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h < 11 ? MEALS[0] : h < 15.5 ? MEALS[1] : h < 18.5 ? MEALS[2] : h < 22.5 ? MEALS[3] : MEALS[4]; };
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
-const SYNC_KEYS = new Set(["ddp.water", "ddp.burned", "ddp.units", "ddp.meals", "ddp.custom", "ddp.dishes", "ddp.goal", "ddp.profile", "ddp.plan", "ddp.weights", "ddp.trainDays", "ddp.trainDone", "ddp.missions"]);
+const SYNC_KEYS = new Set(["ddp.water", "ddp.burned", "ddp.units", "ddp.meals", "ddp.custom", "ddp.dishes", "ddp.goal", "ddp.profile", "ddp.plan", "ddp.weights", "ddp.trainDays", "ddp.trainDone", "ddp.missions", "ddp.badges"]);
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); if (SYNC_KEYS.has(k)) setTimeout(() => cloudPush(), 0); return true; } catch { return false; } };
 // Household units (1 ovo, 1 scoop, 1 fatia…). The weight stays in grams; the unit is a shortcut.
 // [pattern on the plain name, unit, plural, grams per unit, or "p" = the food's own portion (brand products)]
@@ -4343,7 +4365,7 @@ async function shareProgress() {
     const c = shareCanvas(x), url = c.toDataURL("image/jpeg", 0.9);
     const text = `${dayLabel(S.day)}: ${r0(x.kcal)} de ${r0(x.goal)} kcal · Proteína ${r0(x.p)} g · Hidratos ${r0(x.c)} g (açúcares ${r0(x.sug.g)} g) · Gordura ${r0(x.f)} g${x.streak > 1 ? ` · 🔥 ${x.streak} dias seguidos` : ""}. Registado com a NutriLente.`;
     const C = window.Capacitor;
-    if (C?.isNativePlatform?.() && typeof C.nativePromise === "function") { await C.nativePromise("ShareImage", "share", { image: url, text, title: "Partilhar o meu progresso" }); return; }
+    if (C?.isNativePlatform?.() && typeof C.nativePromise === "function") { await C.nativePromise("ShareImage", "share", { image: url, text, title: "Partilhar o meu progresso" }); lsSet("ddp.shared", (lsGet("ddp.shared", 0) || 0) + 1); renderBadges(); return; }
     const blob = await (await fetch(url)).blob(), file = new File([blob], "NutriLente.jpg", { type: "image/jpeg" });
     if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text }); return; }
     const a = document.createElement("a"); a.href = url; a.download = "NutriLente.jpg"; a.click(); toast("Imagem guardada nas transferências.");
@@ -4419,6 +4441,95 @@ function renderMissions() {
     setTimeout(() => burst(el, 34), 120);
     toast(fresh.length === 1 ? `Missão cumprida: ${fresh[0].t} · +${fresh[0].xp} XP` : `${fresh.length} missões cumpridas · +${fresh.reduce((a, m) => a + m.xp, 0)} XP`);
     setTimeout(() => MS.just.clear(), 1200);
+  }
+  renderBadges();
+}
+// ---------- achievements: unlocked once and kept, with progress until then ----------
+// What has been logged, worked out once per check (all days with meals)
+function badgeFacts() {
+  const days = [...new Set(S.meals.map((m) => m.day))].sort();
+  let best = 0, run = 0, prev = null;
+  for (const k of days) { run = prev && shiftKey(prev, 1) === k ? run + 1 : 1; best = Math.max(best, run); prev = k; }
+  const stats = days.map((k) => ({ k, ...dayStats(k), s: sugarOf(S.meals.filter((m) => m.day === k).flatMap((m) => m.items || [])) }));
+  const items = S.meals.flatMap((m) => m.items || []), W = lsGet("ddp.weights", []), water = lsGet("ddp.water", {}), wg = waterGoal();
+  const first = W[0]?.kg, last = W[W.length - 1]?.kg, gain = P.objective === "gain";
+  const change = first != null && last != null ? (gain ? last - first : first - last) : 0;
+  const xp = xpTotal(); let lvl = 0; LEVELS.forEach(([min], i) => { if (xp >= min) lvl = i + 1; });
+  return {
+    meals: S.meals.length, photos: S.meals.filter((m) => m.thumb).length, best, days: days.length,
+    foods: new Set(items.map((it) => norm(it.name))).size,
+    breakfast: new Set(S.meals.filter((m) => m.meal === "Pequeno-almoço").map((m) => m.day)).size,
+    veg: S.meals.filter((m) => (m.items || []).some((it) => it.cat === "legumes e salada")).length,
+    inGoal: stats.filter((x) => x.k < todayKey() && inGoal(x)).length,
+    prot: stats.filter((x) => x.p >= x.pT * 0.9).length,
+    lowSugar: stats.filter((x) => x.k < todayKey() && x.meals >= 3 && !x.s.partial && x.s.g <= 25).length,
+    water: Object.values(water).filter((ml) => ml >= wg).length,
+    weighs: W.length, change, gain,
+    train: Object.values(lsGet("ddp.trainDone", {})).filter(Boolean).length,
+    lvl, shared: lsGet("ddp.shared", 0) || 0, ai: !!aiKey(), profile: profileDone()
+  };
+}
+const BADGES = [
+  // first steps
+  ["primeira", "🍽️", "Primeira refeição", "Regista a tua primeira refeição", (x) => [x.meals, 1]],
+  ["foto", "📸", "Primeira foto", "Regista uma refeição com uma foto", (x) => [x.photos, 1]],
+  ["meta", "🎯", "Plano feito", "Preenche os teus dados e fica com a meta diária", (x) => [x.profile ? 1 : 0, 1]],
+  ["ia", "✨", "Super-visão", "Liga a IA Gemini", (x) => [x.ai ? 1 : 0, 1]],
+  ["partilha", "📤", "Mostra ao mundo", "Partilha o teu progresso", (x) => [x.shared, 1]],
+  // habit
+  ["dias3", "🔥", "Aquecimento", "3 dias seguidos a registar", (x) => [x.best, 3]],
+  ["dias7", "⚡", "Uma semana inteira", "7 dias seguidos a registar", (x) => [x.best, 7]],
+  ["dias30", "🏆", "Um mês sem falhar", "30 dias seguidos a registar", (x) => [x.best, 30]],
+  ["dias100", "👑", "Cem dias", "100 dias seguidos a registar", (x) => [x.best, 100]],
+  ["ref50", "📒", "Diário em dia", "Regista 50 refeições", (x) => [x.meals, 50]],
+  ["ref250", "📚", "Biblioteca de pratos", "Regista 250 refeições", (x) => [x.meals, 250]],
+  ["fotos25", "🖼️", "Fotógrafo", "Regista 25 refeições com foto", (x) => [x.photos, 25]],
+  ["variedade", "🌈", "Prova de tudo", "Regista 50 alimentos diferentes", (x) => [x.foods, 50]],
+  ["pequeno", "☕", "Bom dia!", "Regista o pequeno-almoço em 7 dias", (x) => [x.breakfast, 7]],
+  // nutrition
+  ["meta10", "📅", "Na mouche", "Fica dentro da meta de calorias em 10 dias", (x) => [x.inGoal, 10]],
+  ["meta30", "🎖️", "Precisão", "Fica dentro da meta de calorias em 30 dias", (x) => [x.inGoal, 30]],
+  ["prot10", "💪", "Proteína em dia", "Atinge a proteína em 10 dias", (x) => [x.prot, 10]],
+  ["legumes", "🥦", "Amigo dos legumes", "20 refeições com legumes ou salada", (x) => [x.veg, 20]],
+  ["acucar", "🍬", "Pouco açúcar", "5 dias completos com 25 g de açúcares ou menos", (x) => [x.lowSugar, 5]],
+  ["agua7", "💧", "Bem hidratado", "Bebe a água toda em 7 dias", (x) => [x.water, 7]],
+  // body and training
+  ["peso1", "⚖️", "Primeira pesagem", "Regista o teu peso", (x) => [x.weighs, 1]],
+  ["peso8", "📈", "Sempre a medir", "Regista o peso 8 vezes", (x) => [x.weighs, 8]],
+  ["kg1", "🥇", "Primeiro quilo", "Primeiro quilo na direção do teu objetivo", (x) => [Math.max(0, x.change), 1], (x) => x.gain ? "+1 kg de massa desde a primeira pesagem" : "−1 kg desde a primeira pesagem"],
+  ["kg5", "🏅", "Cinco quilos", "5 kg na direção do teu objetivo", (x) => [Math.max(0, x.change), 5], (x) => x.gain ? "+5 kg de massa desde a primeira pesagem" : "−5 kg desde a primeira pesagem"],
+  ["treino10", "🏋️", "Ginásio é casa", "Marca 10 treinos feitos", (x) => [x.train, 10]],
+  ["nivel5", "🚀", "Nível 5", "Chega ao nível 5 nas missões", (x) => [x.lvl, 5]]
+];
+const BD = { open: null };
+function renderBadges() {
+  const box = $("#bGrid"); if (!box) return;
+  let x; try { x = badgeFacts(); } catch { return; }
+  const got = lsGet("ddp.badges", {}), fresh = [];
+  const rows = BADGES.map(([id, ic, t, d, fn, dyn]) => {
+    const [v, max] = fn(x), done = !!got[id] || v >= max;
+    if (done && !got[id]) { got[id] = todayKey(); fresh.push(t); }
+    return { id, ic, t, d: dyn ? dyn(x) : d, v: Math.min(v, max), max, done, when: got[id] };
+  });
+  if (fresh.length) lsSet("ddp.badges", got);
+  const n = rows.filter((r) => r.done).length;
+  $("#bCount").textContent = `${n} de ${rows.length}`;
+  $("#bBar").style.width = (n / rows.length * 100) + "%";
+  // unlocked first (newest first), then the closest to unlocking
+  rows.sort((a, b) => (b.done - a.done) || (a.done ? String(b.when).localeCompare(String(a.when)) : b.v / b.max - a.v / a.max));
+  const fmtD = (k) => { const d = dateOf(k); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; };
+  const fmtN = (v) => (Number.isInteger(v) ? v : String(r1(v)).replace(".", ","));
+  box.innerHTML = rows.map((r) => `<button type="button" class="badge ${r.done ? "on" : ""} ${fresh.includes(r.t) ? "just" : ""}" data-badge="${r.id}" aria-label="${esc(r.t)}: ${r.done ? "desbloqueada" : "bloqueada"}">
+    <span class="b-ic">${r.ic}</span><b>${esc(r.t)}</b>
+    ${r.done ? `<small>${fmtD(r.when)}</small>` : `<span class="b-pb"><i style="width:${r0(r.v / r.max * 100)}%"></i></span><small>${fmtN(r.v)}/${r.max}</small>`}
+  </button>`).join("");
+  box.querySelectorAll("[data-badge]").forEach((b) => b.onclick = () => { const r = rows.find((q) => q.id === b.dataset.badge); if (r) toast(`${r.ic} ${r.t}: ${r.d}${r.done ? " · desbloqueada" : ` (${fmtN(r.v)} de ${r.max})`}`); });
+  if (fresh.length) {
+    // first time on an old account many unlock at once: one message
+    toast(fresh.length === 1 ? `🏅 Nova conquista: ${fresh[0]}!` : `🏅 Desbloqueaste ${fresh.length} conquistas!`);
+    const el = box.querySelector(".badge.just") || $("#badges");
+    if (document.body.dataset.tab === "progresso") setTimeout(() => burst(el, 40), 150);
+    haptic("MEDIUM");
   }
 }
 document.addEventListener("click", (e) => {
@@ -4680,9 +4791,9 @@ function playIntro(then) {
 // ---------- what's new (shown once after each update) ----------
 // Only what changed in THIS release (replace the whole list every time): the person reads it right after updating.
 const NEWS = [
-  "Lembretes para comer: a app avisa-te à hora do pequeno-almoço, almoço, lanche e jantar, para não saltares refeições. Se já registaste essa refeição, não te incomoda.",
-  "Escolhes as horas e que refeições queres lembrar, logo no ecrã que aparece ao abrir a app ou em Perfil › Notificações.",
-  "O Android só pede autorização para notificações quando ativas os lembretes."
+  "Novo: 26 conquistas no separador Progresso! Medalhas que ficam para sempre: dias seguidos a registar (3, 7, 30, 100), refeições, fotos, proteína, meta de calorias, água, legumes, pouco açúcar, pesagens, quilos, treinos e mais.",
+  "As bloqueadas aparecem a cinzento com o progresso (ex.: 4/8). Toca numa conquista para saber o que é preciso.",
+  "Quando desbloqueias uma, a app avisa e festeja contigo 🏅"
 ];
 function showNews() {
   $("#newsVer").textContent = `Versão 1.0.${APP_BUILD}`;
@@ -4802,7 +4913,7 @@ function renderSync(msg) {
 function backupData() {
   const slim = (m) => { const { thumb, ...rest } = m; return rest; };
   let meals = [...S.meals].sort((a, b) => b.ts - a.ts).map(slim);
-  const pack = () => JSON.stringify({ v: 1, updated: Date.now(), meals, custom: S.custom, dishes: S.dishes, goal: S.goal, profile: P, plan: lsGet("ddp.plan", null), deleted: lsGet("ddp.deleted", []), weights: lsGet("ddp.weights", []), trainDays: lsGet("ddp.trainDays", {}), trainDone: lsGet("ddp.trainDone", {}), missions: lsGet("ddp.missions", {}), burned: lsGet("ddp.burned", {}), units: lsGet("ddp.units", {}), water: lsGet("ddp.water", {}) });
+  const pack = () => JSON.stringify({ v: 1, updated: Date.now(), meals, custom: S.custom, dishes: S.dishes, goal: S.goal, profile: P, plan: lsGet("ddp.plan", null), deleted: lsGet("ddp.deleted", []), weights: lsGet("ddp.weights", []), trainDays: lsGet("ddp.trainDays", {}), trainDone: lsGet("ddp.trainDone", {}), missions: lsGet("ddp.missions", {}), badges: lsGet("ddp.badges", {}), burned: lsGet("ddp.burned", {}), units: lsGet("ddp.units", {}), water: lsGet("ddp.water", {}) });
   let out = pack();
   while (out.length > 900000 && meals.length > 50) { meals = meals.slice(0, Math.floor(meals.length * 0.8)); out = pack(); } // one document holds about 1 MB
   return out;
@@ -4833,7 +4944,7 @@ function mergeCloud(c) {
   if (!profileDone() && c.profile?.sex) { Object.assign(P, c.profile); if (c.goal) S.goal = c.goal; }
   const wl = new Map([...(c.weights || []), ...lsGet("ddp.weights", [])].filter((w) => w?.d && w.kg).map((w) => [w.d, w]));
   try { localStorage.setItem("ddp.weights", JSON.stringify([...wl.values()].sort((a, b) => (a.d < b.d ? -1 : 1)).slice(-400))); } catch { /* full */ }
-  try { localStorage.setItem("ddp.trainDone", JSON.stringify({ ...(c.trainDone || {}), ...lsGet("ddp.trainDone", {}) })); localStorage.setItem("ddp.missions", JSON.stringify({ ...(c.missions || {}), ...lsGet("ddp.missions", {}) })); } catch { /* full */ }
+  try { localStorage.setItem("ddp.trainDone", JSON.stringify({ ...(c.trainDone || {}), ...lsGet("ddp.trainDone", {}) })); localStorage.setItem("ddp.missions", JSON.stringify({ ...(c.missions || {}), ...lsGet("ddp.missions", {}) })); localStorage.setItem("ddp.badges", JSON.stringify({ ...(c.badges || {}), ...lsGet("ddp.badges", {}) })); } catch { /* full */ }
   try { localStorage.setItem("ddp.trainDays", JSON.stringify({ ...(c.trainDays || {}), ...lsGet("ddp.trainDays", {}) })); } catch { /* full */ }
   try { localStorage.setItem("ddp.burned", JSON.stringify({ ...(c.burned || {}), ...lsGet("ddp.burned", {}) })); localStorage.setItem("ddp.units", JSON.stringify({ ...(c.units || {}), ...lsGet("ddp.units", {}) })); localStorage.setItem("ddp.water", JSON.stringify({ ...(c.water || {}), ...lsGet("ddp.water", {}) })); } catch { /* full */ }
   if (!lsGet("ddp.plan", null) && c.plan) { plan = c.plan; localStorage.setItem("ddp.plan", JSON.stringify(plan)); }
